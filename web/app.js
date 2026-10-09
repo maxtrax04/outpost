@@ -2,7 +2,7 @@
 // and renders the HUD. Key names must match outpost_updater.py.
 
 const REFRESH_MS = 60 * 1000;          // how often the page re-reads the JSON
-const STALE_AFTER_MS = 10 * 60 * 1000; // warn if data is older than this
+const MIN_STALE_MS = 5 * 60 * 1000;    // never warn sooner than this
 
 // Only the icons that exist in assets/icons today. Extra condition names
 // from future providers are mapped onto them until more icons are added.
@@ -147,8 +147,10 @@ async function loadWeather() {
 
         document.getElementById("currentIcon").src = iconFor(current.icon);
 
+        // Data is stale after 3 missed updates (interval comes from the updater)
+        const staleAfterMs = Math.max(MIN_STALE_MS, (weather.update_interval_seconds || 60) * 3 * 1000);
         const generated = new Date(weather.generated_at);
-        const isStale = Number.isNaN(generated.getTime()) || (Date.now() - generated.getTime()) > STALE_AFTER_MS;
+        const isStale = Number.isNaN(generated.getTime()) || (Date.now() - generated.getTime()) > staleAfterMs;
         const isOk = weather.status === "ok" && !isStale;
 
         setText("status", isOk ? "ONLINE" : "DEGRADED");

@@ -68,9 +68,9 @@ APP_VERSION = "0.1.0"
 PROVIDER = get_env("OUTPOST_PROVIDER", "mock").lower()
 UPDATE_INTERVAL = get_int_env("OUTPOST_UPDATE_INTERVAL", 60)
 
-LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME","Outpost Test Site")
-LATITUDE = get_float_env("OUTPOST_LATITUDE", 44.7)
-LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -92.9)
+LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
+LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
+LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -115.4328)
 UNITS = get_env("OUTPOST_UNITS", "imperial").lower()
 
 def utc_now() -> str:
@@ -150,6 +150,7 @@ def build_mock_payload() -> Dict[str, Any]:
             "longitude": LONGITUDE
         },
         "units": UNITS,
+        "update_interval_seconds": UPDATE_INTERVAL,
         "current": {
             "temperature_f": base_temp,
             "feels_like_f": feels_like,
@@ -180,6 +181,7 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
             "longitude": LONGITUDE
         },
         "units": UNITS,
+        "update_interval_seconds": UPDATE_INTERVAL,
         "current": {
             "temperature_f": None,
             "feels_like_f": None,
