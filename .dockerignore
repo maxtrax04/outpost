@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_STORE
+.git
+.gitignore
+.env
+data/__pycache__
+README.md
+CHANGELOG.md
+LICENSE
+Thumbs.db

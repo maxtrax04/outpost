@@ -1,0 +1,13 @@
+services:
+  outpost:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: outpost
+    ports:
+      - "${OUTPOST_WEB_PORT:-8088}:80"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
