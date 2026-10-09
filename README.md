@@ -2,7 +2,7 @@
 
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
-> **Status:** early development (v0.1.0). The dashboard and container work with a built-in mock data source. Real weather providers are in progress. Expect breaking changes until 1.0.
+> **Status:** early development (v0.1.0). The dashboard and container work with a built-in mock source and live Open-Meteo data. More providers are in progress. Expect breaking changes until 1.0.
 
 <!-- TODO (public beta): add a hero screenshot here, e.g.
 ![Outpost dashboard](docs/images/dashboard.png)
@@ -44,6 +44,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
 | `OUTPOST_UNITS` | `imperial` | Unit system. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
+| `OUTPOST_USER_AGENT` | `Outpost/0.1.0` | Identifies your instance to weather services. |
 | `OUTPOST_WEB_PORT` | `8088` | Host port for the web UI (Compose only). |
 
 The defaults point at Goodsprings, NV. Set your own latitude and longitude to see your local weather.
@@ -53,12 +54,12 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 | Provider | `OUTPOST_PROVIDER` | API key | Status |
 |---|---|---|---|
 | Mock (test data) | `mock` | No | Available |
-| [Open-Meteo](https://open-meteo.com) | `openmeteo` | No | Planned (recommended default) |
+| [Open-Meteo](https://open-meteo.com) | `openmeteo` | No | Available (recommended default) |
 | [MET Norway](https://api.met.no) | `metno` | No | Planned |
 | [Pirate Weather](https://pirateweather.net) | `pirateweather` | Yes | Planned |
 | [OpenWeatherMap](https://openweathermap.org) | `openweathermap` | Yes | Planned |
 
-Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
+Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
 
 ## Data and storage
 
@@ -88,6 +89,14 @@ web/        Dashboard front end (HTML, CSS, JS)
 assets/     Icons and fonts
 data/       Generated weather.json (runtime, not committed)
 ```
+
+## Icons
+
+Outpost ships an original, monochrome icon set (13 icons covering clear, cloudy, fog, drizzle, rain, sleet, snow, storm, wind, day and night variants, and an "unknown" fallback). Icons are plain SVGs in `assets/icons/` and are tinted with CSS, so themes can recolor them.
+
+![Outpost icon set](docs/images/icon-set.png)
+
+To add or change an icon, draw it on a 64x64 grid with a 3px stroke, square caps, and `currentColor`, then add its name to the `ICONS` list in `web/app.js`.
 
 ## Roadmap
 

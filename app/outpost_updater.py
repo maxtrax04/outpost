@@ -29,6 +29,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from providers import openmeteo
+
 DATA_PATH = Path("/data/weather.json")
 
 def get_env(name: str, default: Optional[str] = None) -> Optional[str]:
@@ -72,6 +74,7 @@ LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
 LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
 LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -115.4328)
 UNITS = get_env("OUTPOST_UNITS", "imperial").lower()
+USER_AGENT = get_env("OUTPOST_USER_AGENT", "Outpost/0.1.0")
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -101,10 +104,13 @@ def build_mock_payload() -> Dict[str, Any]:
 
     condition_options = [
         ("Clear sky", "sunny"),
-        ("Partly cloudy", "cloudy"),
+        ("Partly cloudy", "partly-cloudy"),
         ("Cloudy", "cloudy"),
+        ("Fog", "fog"),
+        ("Drizzle", "drizzle"),
         ("Light rain", "rain"),
-        ("Thunderstorm watch", "rain")
+        ("Snow", "snow"),
+        ("Thunderstorm watch", "storm")
     ]
 
     current_condition, current_icon = random.choice(condition_options)
@@ -198,17 +204,69 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
         "last_error": error_message
     }
 
+def build_live_payload(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrap normalized provider data with Outpost metadata."""
+    return {
+        "status": "ok",
+        "app": APP_NAME,
+        "version": APP_VERSION,
+        "provider": provider_name,
+        "source": data.get("source"),
+        "location": LOCATION_NAME,
+        "generated_at": utc_now(),
+        "coordinates": {
+            "latitude": LATITUDE,
+            "longitude": LONGITUDE
+        },
+        "units": UNITS,
+        "update_interval_seconds": UPDATE_INTERVAL,
+        "current": data["current"],
+        "forecast": data["forecast"],
+        "alerts": data.get("alerts", []),
+        "last_error": None
+    }
+
+def write_degraded_or_error(error_message: str) -> None:
+    """
+    On a failed update, keep showing the last good data (marked degraded)
+    when it is for the same provider and location. Otherwise write an
+    error payload. generated_at is left alone so the data visibly ages.
+    """
+    try:
+        with DATA_PATH.open("r", encoding="utf-8") as file:
+            previous = json.load(file)
+
+        has_data = previous.get("current", {}).get("temperature_f") is not None
+        same_setup = (
+            previous.get("provider") == PROVIDER
+            and previous.get("location") == LOCATION_NAME
+        )
+
+        if has_data and same_setup:
+            previous["status"] = "degraded"
+            previous["last_error"] = error_message
+            previous["update_interval_seconds"] = UPDATE_INTERVAL
+            write_json(previous)
+            return
+    except Exception:
+        pass
+
+    write_json(build_error_payload(error_message=error_message))
+
 def update_once() -> None:
     try:
         print(f"[Outpost] Starting update. Provider={PROVIDER}", flush=True)
 
         if PROVIDER == "mock":
             payload = build_mock_payload()
+        elif PROVIDER == "openmeteo":
+            data = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+            payload = build_live_payload("openmeteo", data)
         else:
             raise RuntimeError(
-                f"Provider '{PROVIDER}' is not implemented in Phase 1. Use OUTPOST_PROVIDER=mock."
+                f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock or openmeteo."
             )
-        
+
         write_json(payload)
 
         print(f"[Outpost] Update complete. Wrote {DATA_PATH}. Status={payload.get('status')}", flush=True)
@@ -222,7 +280,7 @@ def update_once() -> None:
             flush=True
         )
 
-        write_json(build_error_payload(error_message=error_message))
+        write_degraded_or_error(error_message)
 
 def run_loop() -> None:
     print(f"[Outpost] Updater loop started. Interval={UPDATE_INTERVAL}s", flush=True)

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outpost ROOT</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main>
+        <section class="panel header">
+            <div class="title">OUTPOST</div>
+            <div class="subtitle">LOCAL STATUS DISPLAY</div>
+            <div id="location" class="location">Loading...</div>
+        </section>
+
+        <section id="alertBanner" class="panel alert">
+            OUTPOST WARNING - DISPLAYING DEGRADED OR CACHED DATA
+        </section>
+
+        <section class="panel current">
+            <div class="current-main">
+                <div class="wx-glow"><span id="currentIcon" class="wx-icon current-icon"></span></div>
+                <div>
+                    <div id="temperature" class="temperature">--°F</div>
+                    <div id="condition" class="condition">Waiting for signal...</div>
+                </div>
+            </div>
+
+            <div class="details">
+                <div class="detail-box">Feels Like<br><span id="feelsLike">--</span></div>
+                <div class="detail-box">Humidity<br><span id="humidity">--</span></div>
+                <div class="detail-box">Wind<br><span id="wind">--</span></div>
+                <div class="detail-box">Pressure<br><span id="pressure">--</span></div>
+                <div class="detail-box">UV Index<br><span id="uv">--</span></div>
+                <div class="detail-box">Visibility<br><span id="visibility">--</span></div>
+                <div class="detail-box">Provider<br><span id="provider">--</span></div>
+                <div class="detail-box">Updated<br><span id="lastUpdated">--</span></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>FORECAST</h2>
+            <div id="forecastContainer" class="forecast"></div>
+        </section>
+
+        <section class="panel">
+            <h2>ALERTS</h2>
+            <div id="alerts">LOADING...</div>
+        </section>
+
+        <footer>
+            DATA: <span id="source">--</span> | OUTPOST v0.1.0 - STATUS: <span id="status">--</span>
+        </footer>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

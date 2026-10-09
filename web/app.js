@@ -4,21 +4,21 @@
 const REFRESH_MS = 60 * 1000;          // how often the page re-reads the JSON
 const MIN_STALE_MS = 5 * 60 * 1000;    // never warn sooner than this
 
-// Only the icons that exist in assets/icons today. Extra condition names
-// from future providers are mapped onto them until more icons are added.
-const iconMap = {
-    "sunny": "assets/icons/sunny.svg",
-    "cloudy": "assets/icons/cloudy.svg",
-    "partly-cloudy": "assets/icons/cloudy.svg",
-    "rain": "assets/icons/rain.svg",
-    "storm": "assets/icons/rain.svg",
-    "snow": "assets/icons/unknown.svg",
-    "fog": "assets/icons/unknown.svg",
-    "unknown": "assets/icons/unknown.svg"
-};
+// Icon files in assets/icons/. Icons are monochrome and tinted with CSS
+// (see .wx-icon in style.css), so themes can recolor them.
+const ICONS = [
+    "sunny", "clear-night", "partly-cloudy", "partly-cloudy-night", "cloudy",
+    "fog", "drizzle", "rain", "sleet", "snow", "storm", "wind", "unknown"
+];
 
-function iconFor(name) {
-    return iconMap[name] || iconMap["unknown"];
+function iconUrl(name) {
+    return `url("assets/icons/${ICONS.includes(name) ? name : "unknown"}.svg")`;
+}
+
+function setIcon(element, name, label) {
+    element.style.setProperty("--icon", iconUrl(name));
+    element.setAttribute("role", "img");
+    element.setAttribute("aria-label", label || name || "unknown");
 }
 
 function valueOrDash(value, suffix = "") {
@@ -79,10 +79,12 @@ function renderForecast(periods) {
         day.innerHTML = "<strong></strong>";
         day.firstChild.textContent = formatDay(period.day);
 
-        const icon = document.createElement("img");
-        icon.className = "forecast-icon";
-        icon.src = iconFor(period.icon);
-        icon.alt = "";
+        const icon = document.createElement("div");
+        icon.className = "wx-glow";
+        const iconInner = document.createElement("span");
+        iconInner.className = "wx-icon forecast-icon";
+        setIcon(iconInner, period.icon, period.condition);
+        icon.appendChild(iconInner);
 
         const condition = document.createElement("div");
         condition.className = "forecast-condition";
@@ -143,9 +145,10 @@ async function loadWeather() {
         setText("uv", valueOrDash(current.uv_index));
         setText("visibility", valueOrDash(current.visibility_miles, " mi"));
         setText("provider", weather.provider || "--");
+        setText("source", weather.source || "--");
         setText("lastUpdated", formatDateTime(weather.generated_at));
 
-        document.getElementById("currentIcon").src = iconFor(current.icon);
+        setIcon(document.getElementById("currentIcon"), current.icon, current.condition);
 
         // Data is stale after 3 missed updates (interval comes from the updater)
         const staleAfterMs = Math.max(MIN_STALE_MS, (weather.update_interval_seconds || 60) * 3 * 1000);
