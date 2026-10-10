@@ -2,7 +2,8 @@ FROM nginx:alpine
 
 LABEL org.opencontainers.image.title="Outpost"
 LABEL org.opencontainers.image.description="Outpost is a weather web dashboard"
-LABEL org.opencontainers.image.version="0.1.0"
+ARG OUTPOST_VERSION=0.2.0
+LABEL org.opencontainers.image.version="${OUTPOST_VERSION}"
 
 RUN apk add --no-cache python3 py3-pip bash curl tzdata
 
@@ -14,6 +15,7 @@ RUN pip3 install --break-system-packages --no-cache-dir -r /app/requirements.txt
 COPY web/ /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
 COPY app/ /app/
+COPY VERSION /app/VERSION
 
 # nginx serves weather.json from the persistent /data volume
 RUN mkdir -p /data \

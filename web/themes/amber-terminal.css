@@ -1,0 +1,26 @@
+/* Amber Terminal: single-color amber phosphor, like an old monochrome monitor */
+:root {
+    --bg: #120a00;
+    --bg-glow: rgba(160, 100, 10, 0.20);
+    --panel: rgba(34, 20, 0, 0.92);
+    --cell-bg: rgba(18, 10, 0, 0.65);
+
+    --text: #ffb000;
+    --text-dim: #a8741a;
+    --accent: #ffd98a;
+    --warn: #ffd98a;
+    --danger: #ff6a3d;
+    --danger-bg: rgba(90, 25, 8, 0.6);
+
+    --border: #a8741a;
+    --border-width: 2px;
+    --radius: 0;
+
+    --text-glow: 0 0 6px rgba(255, 176, 0, 0.55);
+    --icon-glow: drop-shadow(0 0 5px rgba(255, 176, 0, 0.55));
+    --scanlines: 1;
+
+    --font-display: "Share Tech Mono", "Courier New", monospace;
+    --font-body: "Share Tech Mono", "Courier New", monospace;
+    --title-spacing: 0.14em;
+}

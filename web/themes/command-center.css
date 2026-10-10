@@ -1,0 +1,28 @@
+/* Command Center: cool blue tactical display with thin borders and light scanlines */
+:root {
+    --bg: #050b14;
+    --bg-glow: rgba(30, 90, 160, 0.25);
+    --panel: rgba(8, 20, 36, 0.92);
+    --cell-bg: rgba(4, 12, 24, 0.7);
+
+    --text: #7fd4ff;
+    --text-dim: #4a7fa6;
+    --accent: #ffb454;
+    --warn: #ffb454;
+    --danger: #ff5a5a;
+    --danger-bg: rgba(70, 15, 20, 0.6);
+
+    --border: #2f6f9f;
+    --border-width: 1px;
+    --radius: 0;
+
+    --text-glow: 0 0 5px rgba(127, 212, 255, 0.4);
+    --icon-glow: drop-shadow(0 0 4px rgba(127, 212, 255, 0.45));
+    --scanlines: 0.35;
+
+    --font-display: "Share Tech Mono", "Courier New", monospace;
+    --font-body: "Share Tech Mono", "Courier New", monospace;
+    --title-spacing: 0.3em;
+}
+
+.panel { border-left-width: 4px; }

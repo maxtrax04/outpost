@@ -1,11 +1,46 @@
+/* ==========================================================================
+   Outpost base styles
+   Everything visual comes from the theme tokens (CSS variables) below.
+   A theme is just a file in web/themes/ that sets those tokens.
+   The values here are the fallbacks used if no theme file loads.
+   See docs/themes.md.
+   ========================================================================== */
+
+/* ---- Fonts ---------------------------------------------------------------
+   Share Tech Mono (SIL Open Font License) is bundled from assets/fonts/.
+   If the file is missing, the stacks fall back to Courier New.             */
+@font-face {
+    font-family: "Share Tech Mono";
+    src: url("assets/fonts/ShareTechMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     --bg: #071007;
+    --bg-glow: rgba(80, 120, 40, 0.22);
     --panel: rgba(16, 36, 12, 0.92);
-    --green: #9cff57;
-    --green-dim: #6fad3e;
-    --amber: #ffb000;
-    --red: #ff5a36;
+    --cell-bg: rgba(5, 14, 5, 0.65);
+
+    --text: #9cff57;
+    --text-dim: #6fad3e;
+    --accent: #ffb000;
+    --warn: #ffb000;
+    --danger: #ff5a36;
+    --danger-bg: rgba(80, 20, 10, 0.6);
+
     --border: #6fad3e;
+    --border-width: 2px;
+    --radius: 0;
+
+    --text-glow: 0 0 6px rgba(156, 255, 87, 0.55);
+    --icon-glow: drop-shadow(0 0 5px rgba(156, 255, 87, 0.55));
+    --scanlines: 1;
+
+    --font-display: "Share Tech Mono", "Courier New", monospace;
+    --font-body: "Share Tech Mono", "Courier New", monospace;
+    --title-spacing: 0.14em;
 }
 
 * { box-sizing: border-box; }
@@ -14,19 +49,31 @@ body {
     margin: 0;
     min-height: 100vh;
     background:
-        radial-gradient(circle at center, rgba(80, 120, 40, 0.22), transparent 65%),
+        radial-gradient(circle at center, var(--bg-glow), transparent 65%),
         var(--bg);
-    color: var(--green);
-    font-family: "Courier New", monospace;
-    text-shadow: 0 0 6px rgba(156, 255, 87, 0.55);
+    color: var(--text);
+    font-family: var(--font-body);
+    text-shadow: var(--text-glow);
 }
 
-/* CRT scanlines */
+/* Hide the page until the theme is applied (avoids a flash of the wrong theme).
+   The animation reveals it after 2 seconds no matter what, as a safety net. */
+body.theme-loading {
+    visibility: hidden;
+    animation: theme-reveal 0s 2s forwards;
+}
+
+@keyframes theme-reveal {
+    to { visibility: visible; }
+}
+
+/* Scanline overlay; themes turn it off with --scanlines: 0 */
 body::before {
     content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;
+    opacity: var(--scanlines);
     background: repeating-linear-gradient(
         to bottom,
         rgba(255, 255, 255, 0.035),
@@ -44,7 +91,8 @@ main {
 }
 
 .panel {
-    border: 2px solid var(--border);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius);
     background: var(--panel);
     padding: 18px;
     margin-bottom: 22px;
@@ -55,20 +103,21 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 .header { text-align: center; }
 
 .title {
+    font-family: var(--font-display);
     font-size: clamp(3rem, 9vw, 7rem);
-    letter-spacing: 0.14em;
+    letter-spacing: var(--title-spacing);
     font-weight: bold;
 }
 
 .subtitle {
-    color: var(--green-dim);
+    color: var(--text-dim);
     font-size: clamp(1rem, 2.5vw, 1.5rem);
     letter-spacing: 0.08em;
 }
 
 .location {
     margin-top: 14px;
-    color: var(--amber);
+    color: var(--accent);
     font-size: clamp(1.8rem, 4vw, 3rem);
 }
 
@@ -86,7 +135,7 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 }
 
 /* Weather icons: an SVG used as a mask, filled with the current text color */
-.wx-glow { filter: drop-shadow(0 0 5px rgba(156, 255, 87, 0.55)); }
+.wx-glow { filter: var(--icon-glow); }
 
 .wx-icon {
     display: block;
@@ -98,12 +147,13 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 .current-icon { width: clamp(80px, 14vw, 160px); aspect-ratio: 1; }
 
 .temperature {
+    font-family: var(--font-display);
     font-size: clamp(4rem, 12vw, 9rem);
     line-height: 0.9;
 }
 
 .condition {
-    color: var(--amber);
+    color: var(--accent);
     font-size: clamp(1.7rem, 4vw, 3.2rem);
 }
 
@@ -115,8 +165,9 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 
 .detail-box {
     border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 12px;
-    background: rgba(5, 14, 5, 0.65);
+    background: var(--cell-bg);
 }
 
 .forecast {
@@ -127,23 +178,30 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 
 .forecast-card {
     border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 14px;
     text-align: center;
-    background: rgba(5, 14, 5, 0.65);
+    background: var(--cell-bg);
 }
 
 .forecast-icon { width: 64px; aspect-ratio: 1; margin: 6px auto; }
 
 .forecast-condition {
-    color: var(--amber);
+    color: var(--accent);
     min-height: 3em;
 }
 
+.alert-item { margin-bottom: 10px; }
+.alert-item.severity-moderate { border-color: var(--warn); color: var(--warn); }
+.alert-item.severity-severe,
+.alert-item.severity-extreme { border-color: var(--danger); color: var(--danger); }
+.panel.alert-active { border-color: var(--danger); }
+
 .alert {
     display: none;
-    border-color: var(--red);
-    color: var(--red);
-    background: rgba(80, 20, 10, 0.6);
+    border-color: var(--danger);
+    color: var(--danger);
+    background: var(--danger-bg);
     text-align: center;
     font-size: 1.4rem;
 }
@@ -152,7 +210,7 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 
 footer {
     text-align: right;
-    color: var(--green-dim);
+    color: var(--text-dim);
 }
 
 @media (max-width: 850px) {

@@ -1,0 +1,28 @@
+/* Modern Dark: clean, flat, rounded, no glow or scanlines. Uses system fonts. */
+:root {
+    --bg: #0f1115;
+    --bg-glow: rgba(255, 255, 255, 0);
+    --panel: #171a21;
+    --cell-bg: #1d212a;
+
+    --text: #e6e9ef;
+    --text-dim: #8b93a3;
+    --accent: #6ea8fe;
+    --warn: #f0b429;
+    --danger: #ef5350;
+    --danger-bg: rgba(239, 83, 80, 0.14);
+
+    --border: #2a2f3a;
+    --border-width: 1px;
+    --radius: 12px;
+
+    --text-glow: none;
+    --icon-glow: none;
+    --scanlines: 0;
+
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --title-spacing: 0.2em;
+}
+
+.title { font-weight: 600; }

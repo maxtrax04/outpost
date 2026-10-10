@@ -110,19 +110,34 @@ function renderAlerts(alerts) {
 
     if (!Array.isArray(alerts) || alerts.length === 0) {
         container.textContent = "No active alerts in current Outpost data.";
+        container.parentElement.classList.remove("alert-active");
         return;
     }
 
+    let serious = false;
+
     alerts.forEach(alert => {
+        const severity = String(alert.severity || "unknown").toLowerCase();
+        if (severity === "severe" || severity === "extreme") {
+            serious = true;
+        }
+
         const box = document.createElement("div");
-        box.className = "detail-box";
+        box.className = `detail-box alert-item severity-${severity}`;
 
         const title = document.createElement("strong");
         title.textContent = alert.title || "Alert";
 
         box.append(title, document.createElement("br"), document.createTextNode(alert.description || ""));
+
+        if (alert.expires) {
+            box.append(document.createElement("br"), document.createTextNode(`Until ${formatDateTime(alert.expires)}`));
+        }
+
         container.appendChild(box);
     });
+
+    container.parentElement.classList.toggle("alert-active", serious);
 }
 
 async function loadWeather() {
@@ -146,6 +161,7 @@ async function loadWeather() {
         setText("visibility", valueOrDash(current.visibility_miles, " mi"));
         setText("provider", weather.provider || "--");
         setText("source", weather.source || "--");
+        setText("version", weather.version || "--");
         setText("lastUpdated", formatDateTime(weather.generated_at));
 
         setIcon(document.getElementById("currentIcon"), current.icon, current.condition);
@@ -169,5 +185,59 @@ async function loadWeather() {
     }
 }
 
-loadWeather();
-setInterval(loadWeather, REFRESH_MS);
+// ---- Themes -----------------------------------------------------------
+// The theme comes from ?theme=name in the URL (handy for previews), otherwise
+// from data/config.json (written from OUTPOST_THEME), otherwise the default.
+const DEFAULT_THEME = "retro-crt";
+
+function validTheme(name) {
+    return typeof name === "string" && /^[a-z0-9-]+$/.test(name) ? name : null;
+}
+
+async function loadConfig() {
+    try {
+        const response = await fetch(`data/config.json?cacheBust=${Date.now()}`);
+        return response.ok ? await response.json() : {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function loadStylesheet(link, href) {
+    return new Promise(resolve => {
+        link.onload = () => resolve(true);
+        link.onerror = () => resolve(false);
+        link.href = href;
+    });
+}
+
+async function applyTheme() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const config = await loadConfig();
+        const wanted = validTheme(params.get("theme")) || validTheme(config.theme) || DEFAULT_THEME;
+
+        const link = document.getElementById("theme");
+        const href = `themes/${wanted}.css`;
+
+        if (link.getAttribute("href") !== href) {
+            const loaded = await loadStylesheet(link, href);
+            if (!loaded) {
+                console.error(`Theme "${wanted}" not found; using ${DEFAULT_THEME}`);
+                await loadStylesheet(link, `themes/${DEFAULT_THEME}.css`);
+            }
+        }
+
+        document.documentElement.dataset.theme = wanted;
+    } finally {
+        document.body.classList.remove("theme-loading");
+    }
+}
+
+async function refresh() {
+    await applyTheme();
+    await loadWeather();
+}
+
+refresh();
+setInterval(refresh, REFRESH_MS);

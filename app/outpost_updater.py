@@ -23,13 +23,14 @@ import argparse
 import json
 import os
 import random
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from providers import openmeteo
+from providers import gapfill, nws, openmeteo
 
 DATA_PATH = Path("/data/weather.json")
 
@@ -65,7 +66,19 @@ def get_float_env(name: str, default: Optional[float] = None) -> Optional[float]
         raise ValueError(f"Environment variable {name} must be a float, got '{value}'.")
 
 APP_NAME = "Outpost"
-APP_VERSION = "0.1.0"
+def read_version() -> str:
+    """Version comes from the VERSION file (the single place to bump it)."""
+    here = Path(__file__).resolve().parent
+    for candidate in (here / "VERSION", here.parent / "VERSION"):
+        try:
+            version = candidate.read_text(encoding="utf-8").strip()
+            if version:
+                return version
+        except OSError:
+            continue
+    return "dev"
+
+APP_VERSION = read_version()
 
 PROVIDER = get_env("OUTPOST_PROVIDER", "mock").lower()
 UPDATE_INTERVAL = get_int_env("OUTPOST_UPDATE_INTERVAL", 60)
@@ -74,20 +87,44 @@ LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
 LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
 LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -115.4328)
 UNITS = get_env("OUTPOST_UNITS", "imperial").lower()
-USER_AGENT = get_env("OUTPOST_USER_AGENT", "Outpost/0.1.0")
+USER_AGENT = get_env("OUTPOST_USER_AGENT", f"Outpost/{APP_VERSION}")
+
+DEFAULT_THEME = "retro-crt"
+THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
+THEMES_DIR = Path("/usr/share/nginx/html/themes")
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-def write_json(payload: Dict[str, Any]) -> None:
-    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+def write_json(payload: Dict[str, Any], path: Optional[Path] = None) -> None:
+    path = path or DATA_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-    temp_path = DATA_PATH.with_suffix(".json.tmp")
+    temp_path = path.with_suffix(".json.tmp")
 
     with temp_path.open("w", encoding="utf-8") as file:
         json.dump(payload, file, indent=2)
 
-    temp_path.replace(DATA_PATH)
+    temp_path.replace(path)
+
+def write_config() -> None:
+    """
+    Write settings the web page needs (currently just the theme) to
+    /data/config.json. Unknown theme names fall back to the default.
+    """
+    theme = THEME
+
+    if not re.fullmatch(r"[a-z0-9-]+", theme):
+        print(f"[Outpost] Invalid OUTPOST_THEME '{theme}'; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
+        theme = DEFAULT_THEME
+    elif THEMES_DIR.is_dir() and not (THEMES_DIR / f"{theme}.css").exists():
+        print(f"[Outpost] Theme '{theme}' not found in {THEMES_DIR}; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
+        theme = DEFAULT_THEME
+
+    write_json(
+        {"theme": theme, "app": APP_NAME, "version": APP_VERSION},
+        DATA_PATH.with_name("config.json")
+    )
 
 def build_mock_payload() -> Dict[str, Any]:
     """
@@ -211,6 +248,7 @@ def build_live_payload(provider_name: str, data: Dict[str, Any]) -> Dict[str, An
         "app": APP_NAME,
         "version": APP_VERSION,
         "provider": provider_name,
+        "provider_setting": PROVIDER,
         "source": data.get("source"),
         "location": LOCATION_NAME,
         "generated_at": utc_now(),
@@ -220,6 +258,7 @@ def build_live_payload(provider_name: str, data: Dict[str, Any]) -> Dict[str, An
         },
         "units": UNITS,
         "update_interval_seconds": UPDATE_INTERVAL,
+        "filled_fields": data.get("filled_fields", []),
         "current": data["current"],
         "forecast": data["forecast"],
         "alerts": data.get("alerts", []),
@@ -238,7 +277,7 @@ def write_degraded_or_error(error_message: str) -> None:
 
         has_data = previous.get("current", {}).get("temperature_f") is not None
         same_setup = (
-            previous.get("provider") == PROVIDER
+            (previous.get("provider_setting") or previous.get("provider")) == PROVIDER
             and previous.get("location") == LOCATION_NAME
         )
 
@@ -253,6 +292,42 @@ def write_degraded_or_error(error_message: str) -> None:
 
     write_json(build_error_payload(error_message=error_message))
 
+def fetch_nws_with_gap_fill() -> Dict[str, Any]:
+    """
+    NWS data, plus Open-Meteo for anything NWS does not publish (such as UV
+    index). If Open-Meteo is unavailable, NWS data is used as-is.
+    """
+    data = nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+
+    if gapfill.has_gaps(data):
+        try:
+            backup = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+            data, filled = gapfill.fill(data, backup)
+            if filled:
+                data["source"] = f"{data['source']}; {openmeteo.SOURCE}"
+                data["filled_fields"] = filled
+                print(f"[Outpost] Filled from Open-Meteo: {', '.join(filled)}", flush=True)
+        except Exception as error:
+            print(f"[Outpost] Gap fill skipped (Open-Meteo failed): {error}", file=sys.stderr, flush=True)
+
+    return data
+
+_warned_user_agent = False
+
+def warn_about_user_agent() -> None:
+    """NWS asks every client to include contact information in its User-Agent."""
+    global _warned_user_agent
+    if _warned_user_agent:
+        return
+    _warned_user_agent = True
+    if "@" not in USER_AGENT and "http" not in USER_AGENT.lower():
+        print(
+            "[Outpost] Warning: OUTPOST_USER_AGENT has no contact info. "
+            "The National Weather Service asks for one, e.g. Outpost (you@example.com)",
+            file=sys.stderr,
+            flush=True
+        )
+
 def update_once() -> None:
     try:
         print(f"[Outpost] Starting update. Provider={PROVIDER}", flush=True)
@@ -262,9 +337,22 @@ def update_once() -> None:
         elif PROVIDER == "openmeteo":
             data = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
             payload = build_live_payload("openmeteo", data)
+        elif PROVIDER == "nws":
+            warn_about_user_agent()
+            data = nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+            payload = build_live_payload("nws", data)
+        elif PROVIDER == "auto":
+            # National Weather Service inside the US, Open-Meteo everywhere else
+            warn_about_user_agent()
+            try:
+                data = fetch_nws_with_gap_fill()
+                payload = build_live_payload("nws", data)
+            except nws.NoCoverageError:
+                data = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+                payload = build_live_payload("openmeteo", data)
         else:
             raise RuntimeError(
-                f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock or openmeteo."
+                f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, or auto."
             )
 
         write_json(payload)
@@ -298,6 +386,8 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    write_config()
 
     if args.loop:
         run_loop()

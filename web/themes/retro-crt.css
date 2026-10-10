@@ -1,0 +1,26 @@
+/* Retro CRT: green phosphor terminal with scanlines and glow */
+:root {
+    --bg: #071007;
+    --bg-glow: rgba(80, 120, 40, 0.22);
+    --panel: rgba(16, 36, 12, 0.92);
+    --cell-bg: rgba(5, 14, 5, 0.65);
+
+    --text: #9cff57;
+    --text-dim: #6fad3e;
+    --accent: #ffb000;
+    --warn: #ffb000;
+    --danger: #ff5a36;
+    --danger-bg: rgba(80, 20, 10, 0.6);
+
+    --border: #6fad3e;
+    --border-width: 2px;
+    --radius: 0;
+
+    --text-glow: 0 0 6px rgba(156, 255, 87, 0.55);
+    --icon-glow: drop-shadow(0 0 5px rgba(156, 255, 87, 0.55));
+    --scanlines: 1;
+
+    --font-display: "Share Tech Mono", "Courier New", monospace;
+    --font-body: "Share Tech Mono", "Courier New", monospace;
+    --title-spacing: 0.14em;
+}

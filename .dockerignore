@@ -1,13 +1,24 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.DS_STORE
+# Version control and local config
 .git
 .gitignore
+.gitattributes
 .env
-data/__pycache__
+.env.*
+
+# Runtime data: mounted as a volume, never baked into the image
+data/
+
+# Docs and repo files the container doesn't need
 README.md
 CHANGELOG.md
+THIRD_PARTY.md
 LICENSE
-Thumbs.db
+docs/
+docker-compose*.yml
+
+# Python and OS junk. "**/" is needed so nested folders (app/providers/...) match too.
+**/__pycache__
+**/*.py[cod]
+**/.DS_Store
+**/Thumbs.db
+*.old
