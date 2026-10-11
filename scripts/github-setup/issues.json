@@ -1,0 +1,530 @@
+{
+  "labels": [
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something is not working"
+    },
+    {
+      "name": "enhancement",
+      "color": "a2eeef",
+      "description": "New feature or request"
+    },
+    {
+      "name": "documentation",
+      "color": "0075ca",
+      "description": "Improvements or additions to documentation"
+    },
+    {
+      "name": "good first issue",
+      "color": "7057ff",
+      "description": "Good for newcomers"
+    },
+    {
+      "name": "help wanted",
+      "color": "008672",
+      "description": "Extra attention is needed"
+    },
+    {
+      "name": "chore",
+      "color": "cfd3d7",
+      "description": "Maintenance and housekeeping"
+    },
+    {
+      "name": "ui",
+      "color": "1d76db",
+      "description": "Dashboard layout and behavior"
+    },
+    {
+      "name": "mobile",
+      "color": "5319e7",
+      "description": "Phones, tablets, and portrait screens"
+    },
+    {
+      "name": "themes",
+      "color": "c5def5",
+      "description": "Theme system and theme content"
+    },
+    {
+      "name": "providers",
+      "color": "fbca04",
+      "description": "Weather data providers"
+    },
+    {
+      "name": "data-model",
+      "color": "0e8a16",
+      "description": "The weather.json format and its fields"
+    },
+    {
+      "name": "docker",
+      "color": "2496ed",
+      "description": "Image, Dockerfile, and deployment"
+    },
+    {
+      "name": "ci",
+      "color": "bfdadc",
+      "description": "GitHub Actions and automation"
+    },
+    {
+      "name": "testing",
+      "color": "c2e0c6",
+      "description": "Automated tests"
+    },
+    {
+      "name": "security",
+      "color": "b60205",
+      "description": "Security and privacy"
+    },
+    {
+      "name": "platform",
+      "color": "d4c5f9",
+      "description": "Bigger architecture and platform features"
+    },
+    {
+      "name": "home-assistant",
+      "color": "41bdf5",
+      "description": "Home Assistant integration"
+    },
+    {
+      "name": "needs-design",
+      "color": "f9d0c4",
+      "description": "Needs a design decision before building"
+    },
+    {
+      "name": "breaking-change",
+      "color": "e11d21",
+      "description": "Changes behavior or settings users depend on"
+    }
+  ],
+  "milestones": [
+    {
+      "title": "v0.3.0 - CI and housekeeping",
+      "description": "Automated builds and tests, published images, and tidy project settings."
+    },
+    {
+      "title": "v0.4.0 - Dashboard polish and mobile",
+      "description": "Cleaner dashboard, better alerts behavior, and a layout that works on phones and portrait screens."
+    },
+    {
+      "title": "v0.5.0 - Themes and customization",
+      "description": "Make themes easy to create and share, and give Outpost its own logo and look."
+    },
+    {
+      "title": "v0.6.0 - Data model and providers",
+      "description": "A stable data format, metric units, and more weather providers with smarter automatic selection."
+    },
+    {
+      "title": "v0.7.0 - Platform",
+      "description": "A small API that enables location search, browser location, a weather map, and Home Assistant support."
+    },
+    {
+      "title": "v1.0.0 - First stable release",
+      "description": "Stable data format, published image, unRAID template, and a full public-beta review."
+    }
+  ],
+  "issues": [
+    {
+      "title": "Add a CI workflow that builds the image and runs tests on every pull request",
+      "labels": [
+        "ci",
+        "docker",
+        "enhancement"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nAutomatically check every change so mistakes are caught before they reach main.\n\n## Tasks\n- [ ] Create `.github/workflows/ci.yml` triggered on pull requests and pushes to `main`\n- [ ] Build the Docker image without publishing it\n- [ ] Run the Python and JavaScript tests (see the tests issue)\n- [ ] Add a status badge to the README\n- [ ] Optional: require the check to pass before merging (branch protection)\n\n## Notes\nThis is a good first pull request for learning the GitHub flow: branch, push, open a PR, watch the check run, merge."
+    },
+    {
+      "title": "Move the ad hoc tests into a tests/ folder",
+      "labels": [
+        "testing",
+        "chore"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nProvider and dimming logic was checked with throwaway scripts. Save those checks in the repository so CI can run them.\n\n## Tasks\n- [ ] Python tests with the standard `unittest` module (no extra packages) for `nws`, `openmeteo`, `gapfill`, and the updater settings\n- [ ] Store sample API responses as fixtures so tests never call the network\n- [ ] JavaScript tests for `web/dim.js` using Node's built-in test runner\n- [ ] Document how to run everything locally in the README or CONTRIBUTING\n\n## Notes\nFixtures must use made-up coordinates, never a real location."
+    },
+    {
+      "title": "Publish a multi-architecture Docker image to GHCR on version tags",
+      "labels": [
+        "ci",
+        "docker",
+        "enhancement"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nBuild and publish the image whenever a version tag is pushed, so users can `docker pull` instead of building. Required before an unRAID template.\n\n## Tasks\n- [ ] Create `.github/workflows/release.yml` triggered by tags matching `v*`\n- [ ] Fail if the tag does not match the contents of the `VERSION` file\n- [ ] Build for linux/amd64 and linux/arm64 (Raspberry Pi) with Buildx and QEMU\n- [ ] Publish to `ghcr.io/maxtrax04/outpost` with tags like `0.3.0`, `0.3`, and `latest`\n- [ ] Publish an `edge` tag from `main` for early testers\n- [ ] Use generated image labels so the version is no longer set by hand in the Dockerfile\n- [ ] Make the package public when the repository goes public\n- [ ] Document `docker pull` and a `docker run` example"
+    },
+    {
+      "title": "Enable Dependabot for the Docker base image and GitHub Actions",
+      "labels": [
+        "ci",
+        "security",
+        "chore"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nGet automatic pull requests when the nginx base image or an Action has an update.\n\n## Tasks\n- [ ] Add `.github/dependabot.yml` with the `docker` and `github-actions` ecosystems on a weekly schedule\n- [ ] Pin the nginx base image to a specific version instead of a floating tag\n- [ ] Add Python dependencies if any are ever added to `requirements.txt`"
+    },
+    {
+      "title": "Create the v0.2.0 tag and GitHub Release",
+      "labels": [
+        "chore",
+        "documentation"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nMark the first real release so there is a stable point to point at and a Releases page.\n\n## Tasks\n- [ ] Confirm `VERSION` and `CHANGELOG.md` say 0.2.0\n- [ ] Create an annotated tag `v0.2.0` and push it\n- [ ] Create a GitHub Release from the tag using the changelog text\n- [ ] Mark it as a pre-release (the project is before 1.0)\n\n## Notes\nSee `docs/releasing.md`. Once the release workflow exists, creating the tag will also publish the image."
+    },
+    {
+      "title": "Replace OUTPOST_USER_AGENT with a simple OUTPOST_CONTACT setting",
+      "labels": [
+        "providers",
+        "enhancement"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nWeather services such as NWS and MET Norway ask clients to identify themselves with contact details. Users should only have to provide an email or URL.\n\n## Tasks\n- [ ] Add `OUTPOST_CONTACT` and build `Outpost/<version> (<contact>)` automatically from the `VERSION` file\n- [ ] Warn at startup when a provider that needs contact info is selected and none is set\n- [ ] Keep `OUTPOST_USER_AGENT` as an advanced override\n- [ ] Update `.env.example`, README, and CHANGELOG"
+    },
+    {
+      "title": "Review requirements.txt and trim the Dockerfile",
+      "labels": [
+        "docker",
+        "chore"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nAll providers use only the Python standard library, so the requirements file may be empty or list unused packages.\n\n## Tasks\n- [ ] Check what `requirements.txt` contains and remove anything unused\n- [ ] If nothing is needed, remove the pip install step and the pip package to shrink the image\n- [ ] If packages are added later, pin exact versions"
+    },
+    {
+      "title": "Add CONTRIBUTING.md with workflow, privacy, and IP guidelines",
+      "labels": [
+        "documentation",
+        "good first issue"
+      ],
+      "milestone": "v0.3.0 - CI and housekeeping",
+      "body": "## Summary\nExplain how to contribute and set clear rules so the repository stays safe and original.\n\n## Tasks\n- [ ] Describe the issue, branch, pull request, and merge workflow (link `docs/github-workflow.md`)\n- [ ] Explain how to run the app and tests locally\n- [ ] Privacy rule: never post real coordinates, `weather.json`, `.env`, or API keys in issues, pull requests, or screenshots\n- [ ] Content rule: only original or properly licensed fonts, icons, and images, listed in `THIRD_PARTY.md`\n- [ ] Naming rule: no third-party trademarks, logos, characters, or game artwork in themes or names"
+    },
+    {
+      "title": "Remove the Provider box and add sunrise and sunset",
+      "labels": [
+        "ui",
+        "enhancement"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nThe data source already appears in the footer. Use the freed space for something more useful on a wall display.\n\n## Tasks\n- [ ] Remove the Provider box from the current-conditions section\n- [ ] Add sunrise and sunset times, calculated in the browser from the coordinates (reuse the solar math in `dim.js`)\n- [ ] Handle places with no sunrise or sunset (polar day and night)\n- [ ] Hide the box if coordinates are missing"
+    },
+    {
+      "title": "Make the header subtitle configurable and remove the default text",
+      "labels": [
+        "ui",
+        "enhancement"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nReplace the fixed text \"Local Status Display\" with a setting.\n\n## Tasks\n- [ ] Add `OUTPOST_SUBTITLE`; hide the line when it is empty\n- [ ] Optional: a mode that shows the current date and time instead\n- [ ] Update `.env.example`, README, and CHANGELOG\n\n## Notes\nBest done together with the custom logo so the header is designed once."
+    },
+    {
+      "title": "Say so when a data source does not provide alerts",
+      "labels": [
+        "bug",
+        "providers",
+        "data-model"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nWith Open-Meteo the Alerts panel says \"No active alerts\", but that source never provides alerts. That is misleading.\n\n## Tasks\n- [ ] Add an `alerts_supported` field to `weather.json` (true for NWS, false for Open-Meteo)\n- [ ] When unsupported, show \"Alerts are not provided by this data source\" or hide the panel\n- [ ] Update tests and docs"
+    },
+    {
+      "title": "Add an option to always show the Alerts panel",
+      "labels": [
+        "ui",
+        "enhancement"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nBy default hide the Alerts panel when there are no alerts, with an option to keep it visible.\n\n## Tasks\n- [ ] Add `OUTPOST_ALERTS_ALWAYS_SHOW` (default false)\n- [ ] When the panel is hidden, show a small line such as \"Alerts: none, checked 2:15 PM\" so a failed check is not mistaken for no alerts\n- [ ] Update `.env.example`, README, and CHANGELOG"
+    },
+    {
+      "title": "Amber Terminal: make the weather condition text stand out",
+      "labels": [
+        "ui",
+        "themes"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nIn Amber Terminal the condition text (Clear, Sunny, and so on) is too close to the main amber color, unlike the other themes.\n\n## Tasks\n- [ ] Try inverse video (dark text on an amber block) or a much brighter color for the condition\n- [ ] Check readability from a distance and in dim mode\n- [ ] Compare screenshots across all themes"
+    },
+    {
+      "title": "Mobile and portrait layout",
+      "labels": [
+        "ui",
+        "mobile",
+        "enhancement"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nMake the dashboard work well on phones and on wall displays mounted in portrait.\n\n## Tasks\n- [ ] Add layout rules for `orientation: portrait`, not just narrow widths\n- [ ] Use `100dvh` and safe-area padding so browser bars and notches do not cover content\n- [ ] Rework the forecast for narrow screens (two columns or a horizontal strip instead of one long list)\n- [ ] Make sure text sizes and touch targets are comfortable\n- [ ] Test on a real phone and a portrait tablet or monitor"
+    },
+    {
+      "title": "Add a web app manifest for Add to Home Screen",
+      "labels": [
+        "mobile",
+        "enhancement"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nLet people install the dashboard from a phone as a full-screen app.\n\n## Tasks\n- [ ] Add `manifest.webmanifest` with name, icons, and standalone display\n- [ ] Set the browser theme color from the active theme\n- [ ] Use the custom logo for icons once it exists"
+    },
+    {
+      "title": "On-screen theme switcher that remembers the choice in the browser",
+      "labels": [
+        "ui",
+        "themes",
+        "enhancement"
+      ],
+      "milestone": "v0.4.0 - Dashboard polish and mobile",
+      "body": "## Summary\nLet a viewer change themes without editing `.env`, and remember it for that browser only.\n\n## Tasks\n- [ ] Add a small control that is hidden by default (for example a corner tap)\n- [ ] Save the choice in the browser's local storage\n- [ ] Priority order: URL setting, then saved choice, then server default\n- [ ] Add a Reset to default option\n- [ ] Add a setting to disable the switcher for kiosk displays"
+    },
+    {
+      "title": "Switch to one folder per theme",
+      "labels": [
+        "themes",
+        "breaking-change"
+      ],
+      "milestone": "v0.5.0 - Themes and customization",
+      "body": "## Summary\nLet a theme carry its own fonts and images by moving from `themes/<name>.css` to `themes/<name>/theme.css`.\n\n## Tasks\n- [ ] Move the four built-in themes into folders\n- [ ] Update theme loading, updater validation, and `docs/themes.md`\n- [ ] Add upgrade notes to the CHANGELOG\n\n## Notes\nDo this before external themes so there is only one layout to support."
+    },
+    {
+      "title": "Support external themes from a mounted folder",
+      "labels": [
+        "themes",
+        "docker",
+        "enhancement"
+      ],
+      "milestone": "v0.5.0 - Themes and customization",
+      "body": "## Summary\nLet users add their own themes without rebuilding the image, which is especially useful on unRAID.\n\n## Tasks\n- [ ] Check a mounted folder such as `/config/themes` before the built-in themes\n- [ ] Validate theme names in both locations\n- [ ] Serve theme assets (fonts and images) from the same folder\n- [ ] Add an example theme and documentation\n- [ ] Document the unRAID path mapping\n\n## Notes\nDepends on: Switch to one folder per theme."
+    },
+    {
+      "title": "Add nginx security headers, including a Content-Security-Policy",
+      "labels": [
+        "security",
+        "docker"
+      ],
+      "milestone": "v0.5.0 - Themes and customization",
+      "body": "## Summary\nA theme is CSS and can load remote files. Restrict what the page may load, and add standard hardening headers.\n\n## Tasks\n- [ ] Set a Content-Security-Policy that limits loading to the app itself\n- [ ] Add `X-Content-Type-Options` and `Referrer-Policy` headers\n- [ ] Test all built-in themes, fonts, and icons under the policy\n- [ ] Plan the exceptions needed later for the map feature and for embedding in Home Assistant\n\n## Notes\nEmbedding in Home Assistant needs a matching `frame-ancestors` decision."
+    },
+    {
+      "title": "Design an original OUTPOST logo as an SVG",
+      "labels": [
+        "themes",
+        "ui",
+        "needs-design"
+      ],
+      "milestone": "v0.5.0 - Themes and customization",
+      "body": "## Summary\nCreate a logo and wordmark that fits the chamfered style of the weather icons and takes its color from the theme.\n\n## Tasks\n- [ ] Draw an original geometric wordmark (no lettering copied from any existing brand or game)\n- [ ] Use `currentColor` so every theme can tint it\n- [ ] Make versions for the header, a favicon, and app icons\n- [ ] Add the license note to `THIRD_PARTY.md` or state that it is original and MIT"
+    },
+    {
+      "title": "Add original decorative themes with bezels and gauges",
+      "labels": [
+        "themes",
+        "enhancement"
+      ],
+      "milestone": "v0.5.0 - Themes and customization",
+      "body": "## Summary\nUse original CSS and SVG framing (riveted metal bezels, analog gauges, hazard stripes, CRT bezels, atomic-age styling) to give themes more personality.\n\n## Tasks\n- [ ] Create one or two new themes using the new theme folder format\n- [ ] Make decorative frames work in both landscape and portrait\n- [ ] Keep text readable and add a reduced-effects option\n\n## Notes\nUse generic names. Do not use third-party trademarks, logos, characters, or game artwork."
+    },
+    {
+      "title": "Create a community themes repository",
+      "labels": [
+        "themes",
+        "help wanted"
+      ],
+      "milestone": "v0.5.0 - Themes and customization",
+      "body": "## Summary\nGive people a place to share themes once external themes work.\n\n## Tasks\n- [ ] Define a small `theme.json` manifest (name, author, license, version, minimum Outpost version)\n- [ ] Create the repository with contribution rules and a screenshot per theme\n- [ ] Link it from the Outpost README\n\n## Notes\nDepends on: Support external themes from a mounted folder. Wait until someone besides the maintainer wants to contribute."
+    },
+    {
+      "title": "Define a versioned, unit-neutral weather.json schema",
+      "labels": [
+        "data-model",
+        "breaking-change"
+      ],
+      "milestone": "v0.6.0 - Data model and providers",
+      "body": "## Summary\nOther tools (Home Assistant, community themes) will depend on this file. Settle its shape before they do.\n\n## Tasks\n- [ ] Add a `schema_version` field\n- [ ] Replace unit-specific names such as `temperature_f` with `temperature` plus a `units` block\n- [ ] Write `docs/data-format.md` and a JSON Schema file\n- [ ] Update the providers, the dashboard, and the health check\n- [ ] Add upgrade notes to the CHANGELOG"
+    },
+    {
+      "title": "Support metric units",
+      "labels": [
+        "providers",
+        "ui",
+        "enhancement"
+      ],
+      "milestone": "v0.6.0 - Data model and providers",
+      "body": "## Summary\n`OUTPOST_UNITS=metric` is accepted but not implemented.\n\n## Tasks\n- [ ] Convert values in each provider (or request metric from the API)\n- [ ] Show the right unit labels in the dashboard\n- [ ] Test both unit systems\n\n## Notes\nDepends on: Define a versioned, unit-neutral weather.json schema. Needed for Norway and most of the world."
+    },
+    {
+      "title": "Split the weather source from the alerts source",
+      "labels": [
+        "providers",
+        "data-model",
+        "enhancement"
+      ],
+      "milestone": "v0.6.0 - Data model and providers",
+      "body": "## Summary\nLet users pick different providers for forecasts and for alerts, for example Pirate Weather for the forecast and NWS for US alerts.\n\n## Tasks\n- [ ] Add `OUTPOST_ALERTS_PROVIDER`\n- [ ] Give each provider a list of capabilities (current, forecast, alerts, UV)\n- [ ] Refactor the `auto` logic to use capabilities\n- [ ] Update the documentation"
+    },
+    {
+      "title": "Add the MET Norway provider",
+      "labels": [
+        "providers",
+        "enhancement"
+      ],
+      "milestone": "v0.6.0 - Data model and providers",
+      "body": "## Summary\nUse MET Norway's forecast service, which has excellent coverage in the Nordic region and works worldwide.\n\n## Tasks\n- [ ] Implement the provider using the standard library\n- [ ] Send the required identifying User-Agent\n- [ ] Respect their caching rules so requests are not repeated unnecessarily\n- [ ] Add attribution in the footer\n- [ ] Add fixtures and tests\n\n## Notes\nDepends on: Support metric units, and the OUTPOST_CONTACT setting."
+    },
+    {
+      "title": "Add the Pirate Weather provider",
+      "labels": [
+        "providers",
+        "enhancement"
+      ],
+      "milestone": "v0.6.0 - Data model and providers",
+      "body": "## Summary\nSupport Pirate Weather when the user has an API key.\n\n## Tasks\n- [ ] Add `PIRATEWEATHER_API_KEY` and the provider\n- [ ] Map its alerts (it has an alerts block; check current coverage by country)\n- [ ] Respect rate limits and add attribution\n- [ ] Add fixtures and tests"
+    },
+    {
+      "title": "Smarter automatic provider selection",
+      "labels": [
+        "providers",
+        "enhancement"
+      ],
+      "milestone": "v0.6.0 - Data model and providers",
+      "body": "## Summary\nImprove `auto` with clear region and capability rules.\n\n## Tasks\n- [ ] In Norway, prefer MET Norway\n- [ ] If a Pirate Weather key is set, try it first and fall back if it fails\n- [ ] In the US, use NWS for alerts\n- [ ] Keep Open-Meteo gap filling for values a provider does not publish\n- [ ] Write the decision table in the README\n\n## Notes\nDepends on: Add the MET Norway provider, Add the Pirate Weather provider, and Split the weather source from the alerts source."
+    },
+    {
+      "title": "Design a small HTTP API to replace the file-based flow",
+      "labels": [
+        "platform",
+        "needs-design",
+        "docker"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nToday one updater writes one file for one location. Per-viewer locations, multiple locations, and a map proxy need an endpoint such as `/api/weather?lat=..&lon=..`.\n\n## Tasks\n- [ ] Choose how to serve it (standard library or a small framework) and weigh the extra dependency\n- [ ] Add caching and rate limiting so providers are not overloaded\n- [ ] Keep `weather.json` for compatibility\n- [ ] Write a short design note before building"
+    },
+    {
+      "title": "Location search and saved locations",
+      "labels": [
+        "ui",
+        "platform",
+        "enhancement"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nLet a viewer search for a place by name and save favorites in the browser.\n\n## Tasks\n- [ ] Use a geocoding service that needs no key\n- [ ] Add a search box and saved list\n- [ ] Store choices in the browser only\n\n## Notes\nDepends on: Design a small HTTP API to replace the file-based flow."
+    },
+    {
+      "title": "Use the browser's location (requires HTTPS)",
+      "labels": [
+        "mobile",
+        "platform",
+        "enhancement"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nSupport a \"my location\" button for phones.\n\n## Tasks\n- [ ] Browsers only allow geolocation on HTTPS pages (and localhost), so document a reverse-proxy setup\n- [ ] Handle permission denied and unavailable states gracefully\n- [ ] Fall back to location search\n- [ ] Explain the privacy implications\n\n## Notes\nDepends on: Design a small HTTP API to replace the file-based flow."
+    },
+    {
+      "title": "Optional weather map and radar",
+      "labels": [
+        "ui",
+        "platform",
+        "needs-design"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nShow a map centered on the location, controlled by an on/off setting.\n\n## Tasks\n- [ ] Bundle the map library locally instead of loading it from a CDN\n- [ ] Proxy and cache map tiles through nginx so the display does not contact third parties directly\n- [ ] Check each tile and radar provider's terms and attribution rules\n- [ ] Tint the map to match the active theme\n- [ ] Add the setting to `.env.example` and README\n\n## Notes\nNeeds updates to the Content-Security-Policy."
+    },
+    {
+      "title": "Home Assistant: document the iframe card and REST sensor",
+      "labels": [
+        "home-assistant",
+        "documentation"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nShow how to use Outpost with Home Assistant today, without any new code.\n\n## Tasks\n- [ ] Write `docs/home-assistant.md`\n- [ ] Example: a Webpage card pointing at Outpost\n- [ ] Example: REST sensors that read `weather.json`\n- [ ] Note the security-header settings that affect embedding"
+    },
+    {
+      "title": "Home Assistant add-on",
+      "labels": [
+        "home-assistant",
+        "platform",
+        "needs-design"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nPackage Outpost as a Home Assistant add-on.\n\n## Tasks\n- [ ] Research the add-on repository format and ingress\n- [ ] Reuse the multi-architecture image\n- [ ] Decide whether a custom integration is also worthwhile\n\n## Notes\nDepends on: Publish a multi-architecture Docker image to GHCR on version tags."
+    },
+    {
+      "title": "Sensor and power-monitoring panels",
+      "labels": [
+        "platform",
+        "needs-design",
+        "enhancement"
+      ],
+      "milestone": "v0.7.0 - Platform",
+      "body": "## Summary\nGrow Outpost beyond weather, as described in the README.\n\n## Tasks\n- [ ] Decide on data sources (for example Home Assistant or MQTT)\n- [ ] Design a panel format themes can style\n- [ ] Write a short design note before building"
+    },
+    {
+      "title": "unRAID Community Apps template",
+      "labels": [
+        "docker",
+        "documentation"
+      ],
+      "milestone": "v1.0.0 - First stable release",
+      "body": "## Summary\nMake Outpost installable from unRAID.\n\n## Tasks\n- [ ] Write the template with port, `/data`, and the `OUTPOST_*` variables\n- [ ] Provide an icon and a short description\n- [ ] Link to a support thread\n\n## Notes\nDepends on: Publish a multi-architecture Docker image to GHCR on version tags."
+    },
+    {
+      "title": "Add screenshots of every theme to the README",
+      "labels": [
+        "documentation"
+      ],
+      "milestone": "v1.0.0 - First stable release",
+      "body": "## Summary\nShow what Outpost looks like.\n\n## Tasks\n- [ ] Use the real bundled font\n- [ ] Use the example location, never a real one\n- [ ] Add images under `docs/images/`"
+    },
+    {
+      "title": "Public beta checklist: privacy, license, and content audit",
+      "labels": [
+        "security",
+        "documentation"
+      ],
+      "milestone": "v1.0.0 - First stable release",
+      "body": "## Summary\nReview everything before making the repository public.\n\n## Tasks\n- [ ] Search the repository and history for personal data and API keys\n- [ ] Confirm every font, icon, and image is original or properly licensed and listed\n- [ ] Confirm no third-party trademarks, logos, or game artwork\n- [ ] Confirm tests and CI pass and the image runs from a clean clone\n- [ ] Switch the repository visibility to public"
+    },
+    {
+      "title": "Freeze the weather.json schema and publish upgrade notes",
+      "labels": [
+        "data-model",
+        "documentation"
+      ],
+      "milestone": "v1.0.0 - First stable release",
+      "body": "## Summary\nPromise stability for other tools before 1.0.\n\n## Tasks\n- [ ] Review `schema_version` and field names one last time\n- [ ] Document the compatibility promise\n- [ ] Write upgrade notes from 0.x"
+    },
+    {
+      "title": "Auto-rotating pages and a tabbed details view",
+      "labels": [
+        "ui",
+        "needs-design",
+        "enhancement"
+      ],
+      "milestone": null,
+      "body": "## Summary\nOn phones, tabs can keep the page short. On wall displays, nobody is touching the screen, so pages could rotate automatically.\n\n## Tasks\n- [ ] Decide on the layout and the rotation interval setting\n- [ ] Pause rotation on touch\n- [ ] Respect reduced-motion preferences"
+    },
+    {
+      "title": "Environment Canada alerts",
+      "labels": [
+        "providers",
+        "help wanted"
+      ],
+      "milestone": null,
+      "body": "## Summary\nAlerts for Canadian locations.\n\n## Tasks\n- [ ] Find a keyless official feed and its terms\n- [ ] Map it to the alerts format"
+    },
+    {
+      "title": "MET Norway alerts for Norway",
+      "labels": [
+        "providers",
+        "help wanted"
+      ],
+      "milestone": null,
+      "body": "## Summary\nOfficial alerts for Norwegian locations.\n\n## Tasks\n- [ ] Check the available alerts feed, format, and terms\n- [ ] Map it to the alerts format\n\n## Notes\nDepends on: Split the weather source from the alerts source."
+    },
+    {
+      "title": "Translations",
+      "labels": [
+        "ui",
+        "help wanted"
+      ],
+      "milestone": null,
+      "body": "## Summary\nSupport languages other than English for dashboard text and dates.\n\n## Tasks\n- [ ] Move text into a language file\n- [ ] Add `OUTPOST_LANGUAGE`\n- [ ] Support right-to-left layouts if needed"
+    }
+  ]
+}

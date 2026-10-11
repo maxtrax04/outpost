@@ -40,6 +40,10 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 |---|---|---|
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
+| `OUTPOST_AUTO_DIM` | `true` | Dim the display at night. See [Day/night dimming](#daynight-dimming). |
+| `OUTPOST_DIM_LEVEL` | `0.35` | Night brightness, from `0.05` (very dark) to `1` (no dimming). |
+| `OUTPOST_DIM_MODE` | `sun` | `sun` follows sunset and sunrise; `schedule` uses fixed times. |
+| `OUTPOST_DIM_START` / `OUTPOST_DIM_END` | `22:00` / `06:00` | Night window for `schedule` mode (24-hour `HH:MM`). |
 | `OUTPOST_LOCATION_NAME` | `Goodsprings, NV` | Name shown at the top of the dashboard. |
 | `OUTPOST_LATITUDE` | `35.8319` | Latitude in decimal degrees. |
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
@@ -99,6 +103,16 @@ Four themes are included: `retro-crt` (default), `amber-terminal`, `command-cent
 
 <!-- TODO (public beta): add a screenshot of each theme here -->
 
+## Day/night dimming
+
+Outpost can dim itself at night so a wall-mounted display isn't glaring in a dark room. It is on by default.
+
+- **`sun` mode (default):** brightness follows the sun's position at your latitude and longitude. The display fades down over about 30 minutes after sunset and back up around sunrise. No internet connection or weather service is needed for this.
+- **`schedule` mode:** dims between `OUTPOST_DIM_START` and `OUTPOST_DIM_END` with a 30-minute fade. Times use the clock of the device showing the dashboard, so make sure its time zone is correct.
+- **Preview:** add `?dim=night`, `?dim=day`, or `?dim=0.5` to the address to try a brightness without waiting for dark.
+
+Dimming is done in the browser, so it doesn't change your display's backlight. It also helps reduce burn-in on OLED screens.
+
 ## Icons
 
 Outpost ships an original, monochrome icon set (13 icons covering clear, cloudy, fog, drizzle, rain, sleet, snow, storm, wind, day and night variants, and an "unknown" fallback). Icons are plain SVGs in `assets/icons/` and are tinted with CSS, so themes can recolor them.
@@ -109,12 +123,7 @@ To add or change an icon, draw it on a 64x64 grid with a 3px stroke, square caps
 
 ## Roadmap
 
-- [ ] Real weather providers (Open-Meteo first)
-- [x] Theme system with Retro CRT, Amber Terminal, Command Center, and Modern Dark
-- [ ] More themes and a custom logo/wordmark
-- [ ] Published Docker image and unRAID template
-- [ ] Alerts from provider data
-- [ ] Sensors, power monitoring, and telemetry panels
+See [ROADMAP.md](ROADMAP.md) for where Outpost is going, and the [milestones](../../milestones) for the work in progress. Ideas are welcome as issues.
 
 ## Contributing
 

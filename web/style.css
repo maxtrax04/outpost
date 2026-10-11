@@ -84,6 +84,19 @@ body::before {
     mix-blend-mode: overlay;
 }
 
+/* Day/night dimming: a black layer whose opacity is set from --dim (1 = full brightness).
+   The fade is only enabled after the first paint so a reload at night doesn't visibly fade in. */
+#dim-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: #000;
+    opacity: calc(1 - var(--dim, 1));
+}
+
+#dim-overlay.animated { transition: opacity 20s linear; }
+
 main {
     width: min(1200px, 100vw);
     margin: 0 auto;

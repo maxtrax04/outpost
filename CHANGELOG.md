@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Day/night auto-dim. By default the display fades down after sunset and back up at sunrise, calculated from
+  your coordinates. A fixed nightly schedule is also available. New settings: `OUTPOST_AUTO_DIM`,
+  `OUTPOST_DIM_LEVEL`, `OUTPOST_DIM_MODE`, `OUTPOST_DIM_START`, and `OUTPOST_DIM_END`.
+  Preview with `?dim=night`, `?dim=day`, or `?dim=0.5`.
+- `ROADMAP.md`, issue and pull request templates, and `docs/github-workflow.md`.
+
 ## [0.2.0] - 2026-10-09
 
 ### Added

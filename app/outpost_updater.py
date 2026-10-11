@@ -107,6 +107,42 @@ def write_json(payload: Dict[str, Any], path: Optional[Path] = None) -> None:
 
     temp_path.replace(path)
 
+def build_dim_config() -> Dict[str, Any]:
+    """Day/night dimming settings from the environment, with bad values replaced by defaults."""
+
+    def warn(message: str) -> None:
+        print(f"[Outpost] {message}", file=sys.stderr, flush=True)
+
+    enabled = os.getenv("OUTPOST_AUTO_DIM", "true").strip().lower() not in ("0", "false", "no", "off")
+
+    try:
+        level = float(os.getenv("OUTPOST_DIM_LEVEL", "0.35"))
+    except ValueError:
+        warn("OUTPOST_DIM_LEVEL must be a number between 0.05 and 1; using 0.35")
+        level = 0.35
+    level = min(1.0, max(0.05, level))
+
+    mode = os.getenv("OUTPOST_DIM_MODE", "sun").strip().lower()
+    if mode not in ("sun", "schedule"):
+        warn(f"OUTPOST_DIM_MODE must be 'sun' or 'schedule', got '{mode}'; using sun")
+        mode = "sun"
+
+    times = {}
+    for name, default in (("OUTPOST_DIM_START", "22:00"), ("OUTPOST_DIM_END", "06:00")):
+        value = os.getenv(name, default).strip()
+        if not re.fullmatch(r"([01]?\d|2[0-3]):[0-5]\d", value):
+            warn(f"{name} must look like HH:MM (24-hour), got '{value}'; using {default}")
+            value = default
+        times[name] = value
+
+    return {
+        "enabled": enabled,
+        "level": level,
+        "mode": mode,
+        "start": times["OUTPOST_DIM_START"],
+        "end": times["OUTPOST_DIM_END"],
+    }
+
 def write_config() -> None:
     """
     Write settings the web page needs (currently just the theme) to
@@ -122,7 +158,14 @@ def write_config() -> None:
         theme = DEFAULT_THEME
 
     write_json(
-        {"theme": theme, "app": APP_NAME, "version": APP_VERSION},
+        {
+            "theme": theme,
+            "app": APP_NAME,
+            "version": APP_VERSION,
+            "latitude": LATITUDE,
+            "longitude": LONGITUDE,
+            "dim": build_dim_config()
+        },
         DATA_PATH.with_name("config.json")
     )
 

@@ -3,7 +3,7 @@ Open-Meteo provider.
 
 Docs:  https://open-meteo.com/en/docs
 Terms: free for non-commercial use, no API key. Attribution is required
-        (the dashboard shows it via the "source" field).
+       (the dashboard shows it via the "source" field).
 
 Uses only the Python standard library.
 """

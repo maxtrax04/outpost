@@ -1,0 +1,80 @@
+name: Bug report
+description: Something is not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
+
+        **Privacy first.** Outpost's files contain your location. Before pasting logs, `weather.json`, `.env`, or screenshots, replace your coordinates and place name with made-up ones and remove any API keys.
+  - type: input
+    id: version
+    attributes:
+      label: Outpost version
+      description: Shown in the dashboard footer, or in the VERSION file.
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: run_method
+    attributes:
+      label: How are you running Outpost?
+      options:
+        - Docker Compose
+        - docker run
+        - unRAID
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Weather provider
+      options:
+        - mock
+        - openmeteo
+        - nws
+        - auto
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: "Chrome on Windows, Safari on iPhone, wall tablet, ..."
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: Include a screenshot if it helps (with personal details removed).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Set OUTPOST_THEME=...
+        2. Restart the container
+        3. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output of `docker logs outpost` (last 50 lines or so). Remove personal data first.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed my real location and any API keys from everything I pasted.
+          required: true

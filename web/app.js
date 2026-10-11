@@ -211,10 +211,9 @@ function loadStylesheet(link, href) {
     });
 }
 
-async function applyTheme() {
+async function applyTheme(config) {
     try {
         const params = new URLSearchParams(window.location.search);
-        const config = await loadConfig();
         const wanted = validTheme(params.get("theme")) || validTheme(config.theme) || DEFAULT_THEME;
 
         const link = document.getElementById("theme");
@@ -234,8 +233,38 @@ async function applyTheme() {
     }
 }
 
+// ---- Day/night dimming ------------------------------------------------
+// Settings come from data/config.json (see dim.js). For testing, add
+// ?dim=night, ?dim=day, or ?dim=0.5 (a brightness from 0 to 1) to the address.
+function applyDim(config) {
+    const override = new URLSearchParams(window.location.search).get("dim");
+    const nightLevel = (config.dim && Number.isFinite(Number(config.dim.level)))
+        ? Number(config.dim.level)
+        : OutpostDim.DEFAULT_LEVEL;
+
+    let brightness;
+    if (override === "day") {
+        brightness = 1;
+    } else if (override === "night") {
+        brightness = nightLevel;
+    } else if (override !== null && Number.isFinite(Number(override))) {
+        brightness = Math.min(1, Math.max(0, Number(override)));
+    } else {
+        brightness = OutpostDim.brightness(config, new Date());
+    }
+
+    document.documentElement.style.setProperty("--dim", brightness.toFixed(3));
+
+    const overlay = document.getElementById("dim-overlay");
+    if (overlay && !overlay.classList.contains("animated")) {
+        requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add("animated")));
+    }
+}
+
 async function refresh() {
-    await applyTheme();
+    const config = await loadConfig();
+    applyDim(config);
+    await applyTheme(config);
     await loadWeather();
 }
 
