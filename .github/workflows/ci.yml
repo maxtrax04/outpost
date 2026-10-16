@@ -1,0 +1,151 @@
+name: CI
+
+# Runs on every pull request and on every push to main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# If a new commit is pushed while checks are still running, cancel the old run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Private files must not be tracked
+        run: |
+          tracked=$(git ls-files | grep -E '^(\.env(\..*)?|data/(weather|config)\.json)$' | grep -v '^\.env\.example$' || true)
+          if [ -n "$tracked" ]; then
+            echo "::error::These private or runtime files are tracked by git: $tracked"
+            exit 1
+          fi
+
+      - name: Shell scripts must use Unix line endings
+        run: |
+          if git ls-files '*.sh' | xargs grep -l $'\r'; then
+            echo "::error::The files above contain Windows (CRLF) line endings, which break inside the container."
+            exit 1
+          fi
+
+      - name: JSON files must be valid
+        run: |
+          git ls-files '*.json' | while read -r file; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1], encoding='utf-8'))" "$file" || { echo "::error file=$file::Invalid JSON"; exit 1; }
+          done
+
+  python-tests:
+    name: Python tests (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run tests
+        run: python -m unittest discover -s tests -b -v
+
+  javascript-tests:
+    name: JavaScript tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Check syntax
+        run: |
+          for file in web/*.js; do
+            node --check "$file"
+          done
+      - name: Run tests
+        run: node --test tests/dim.test.js
+        env:
+          TZ: UTC
+
+  docker:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the image (not published)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: outpost:ci
+
+      - name: Start the container with the mock provider
+        run: docker run -d --name outpost-ci -e OUTPOST_PROVIDER=mock -p 8088:80 outpost:ci
+
+      - name: Wait for the dashboard data
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8088/data/weather.json -o weather.json; then
+              echo "weather.json is available after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::weather.json was not served within 30 seconds"
+          docker logs outpost-ci
+          exit 1
+
+      - name: Check the served data
+        run: |
+          python3 - <<'PY'
+          import json
+          data = json.load(open("weather.json"))
+          assert data["status"] == "ok", data
+          assert data["version"] == open("VERSION").read().strip(), "weather.json version does not match VERSION"
+          assert data["current"]["temperature_f"] is not None
+          print("weather.json looks good")
+          PY
+          curl -fsS http://localhost:8088/data/config.json | python3 -c "import json,sys; json.load(sys.stdin); print('config.json looks good')"
+
+      - name: Check the dashboard, themes, and icons are served
+        run: |
+          curl -fsS http://localhost:8088/ | grep -q "OUTPOST"
+          for file in style.css app.js dim.js; do
+            curl -fsS -o /dev/null "http://localhost:8088/$file"
+          done
+          for theme in retro-crt amber-terminal command-center modern-dark; do
+            curl -fsS -o /dev/null "http://localhost:8088/themes/$theme.css"
+          done
+          for icon in sunny rain unknown; do
+            curl -fsS -o /dev/null "http://localhost:8088/assets/icons/$icon.svg"
+          done
+          echo "static files are served"
+
+      - name: Run the container's health check
+        run: docker exec outpost-ci python3 /app/outpost_health.py
+
+      - name: Show container logs
+        if: always()
+        run: docker logs outpost-ci
+
+      - name: Clean up
+        if: always()
+        run: docker rm -f outpost-ci

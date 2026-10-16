@@ -1,0 +1,47 @@
+{
+  "features": [
+    {
+      "id": "https://api.weather.gov/alerts/test-1",
+      "properties": {
+        "event": "Heat Advisory",
+        "headline": "Heat Advisory until 8 PM",
+        "severity": "Moderate",
+        "status": "Actual",
+        "messageType": "Alert",
+        "expires": "2026-07-16T03:00:00+00:00"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/alerts/test-2",
+      "properties": {
+        "event": "Red Flag Warning",
+        "headline": "Red Flag Warning until 9 PM",
+        "severity": "Severe",
+        "status": "Actual",
+        "messageType": "Alert",
+        "expires": "2026-07-16T04:00:00+00:00",
+        "ends": "2026-07-16T03:30:00+00:00"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/alerts/test-3",
+      "properties": {
+        "event": "Test Message",
+        "headline": "This is only a test",
+        "severity": "Minor",
+        "status": "Test",
+        "messageType": "Alert"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/alerts/test-4",
+      "properties": {
+        "event": "Old Alert",
+        "headline": "Cancelled",
+        "severity": "Minor",
+        "status": "Actual",
+        "messageType": "Cancel"
+      }
+    }
+  ]
+}

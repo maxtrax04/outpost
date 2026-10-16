@@ -1,5 +1,7 @@
 # Outpost
 
+[![CI](https://github.com/maxtrax04/outpost/actions/workflows/ci.yml/badge.svg)](https://github.com/maxtrax04/outpost/actions/workflows/ci.yml)
+
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
 > **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo and National Weather Service data. More providers are in progress. Expect breaking changes until 1.0.
@@ -94,6 +96,7 @@ A Community Apps template is planned. Until then, you can add the container manu
 app/        Updater, health check, and provider modules (Python)
 web/        Dashboard front end (HTML, CSS, JS)
 assets/     Icons and fonts
+tests/      Automated tests and sample data
 data/       Generated weather.json (runtime, not committed)
 ```
 
@@ -120,6 +123,24 @@ Outpost ships an original, monochrome icon set (13 icons covering clear, cloudy,
 ![Outpost icon set](docs/images/icon-set.png)
 
 To add or change an icon, draw it on a 64x64 grid with a 3px stroke, square caps, and `currentColor`, then add its name to the `ICONS` list in `web/app.js`.
+
+## Development
+
+Tests run automatically on every pull request (see `.github/workflows/ci.yml`). To run them yourself without installing anything, you only need Docker:
+
+```
+./scripts/test.sh          # Linux and macOS
+.\scripts\test.ps1        # Windows PowerShell
+```
+
+Or, with Python 3.12+ and Node 22+ installed:
+
+```
+python -m unittest discover -s tests -b
+node --test tests/dim.test.js
+```
+
+Tests never call the network; weather responses are saved samples in `tests/fixtures/` with made-up locations.
 
 ## Roadmap
 

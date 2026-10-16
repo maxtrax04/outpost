@@ -1,0 +1,19 @@
+{
+  "features": [
+    {
+      "properties": {
+        "stationIdentifier": "KAAA"
+      }
+    },
+    {
+      "properties": {
+        "stationIdentifier": "KBBB"
+      }
+    },
+    {
+      "properties": {
+        "stationIdentifier": "KCCC"
+      }
+    }
+  ]
+}

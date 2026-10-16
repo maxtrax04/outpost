@@ -12,6 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `OUTPOST_DIM_LEVEL`, `OUTPOST_DIM_MODE`, `OUTPOST_DIM_START`, and `OUTPOST_DIM_END`.
   Preview with `?dim=night`, `?dim=day`, or `?dim=0.5`.
 - `ROADMAP.md`, issue and pull request templates, and `docs/github-workflow.md`.
+- Automated tests (`tests/`) and a GitHub Actions workflow that runs them, builds the Docker image, and smoke-tests the running container on every pull request.
+- `scripts/test.sh` and `scripts/test.ps1` to run the tests in Docker without installing anything.
 
 ## [0.2.0] - 2026-10-09
 
