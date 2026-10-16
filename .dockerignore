@@ -16,6 +16,7 @@ LICENSE
 docs/
 .github/
 scripts/
+tests/
 docker-compose*.yml
 
 # Python and OS junk. "**/" is needed so nested folders (app/providers/...) match too.

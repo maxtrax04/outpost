@@ -41,6 +41,10 @@ A quick guide to the GitHub features this project uses and how they fit together
    git pull
    ```
 
+## Requiring checks before merging
+
+The CI workflow reports four checks on every PR: Repository hygiene, Python tests, JavaScript tests, and Docker build and smoke test. In the repository settings (Settings, then Rules or Branches) you can require them to pass before a PR can be merged into `main`. On GitHub's free plan this is only available for public repositories; for a private repository it needs a paid plan, so until then, simply check that the PR shows green checks before merging.
+
 ## Releasing
 
 When a milestone is finished, follow `docs/releasing.md`: bump `VERSION`, update the changelog, tag, and publish a GitHub Release.

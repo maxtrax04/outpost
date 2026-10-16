@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "timestamp": "2026-07-15T21:00:00+00:00",
+    "textDescription": "Fair",
+    "temperature": {
+      "unitCode": "wmoUnit:degC",
+      "value": 28.9
+    },
+    "windSpeed": {
+      "unitCode": "wmoUnit:km_h-1",
+      "value": 14.8
+    },
+    "barometricPressure": {
+      "unitCode": "wmoUnit:Pa",
+      "value": 91950
+    },
+    "seaLevelPressure": {
+      "unitCode": "wmoUnit:Pa",
+      "value": 101770
+    },
+    "visibility": {
+      "unitCode": "wmoUnit:m",
+      "value": 16090
+    },
+    "relativeHumidity": {
+      "unitCode": "wmoUnit:percent",
+      "value": 21.5
+    },
+    "windChill": {
+      "unitCode": "wmoUnit:degC",
+      "value": null
+    },
+    "heatIndex": {
+      "unitCode": "wmoUnit:degC",
+      "value": null
+    }
+  }
+}

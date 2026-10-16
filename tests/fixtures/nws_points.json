@@ -1,0 +1,6 @@
+{
+  "properties": {
+    "forecast": "https://api.weather.gov/gridpoints/TST/10,20/forecast",
+    "observationStations": "https://api.weather.gov/gridpoints/TST/10,20/stations"
+  }
+}
