@@ -14,6 +14,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `ROADMAP.md`, issue and pull request templates, and `docs/github-workflow.md`.
 - Automated tests (`tests/`) and a GitHub Actions workflow that runs them, builds the Docker image, and smoke-tests the running container on every pull request.
 - `scripts/test.sh` and `scripts/test.ps1` to run the tests in Docker without installing anything.
+- Release workflow: pushing a version tag runs the tests, publishes a multi-architecture (amd64 and arm64) image to `ghcr.io/maxtrax04/outpost`, and creates a GitHub Release from the changelog. Pushes to `main` publish an `edge` image.
+- Dependabot configuration for the nginx base image and the GitHub Actions used by the workflows.
+
+### Changed
+- The nginx base image is pinned to the stable `1.30-alpine` line instead of the floating `alpine` tag.
+- The version label on the image is now added by the release workflow, so the Dockerfile no longer needs updating at release time.
 
 ## [0.2.0] - 2026-10-09
 

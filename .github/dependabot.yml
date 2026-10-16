@@ -1,0 +1,29 @@
+# Dependabot opens pull requests when something Outpost depends on has an update.
+# Each PR runs the CI checks, so you can see whether the update breaks anything before merging.
+version: 2
+updates:
+  # The nginx base image in the Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["docker", "chore"]
+    commit-message:
+      prefix: "chore(docker)"
+    open-pull-requests-limit: 3
+
+  # The GitHub Actions used in .github/workflows (all updates grouped into one PR)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["ci", "chore"]
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # If requirements.txt ever lists packages, add a "pip" entry here as well.

@@ -47,7 +47,11 @@ The CI workflow reports four checks on every PR: Repository hygiene, Python test
 
 ## Releasing
 
-When a milestone is finished, follow `docs/releasing.md`: bump `VERSION`, update the changelog, tag, and publish a GitHub Release.
+When a milestone is finished, follow `docs/releasing.md`: bump `VERSION`, update the changelog, merge, and push a tag. The release workflow publishes the Docker image and creates the GitHub Release for you.
+
+## Dependabot pull requests
+
+Every Monday Dependabot may open pull requests titled `chore(docker): ...` or `chore(ci): ...`. They run the same CI checks as your own changes. If the checks are green, merge them; if not, the failing log tells you what the update broke. Close a PR to ignore that update.
 
 ## Handy tips
 
