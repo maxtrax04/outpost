@@ -1,9 +1,9 @@
-FROM nginx:alpine
+# Pinned to the nginx stable line. Dependabot proposes updates to this tag.
+FROM nginx:1.30-alpine
 
 LABEL org.opencontainers.image.title="Outpost"
 LABEL org.opencontainers.image.description="Outpost is a weather web dashboard"
-ARG OUTPOST_VERSION=0.2.0
-LABEL org.opencontainers.image.version="${OUTPOST_VERSION}"
+# The release workflow adds the version and other labels when it publishes the image.
 
 RUN apk add --no-cache python3 py3-pip bash curl tzdata
 

@@ -34,6 +34,32 @@ Open `http://localhost:8088`.
 To view logs: `docker logs -f outpost`
 To stop: `docker compose down`
 
+## Run the published image
+
+Once a release has been published you can skip building. Replace the `build:` section of your compose file with the image:
+
+```yaml
+services:
+  outpost:
+    image: ghcr.io/maxtrax04/outpost:latest
+    container_name: outpost
+    ports:
+      - "8088:80"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+```
+
+Or with plain Docker:
+
+```
+docker run -d --name outpost -p 8088:80 --env-file .env -v ./data:/data ghcr.io/maxtrax04/outpost:latest
+```
+
+Images are built for amd64 (PCs, unRAID) and arm64 (Raspberry Pi). Use a version tag such as `0.4.0` to stay on a specific release, or `edge` to try the latest changes from `main`.
+
 ## Configuration
 
 All settings are environment variables, set in `.env` (Compose) or in your container template.

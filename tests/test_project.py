@@ -13,10 +13,11 @@ class ReleaseConsistencyTests(unittest.TestCase):
     def test_version_file_is_semver(self):
         self.assertRegex(read("VERSION").strip(), r"^\d+\.\d+\.\d+$")
 
-    def test_dockerfile_version_matches_version_file(self):
-        match = re.search(r"^ARG OUTPOST_VERSION=(\S+)", read("Dockerfile"), re.M)
-        self.assertIsNotNone(match, "Dockerfile has no ARG OUTPOST_VERSION line")
-        self.assertEqual(match.group(1), read("VERSION").strip())
+    def test_dockerfile_base_image_is_pinned(self):
+        match = re.search(r"^FROM (\S+)", read("Dockerfile"), re.M)
+        self.assertIsNotNone(match, "Dockerfile has no FROM line")
+        image = match.group(1)
+        self.assertRegex(image, r":\d+\.\d+(\.\d+)?(-[a-z0-9.]+)?$", f"{image} should be pinned to a version, not a floating tag")
 
     def test_changelog_has_an_entry_for_the_current_version(self):
         version = read("VERSION").strip()
@@ -25,6 +26,23 @@ class ReleaseConsistencyTests(unittest.TestCase):
 
     def test_changelog_has_an_unreleased_section(self):
         self.assertIn("## [Unreleased]", read("CHANGELOG.md"))
+
+
+class AutomationTests(unittest.TestCase):
+    def test_workflows_exist(self):
+        for name in ("ci.yml", "release.yml"):
+            with self.subTest(workflow=name):
+                self.assertTrue((ROOT / ".github" / "workflows" / name).exists())
+
+    def test_dependabot_watches_docker_and_actions(self):
+        text = read(".github/dependabot.yml")
+        self.assertIn('package-ecosystem: "docker"', text)
+        self.assertIn('package-ecosystem: "github-actions"', text)
+
+    def test_release_workflow_publishes_on_version_tags(self):
+        text = read(".github/workflows/release.yml")
+        self.assertIn('tags: ["v*"]', text)
+        self.assertIn("linux/amd64,linux/arm64", text)
 
 
 class SettingsDocumentationTests(unittest.TestCase):
