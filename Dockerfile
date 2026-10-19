@@ -1,5 +1,5 @@
 # Pinned to the nginx stable line. Dependabot proposes updates to this tag.
-FROM nginx:1.30-alpine
+FROM nginx:1.31-alpine
 
 LABEL org.opencontainers.image.title="Outpost"
 LABEL org.opencontainers.image.description="Outpost is a weather web dashboard"
