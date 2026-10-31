@@ -4,7 +4,7 @@ Outpost is a self-hosted dashboard platform. It starts as a themeable weather di
 
 This page is the big picture. The [milestones and issues on GitHub](../../milestones) are the source of truth, and plans will change as the project grows.
 
-**Current release:** 0.2.0 (see [CHANGELOG.md](CHANGELOG.md))
+**Latest release:** see the [Releases page](../../releases) and [CHANGELOG.md](CHANGELOG.md)
 
 ## Principles
 
@@ -17,26 +17,26 @@ This page is the big picture. The [milestones and issues on GitHub](../../milest
 
 ### v0.3.0 - CI and housekeeping
 
-Automated builds and tests, published images, and tidy project settings.
+Automated builds and tests, published images, tidy project settings, and the first round of dashboard polish.
 
-- [ ] Add a CI workflow that builds the image and runs tests on every pull request
-- [ ] Move the ad hoc tests into a tests/ folder
-- [ ] Publish a multi-architecture Docker image to GHCR on version tags
-- [ ] Enable Dependabot for the Docker base image and GitHub Actions
-- [ ] Create the v0.2.0 tag and GitHub Release
-- [ ] Replace OUTPOST_USER_AGENT with a simple OUTPOST_CONTACT setting
-- [ ] Review requirements.txt and trim the Dockerfile
-- [ ] Add CONTRIBUTING.md with workflow, privacy, and IP guidelines
+- [x] Add a CI workflow that builds the image and runs tests on every pull request
+- [x] Move the ad hoc tests into a tests/ folder
+- [x] Publish a multi-architecture Docker image to GHCR on version tags
+- [x] Enable Dependabot for the Docker base image and GitHub Actions
+- [x] Create the v0.2.0 tag and GitHub Release
+- [x] Replace OUTPOST_USER_AGENT with a simple OUTPOST_CONTACT setting
+- [x] Review requirements.txt and trim the Dockerfile
+- [x] Add CONTRIBUTING.md with workflow, privacy, and IP guidelines
+- [x] Remove the Provider box and add sunrise and sunset
+- [x] Make the header subtitle configurable and remove the default text
+- [x] Say so when a data source does not provide alerts
+- [x] Add an option to always show the Alerts panel
+- [x] Amber Terminal: make the weather condition text stand out
 
 ### v0.4.0 - Dashboard polish and mobile
 
-Cleaner dashboard, better alerts behavior, and a layout that works on phones and portrait screens.
+A layout that works on phones and portrait screens, a theme switcher, and a home-screen manifest.
 
-- [ ] Remove the Provider box and add sunrise and sunset
-- [ ] Make the header subtitle configurable and remove the default text
-- [ ] Say so when a data source does not provide alerts
-- [ ] Add an option to always show the Alerts panel
-- [ ] Amber Terminal: make the weather condition text stand out
 - [ ] Mobile and portrait layout
 - [ ] Add a web app manifest for Add to Home Screen
 - [ ] On-screen theme switcher that remembers the choice in the browser

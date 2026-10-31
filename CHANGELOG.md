@@ -6,38 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-### Added
-- `OUTPOST_CONTACT` setting: your email address or website, sent to weather services in the User-Agent header (`Outpost/<version> (<contact>)`). The National Weather Service asks every client to identify itself, and Outpost now warns at startup if the contact is missing for `nws` or `auto`.
-- `CONTRIBUTING.md` (workflow, privacy rules, and content rules) and `SECURITY.md` (how to report a vulnerability privately).
-- Sunrise and sunset on the dashboard, calculated in the browser from your coordinates.
-- `OUTPOST_SUBTITLE` setting for the line under the title (empty hides it; `{date}` and `{time}` are filled in).
-- `OUTPOST_ALERTS_ALWAYS_SHOW` setting. When the Alerts panel is hidden, a one-line note shows when alerts were last checked.
-- `alerts_supported` field in `weather.json`, so the dashboard can tell "no alerts" apart from "this source has no alerts".
-- Day/night auto-dim. By default the display fades down after sunset and back up at sunrise, calculated from
-  your coordinates. A fixed nightly schedule is also available. New settings: `OUTPOST_AUTO_DIM`,
-  `OUTPOST_DIM_LEVEL`, `OUTPOST_DIM_MODE`, `OUTPOST_DIM_START`, and `OUTPOST_DIM_END`.
-  Preview with `?dim=night`, `?dim=day`, or `?dim=0.5`.
-- `ROADMAP.md`, issue and pull request templates, and `docs/github-workflow.md`.
-- Automated tests (`tests/`) and a GitHub Actions workflow that runs them, builds the Docker image, and smoke-tests the running container on every pull request.
-- `scripts/test.sh` and `scripts/test.ps1` to run the tests in Docker without installing anything.
-- Release workflow: pushing a version tag runs the tests, publishes a multi-architecture (amd64 and arm64) image to `ghcr.io/maxtrax04/outpost`, and creates a GitHub Release from the changelog. Pushes to `main` publish an `edge` image.
-- Dependabot configuration for the nginx base image and the GitHub Actions used by the workflows.
+## [0.3.0] - 2026-10-31
 
-### Fixed
-- Sunrise, sunset, and sun-based dimming now fall back to the coordinates stored in `weather.json` when `config.json` has none (for example an old file left by an earlier version). Empty or null coordinates are no longer treated as latitude 0, longitude 0.
-- When no coordinates are available at all, the Sunrise and Sunset boxes now say "No coordinates" instead of "--".
-- The updater logs whether the coordinates came from `OUTPOST_LATITUDE` and `OUTPOST_LONGITUDE` or from the built-in example values (it never logs the coordinates themselves).
+### Added
+- Dashboard:
+  - Sunrise and sunset boxes, calculated in the browser from your coordinates (or "Midnight sun" and "Polar night" near the poles).
+  - Day/night auto-dim. The display fades down after sunset and back up at sunrise, calculated from your coordinates, or follows a fixed nightly schedule. Settings: `OUTPOST_AUTO_DIM`, `OUTPOST_DIM_LEVEL`, `OUTPOST_DIM_MODE`, `OUTPOST_DIM_START`, `OUTPOST_DIM_END`. Preview with `?dim=night`, `?dim=day`, or `?dim=0.5`.
+  - `OUTPOST_SUBTITLE` setting for an optional line under the title (`{date}` and `{time}` are filled in).
+  - `OUTPOST_ALERTS_ALWAYS_SHOW` setting. When the Alerts panel is hidden, a one-line note shows when alerts were last checked.
+  - `alerts_supported` field in `weather.json`, so the dashboard can tell "no alerts" apart from "this source has no alerts".
+- `OUTPOST_CONTACT` setting: your email address or website, sent to weather services in the User-Agent header (`Outpost/<version> (<contact>)`). The National Weather Service asks every client to identify itself, and Outpost warns at startup if the contact is missing for `nws` or `auto`.
+- Published Docker images for amd64 and arm64 at `ghcr.io/maxtrax04/outpost`: `docker pull ghcr.io/maxtrax04/outpost:0.3.0`. Tags: `0.3.0`, `0.3`, `latest`, and `edge` (the newest commit on `main`).
+- Automation: a CI workflow (tests, Docker build, and a smoke test of the running container on every pull request), a release workflow that publishes the image and creates the GitHub Release from the changelog when a version tag is pushed, and Dependabot for the nginx base image and GitHub Actions.
+- Automated tests (`tests/`) with `scripts/test.sh` and `scripts/test.ps1` to run them in Docker without installing anything.
+- Project files: `ROADMAP.md`, `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates, and `docs/github-workflow.md`.
 
 ### Changed
-- The Docker image no longer installs pip or curl, and `requirements.txt` is no longer used, because Outpost only uses Python's standard library. A test now fails if a third-party import is added without the Dockerfile installing it.
-- `OUTPOST_USER_AGENT` is now an advanced option that replaces the whole User-Agent. Most people should set `OUTPOST_CONTACT` instead.
 - The Provider box was removed from the current conditions (the data source is already shown in the footer).
 - The header no longer shows "Local Status Display" by default; use `OUTPOST_SUBTITLE` to add a line.
 - The Alerts panel is hidden when there are no alerts, unless `OUTPOST_ALERTS_ALWAYS_SHOW=true`.
 - With Open-Meteo, the dashboard now says alerts are not provided by the data source instead of "No active alerts".
-- Amber Terminal now shows the weather condition in inverse video (dark text on an amber block) so it stands out.
+- Amber Terminal shows the weather condition in inverse video (dark text on an amber block) so it stands out.
+- The Docker image no longer installs pip or curl, and `requirements.txt` is no longer used, because Outpost only uses Python's standard library. A test fails if a third-party import is added without the Dockerfile installing it.
 - The nginx base image is pinned to the stable `1.30-alpine` line instead of the floating `alpine` tag.
-- The version label on the image is now added by the release workflow, so the Dockerfile no longer needs updating at release time.
+- `OUTPOST_USER_AGENT` is now an advanced option that replaces the whole User-Agent. Most people should set `OUTPOST_CONTACT` instead.
+- The version number now lives only in the `VERSION` file; the image labels are added by the release workflow.
+
+### Fixed
+- Sunrise, sunset, and sun-based dimming fall back to the coordinates stored in `weather.json` when `config.json` has none. Empty or null coordinates are no longer treated as latitude 0, longitude 0, and the Sunrise and Sunset boxes say "No coordinates" when none are available.
+- The updater logs whether the coordinates came from `OUTPOST_LATITUDE` and `OUTPOST_LONGITUDE` or from the built-in example values (it never logs the coordinates themselves).
+
+### Upgrading from 0.2.0
+- Auto-dim is on by default. Set `OUTPOST_AUTO_DIM=false` to turn it off.
+- If you use `nws` or `auto`, add `OUTPOST_CONTACT=you@example.com` to your `.env`.
+- To keep the old header and always-visible alerts, set `OUTPOST_SUBTITLE=Local Status Display` and `OUTPOST_ALERTS_ALWAYS_SHOW=true`.
+- If you maintain your own copy of the project, delete `requirements.txt`, which is no longer used.
+- Rebuild with `docker compose up -d --build`, or switch to the published image (see the README).
 
 ## [0.2.0] - 2026-10-09
 

@@ -13,7 +13,7 @@ body:
     attributes:
       label: Outpost version
       description: Shown in the dashboard footer, or in the VERSION file.
-      placeholder: "0.2.0"
+      placeholder: "x.y.z"
     validations:
       required: true
   - type: dropdown
