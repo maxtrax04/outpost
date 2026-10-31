@@ -154,13 +154,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          prerelease=""
-          # Versions before 1.0 are marked as pre-releases
-          if [[ "$version" == 0.* ]]; then
-            prerelease="--prerelease"
+          # Only versions with a suffix, such as 0.4.0-beta.1, are pre-releases. A normal version
+          # becomes the "Latest" release, which is what the repository's sidebar shows.
+          flags="--latest"
+          if [[ "$version" == *-* ]]; then
+            flags="--prerelease"
           fi
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             echo "A release for $GITHUB_REF_NAME already exists; leaving it alone."
           else
-            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Outpost $version" --notes-file release-notes.md $prerelease
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Outpost $version" --notes-file release-notes.md $flags
           fi

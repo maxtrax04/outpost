@@ -13,7 +13,7 @@ def read(path):
 
 class ReleaseConsistencyTests(unittest.TestCase):
     def test_version_file_is_semver(self):
-        self.assertRegex(read("VERSION").strip(), r"^\d+\.\d+\.\d+$")
+        self.assertRegex(read("VERSION").strip(), r"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$")
 
     def test_dockerfile_base_image_is_pinned(self):
         match = re.search(r"^FROM (\S+)", read("Dockerfile"), re.M)
@@ -68,6 +68,11 @@ class AutomationTests(unittest.TestCase):
         text = read(".github/dependabot.yml")
         self.assertIn('package-ecosystem: "docker"', text)
         self.assertIn('package-ecosystem: "github-actions"', text)
+
+    def test_release_workflow_marks_only_suffixed_versions_as_prereleases(self):
+        text = read(".github/workflows/release.yml")
+        self.assertIn('[[ "$version" == *-* ]]', text)
+        self.assertNotIn('== 0.*', text)
 
     def test_release_workflow_publishes_on_version_tags(self):
         text = read(".github/workflows/release.yml")
