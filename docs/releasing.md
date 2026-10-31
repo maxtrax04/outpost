@@ -1,6 +1,8 @@
 # Releasing
 
-Outpost uses [Semantic Versioning](https://semver.org/). Before 1.0, bump the minor version
+Outpost uses [Semantic Versioning](https://semver.org/). To publish a test version, give it a suffix
+(`VERSION` `0.5.0-beta.1`, changelog heading `## [0.5.0-beta.1]`, tag `v0.5.0-beta.1`); it is published as a
+pre-release. Before 1.0, bump the minor version
 (0.3.0 to 0.4.0) for new features or breaking changes, and the patch version (0.3.0 to 0.3.1) for fixes only.
 
 Pushing a version tag does the rest: the release workflow (`.github/workflows/release.yml`) runs the
@@ -26,7 +28,9 @@ the GitHub Release from the changelog.
 5. Watch the **Release** run in the repository's Actions tab. It fails early if the tag does not match
    `VERSION` or the changelog has no entry for it, so a mislabeled image cannot be published.
 6. Confirm it worked:
-   - The Releases page shows the new release (versions before 1.0 are marked as pre-releases).
+   - The Releases page shows the new release, marked "Latest". The repository's sidebar shows it too.
+     (Only versions with a suffix, such as `0.5.0-beta.1`, are marked as pre-releases. GitHub never labels a
+     pre-release "Latest", so the sidebar shows only a tag count when every release is a pre-release.)
    - `docker pull ghcr.io/maxtrax04/outpost:0.4.0` downloads the image. If it says access is denied, open the
      package (the repository's Packages section, then Package settings) and change its visibility to public.
 7. Close the milestone on GitHub (Milestones, then Close), and move any unfinished issues to the next one.
