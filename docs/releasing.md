@@ -27,7 +27,9 @@ the GitHub Release from the changelog.
    `VERSION` or the changelog has no entry for it, so a mislabeled image cannot be published.
 6. Confirm it worked:
    - The Releases page shows the new release (versions before 1.0 are marked as pre-releases).
-   - `docker pull ghcr.io/maxtrax04/outpost:0.4.0` downloads the image.
+   - `docker pull ghcr.io/maxtrax04/outpost:0.4.0` downloads the image. If it says access is denied, open the
+     package (the repository's Packages section, then Package settings) and change its visibility to public.
+7. Close the milestone on GitHub (Milestones, then Close), and move any unfinished issues to the next one.
 
 ## Image tags
 
