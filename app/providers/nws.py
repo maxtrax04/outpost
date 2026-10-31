@@ -2,8 +2,8 @@
 National Weather Service provider (api.weather.gov).
 
 Covers the United States and its territories only. Free, no API key.
-NWS requires a User-Agent that identifies your app and how to reach you,
-for example:  Outpost (you@example.com)
+NWS asks for a User-Agent that identifies your app and how to reach you. Outpost builds it
+from the OUTPOST_CONTACT setting, for example:  Outpost/0.3.0 (you@example.com)
 
 Data comes from four calls:
   1. /points/{lat},{lon}          -> forecast URL and nearby stations (cached)
@@ -353,6 +353,7 @@ def normalize(periods: List[Dict[str, Any]],
         "current": build_current(periods, observation),
         "forecast": build_forecast(periods),
         "alerts": build_alerts(alert_features),
+        "alerts_supported": True,
     }
 
 

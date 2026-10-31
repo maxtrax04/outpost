@@ -28,7 +28,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from providers import gapfill, nws, openmeteo
 
@@ -87,7 +87,42 @@ LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
 LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
 LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -115.4328)
 UNITS = get_env("OUTPOST_UNITS", "imperial").lower()
-USER_AGENT = get_env("OUTPOST_USER_AGENT", f"Outpost/{APP_VERSION}")
+
+def clean_header_text(name: str, value: str) -> str:
+    """
+    Text that goes into an HTTP header must be plain printable ASCII (no line breaks), and short.
+    Anything else is ignored with a warning rather than sent to a weather service.
+    """
+    value = value.strip()
+    if not value:
+        return ""
+    if len(value) > 120 or not all(32 <= ord(char) < 127 for char in value):
+        print(
+            f"[Outpost] {name} must be plain text, at most 120 characters, with no special characters; ignoring it",
+            file=sys.stderr,
+            flush=True
+        )
+        return ""
+    return value
+
+def build_user_agent(version: str, contact: str = "", override: str = "") -> str:
+    """
+    The User-Agent sent to weather services: "Outpost/<version> (<contact>)".
+    OUTPOST_USER_AGENT, if set, replaces the whole thing.
+    """
+    if override:
+        return override
+    if contact:
+        return f"Outpost/{version} ({contact})"
+    return f"Outpost/{version}"
+
+def load_contact_settings() -> Tuple[str, str]:
+    """Returns (contact, user_agent) from OUTPOST_CONTACT and OUTPOST_USER_AGENT."""
+    contact = clean_header_text("OUTPOST_CONTACT", os.getenv("OUTPOST_CONTACT", ""))
+    override = clean_header_text("OUTPOST_USER_AGENT", os.getenv("OUTPOST_USER_AGENT", ""))
+    return contact, build_user_agent(APP_VERSION, contact, override)
+
+CONTACT, USER_AGENT = load_contact_settings()
 
 DEFAULT_THEME = "retro-crt"
 THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
@@ -143,6 +178,25 @@ def build_dim_config() -> Dict[str, Any]:
         "end": times["OUTPOST_DIM_END"],
     }
 
+def env_flag(name: str, default: bool) -> bool:
+    """True/false setting: 1, true, yes, or on (any case) mean true."""
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+def build_ui_config() -> Dict[str, Any]:
+    """Dashboard display settings from the environment."""
+    subtitle = os.getenv("OUTPOST_SUBTITLE", "").strip()
+    if len(subtitle) > 80:
+        print("[Outpost] OUTPOST_SUBTITLE is longer than 80 characters; shortening it", file=sys.stderr, flush=True)
+        subtitle = subtitle[:80].rstrip()
+
+    return {
+        "subtitle": subtitle,
+        "alerts_always_show": env_flag("OUTPOST_ALERTS_ALWAYS_SHOW", False),
+    }
+
 def write_config() -> None:
     """
     Write settings the web page needs (currently just the theme) to
@@ -164,9 +218,21 @@ def write_config() -> None:
             "version": APP_VERSION,
             "latitude": LATITUDE,
             "longitude": LONGITUDE,
-            "dim": build_dim_config()
+            "dim": build_dim_config(),
+            "ui": build_ui_config()
         },
         DATA_PATH.with_name("config.json")
+    )
+
+    # Coordinates are deliberately not logged, because logs get pasted into bug reports
+    if os.getenv("OUTPOST_LATITUDE") and os.getenv("OUTPOST_LONGITUDE"):
+        coordinates = "from OUTPOST_LATITUDE and OUTPOST_LONGITUDE"
+    else:
+        coordinates = "NOT SET, using the built-in example coordinates (set OUTPOST_LATITUDE and OUTPOST_LONGITUDE)"
+    print(
+        f"[Outpost] Settings written. Location: {LOCATION_NAME}; coordinates {coordinates}; "
+        f"theme: {theme}; provider: {PROVIDER}",
+        flush=True
     )
 
 def build_mock_payload() -> Dict[str, Any]:
@@ -250,6 +316,7 @@ def build_mock_payload() -> Dict[str, Any]:
         },
         "forecast": forecast,
         "alerts": alerts,
+        "alerts_supported": True,
         "last_error": None
     }
 
@@ -281,6 +348,7 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
         },
         "forecast": [],
         "alerts": [],
+        "alerts_supported": False,
         "last_error": error_message
     }
 
@@ -305,6 +373,7 @@ def build_live_payload(provider_name: str, data: Dict[str, Any]) -> Dict[str, An
         "current": data["current"],
         "forecast": data["forecast"],
         "alerts": data.get("alerts", []),
+        "alerts_supported": bool(data.get("alerts_supported", False)),
         "last_error": None
     }
 
@@ -357,16 +426,20 @@ def fetch_nws_with_gap_fill() -> Dict[str, Any]:
 
 _warned_user_agent = False
 
+def has_contact_info() -> bool:
+    """True if a contact was configured (an advanced User-Agent override counts if it contains one)."""
+    return bool(CONTACT) or "@" in USER_AGENT or "http" in USER_AGENT.lower()
+
 def warn_about_user_agent() -> None:
-    """NWS asks every client to include contact information in its User-Agent."""
+    """The National Weather Service asks every client to include contact information."""
     global _warned_user_agent
     if _warned_user_agent:
         return
     _warned_user_agent = True
-    if "@" not in USER_AGENT and "http" not in USER_AGENT.lower():
+    if not has_contact_info():
         print(
-            "[Outpost] Warning: OUTPOST_USER_AGENT has no contact info. "
-            "The National Weather Service asks for one, e.g. Outpost (you@example.com)",
+            "[Outpost] Warning: no contact information is set. The National Weather Service asks for one. "
+            "Set OUTPOST_CONTACT to an email address or website, for example OUTPOST_CONTACT=you@example.com",
             file=sys.stderr,
             flush=True
         )

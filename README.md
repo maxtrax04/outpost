@@ -72,12 +72,15 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_DIM_LEVEL` | `0.35` | Night brightness, from `0.05` (very dark) to `1` (no dimming). |
 | `OUTPOST_DIM_MODE` | `sun` | `sun` follows sunset and sunrise; `schedule` uses fixed times. |
 | `OUTPOST_DIM_START` / `OUTPOST_DIM_END` | `22:00` / `06:00` | Night window for `schedule` mode (24-hour `HH:MM`). |
+| `OUTPOST_SUBTITLE` | *(empty)* | Optional line under the title. Empty hides it; `{date}` and `{time}` show the current date and time. |
+| `OUTPOST_ALERTS_ALWAYS_SHOW` | `false` | `false` hides the Alerts panel when there are none; `true` always shows it. See [Alerts](#alerts). |
 | `OUTPOST_LOCATION_NAME` | `Goodsprings, NV` | Name shown at the top of the dashboard. |
 | `OUTPOST_LATITUDE` | `35.8319` | Latitude in decimal degrees. |
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
 | `OUTPOST_UNITS` | `imperial` | Unit system. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
-| `OUTPOST_USER_AGENT` | `Outpost/<version>` | Identifies your instance to weather services. |
+| `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`. It is sent in the User-Agent header. |
+| `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>)`). |
 | `OUTPOST_WEB_PORT` | `8088` | Host port for the web UI (Compose only). |
 
 The defaults point at Goodsprings, NV. Set your own latitude and longitude to see your local weather.
@@ -94,7 +97,7 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 | [Pirate Weather](https://pirateweather.net) | `pirateweather` | Yes | Planned |
 | [OpenWeatherMap](https://openweathermap.org) | `openweathermap` | Yes | Planned |
 
-The National Weather Service asks every client to identify itself, so set `OUTPOST_USER_AGENT` with a contact email or URL. NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, anything NWS leaves empty (UV index, and any reading a station is missing) is filled in from Open-Meteo, and the footer credits both sources. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
+The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, anything NWS leaves empty (UV index, and any reading a station is missing) is filled in from Open-Meteo, and the footer credits both sources. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
 
 ## Data and storage
 
@@ -131,6 +134,14 @@ data/       Generated weather.json (runtime, not committed)
 Four themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, and `modern-dark`. Set `OUTPOST_THEME` to switch, or add `?theme=name` to the address to preview one. Themes are small CSS files, so making your own is easy; see [docs/themes.md](docs/themes.md).
 
 <!-- TODO (public beta): add a screenshot of each theme here -->
+
+## Alerts
+
+The Alerts panel lists active weather warnings from the National Weather Service (`nws`, or `auto` inside the US). Open-Meteo does not provide alerts at all, so with that source the dashboard says so instead of claiming there are none.
+
+By default the panel is hidden when there is nothing to show, and a one-line note below the forecast says when alerts were last checked, for example `Alerts: none (checked 2:15 PM)`. Set `OUTPOST_ALERTS_ALWAYS_SHOW=true` to keep the panel visible. Severe and extreme alerts turn the panel red.
+
+The dashboard also shows today's sunrise and sunset (or "Midnight sun" / "Polar night" near the poles), calculated in the browser from your coordinates (no weather service needed). Times appear in the viewing device's time zone.
 
 ## Day/night dimming
 
@@ -174,7 +185,7 @@ See [ROADMAP.md](ROADMAP.md) for where Outpost is going, and the [milestones](..
 
 ## Contributing
 
-Issues and pull requests are welcome once the project reaches public beta. See `CONTRIBUTING.md` (planned).
+Issues and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; it covers the workflow, privacy rules (never post your real location), and content rules. To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## Changelog
 

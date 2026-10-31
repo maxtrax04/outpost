@@ -47,6 +47,13 @@ function formatDateTime(value) {
     });
 }
 
+function formatTime(value) {
+    if (!value) return "--";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "--";
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 function formatDay(value) {
     if (!value) return "--";
     // "2026-10-09" -> "Fri". Parse as local time to avoid off-by-one days.
@@ -140,7 +147,89 @@ function renderAlerts(alerts) {
     container.parentElement.classList.toggle("alert-active", serious);
 }
 
-async function loadWeather() {
+// Decides what to show for alerts: the list, a "none" panel, or a one-line note.
+// A panel that is hidden because there are no alerts must never be mistaken for a
+// failed check, so the one-line note says when alerts were last checked.
+function renderAlertsSection(weather, config) {
+    const panel = document.getElementById("alertsPanel");
+    const note = document.getElementById("alertsStatus");
+    const container = document.getElementById("alerts");
+
+    const alerts = Array.isArray(weather.alerts) ? weather.alerts : [];
+    const supported = weather.alerts_supported !== false;
+    const alwaysShow = Boolean(config.ui && config.ui.alerts_always_show);
+    const outdated = weather.status !== "ok";
+    const checked = formatTime(weather.generated_at);
+
+    if (supported && alerts.length > 0) {
+        panel.hidden = false;
+        note.hidden = true;
+        renderAlerts(alerts);
+        return;
+    }
+
+    // One wording for the panel, a shorter one for the note under the forecast
+    let panelText;
+    let noteText;
+    if (!supported) {
+        panelText = "Alerts are not provided by this data source";
+        noteText = "Alerts: not provided by this data source";
+    } else {
+        panelText = `No active alerts (checked ${checked})`;
+        noteText = `Alerts: none (checked ${checked})`;
+    }
+    if (outdated) {
+        panelText += " - data may be out of date";
+        noteText += " - data may be out of date";
+    }
+
+    if (alwaysShow) {
+        container.textContent = panelText;
+        panel.classList.remove("alert-active");
+        panel.hidden = false;
+        note.hidden = true;
+    } else {
+        panel.hidden = true;
+        note.textContent = noteText;
+        note.hidden = false;
+    }
+}
+
+function renderSun(config) {
+    const place = OutpostDim.coordinates(config);
+    const times = place ? OutpostDim.sunTimes(new Date(), place.latitude, place.longitude) : null;
+
+    let sunrise = "No coordinates";
+    let sunset = "No coordinates";
+
+    if (times && times.polar === "day") {
+        sunrise = sunset = "Midnight sun";
+    } else if (times && times.polar === "night") {
+        sunrise = sunset = "Polar night";
+    } else if (times) {
+        sunrise = times.sunrise ? formatTime(times.sunrise) : "--";
+        sunset = times.sunset ? formatTime(times.sunset) : "--";
+    }
+
+    setText("sunrise", sunrise);
+    setText("sunset", sunset);
+}
+
+// OUTPOST_SUBTITLE: empty hides the line. {date} and {time} are replaced with the current date and time.
+function renderSubtitle(config) {
+    const element = document.getElementById("subtitle");
+    const template = (config.ui && config.ui.subtitle) || "";
+    const now = new Date();
+
+    const text = template
+        .replaceAll("{date}", now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }))
+        .replaceAll("{time}", now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+
+    element.textContent = text;
+    element.hidden = text.trim() === "";
+}
+
+async function loadWeather(config) {
     try {
         const response = await fetch(`data/weather.json?cacheBust=${Date.now()}`);
         if (!response.ok) {
@@ -159,7 +248,6 @@ async function loadWeather() {
         setText("pressure", valueOrDash(current.pressure_inhg, " inHg"));
         setText("uv", valueOrDash(current.uv_index));
         setText("visibility", valueOrDash(current.visibility_miles, " mi"));
-        setText("provider", weather.provider || "--");
         setText("source", weather.source || "--");
         setText("version", weather.version || "--");
         setText("lastUpdated", formatDateTime(weather.generated_at));
@@ -176,12 +264,16 @@ async function loadWeather() {
         setBanner(!isOk);
 
         renderForecast(weather.forecast);
-        renderAlerts(weather.alerts);
+        renderAlertsSection(weather, config);
     } catch (error) {
         console.error("Unable to load Outpost data:", error);
         setText("condition", "Local data unavailable");
         setText("status", "OFFLINE");
         setBanner(true);
+
+        const note = document.getElementById("alertsStatus");
+        note.textContent = "Alerts: unavailable (no weather data)";
+        note.hidden = false;
     }
 }
 
@@ -194,13 +286,35 @@ function validTheme(name) {
     return typeof name === "string" && /^[a-z0-9-]+$/.test(name) ? name : null;
 }
 
+// Reads data/config.json. If it has no usable coordinates (for example an old file written
+// by an earlier version), the coordinates stored in weather.json are used instead, so
+// sunrise, sunset, and sun-based dimming keep working.
 async function loadConfig() {
+    let config = {};
+
     try {
         const response = await fetch(`data/config.json?cacheBust=${Date.now()}`);
-        return response.ok ? await response.json() : {};
+        if (response.ok) {
+            config = await response.json();
+        }
     } catch (error) {
-        return {};
+        config = {};
     }
+
+    if (!OutpostDim.coordinates(config)) {
+        try {
+            const response = await fetch(`data/weather.json?cacheBust=${Date.now()}`);
+            if (response.ok) {
+                const weather = await response.json();
+                config.latitude = weather.coordinates && weather.coordinates.latitude;
+                config.longitude = weather.coordinates && weather.coordinates.longitude;
+            }
+        } catch (error) {
+            // Nothing more to try; the sun box will say there are no coordinates
+        }
+    }
+
+    return config;
 }
 
 function loadStylesheet(link, href) {
@@ -265,7 +379,9 @@ async function refresh() {
     const config = await loadConfig();
     applyDim(config);
     await applyTheme(config);
-    await loadWeather();
+    renderSubtitle(config);
+    renderSun(config);
+    await loadWeather(config);
 }
 
 refresh();

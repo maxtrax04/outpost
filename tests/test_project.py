@@ -1,4 +1,6 @@
+import ast
 import re
+import sys
 import unittest
 
 import helpers
@@ -26,6 +28,34 @@ class ReleaseConsistencyTests(unittest.TestCase):
 
     def test_changelog_has_an_unreleased_section(self):
         self.assertIn("## [Unreleased]", read("CHANGELOG.md"))
+
+
+class DependencyTests(unittest.TestCase):
+    """Outpost uses only Python's standard library; keep it that way, or make the Dockerfile install packages."""
+
+    def imported_modules(self):
+        local = {"providers", "outpost_updater", "outpost_health", "gapfill", "nws", "openmeteo"}
+        found = set()
+        for path in (ROOT / "app").rglob("*.py"):
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                if isinstance(node, ast.Import):
+                    found.update(alias.name.split(".")[0] for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                    found.add(node.module.split(".")[0])
+        return found - local
+
+    def test_app_imports_only_the_standard_library(self):
+        third_party = sorted(name for name in self.imported_modules() if name not in sys.stdlib_module_names)
+        self.assertEqual(third_party, [], "Third-party imports need a requirements.txt and a pip install step in the Dockerfile")
+
+    def test_dockerfile_matches_requirements(self):
+        requirements = ROOT / "requirements.txt"
+        has_packages = requirements.exists() and any(
+            line.strip() and not line.strip().startswith("#") for line in requirements.read_text(encoding="utf-8").splitlines()
+        )
+        installs = "requirements.txt" in read("Dockerfile")
+        self.assertEqual(installs, has_packages,
+                         "The Dockerfile should install requirements.txt if (and only if) it lists packages")
 
 
 class AutomationTests(unittest.TestCase):

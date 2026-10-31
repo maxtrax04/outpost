@@ -45,6 +45,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 body {
     margin: 0;
     min-height: 100vh;
@@ -172,7 +174,7 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 
 .details {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
 }
 
@@ -220,6 +222,13 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 }
 
 .alert.visible { display: block; }
+
+/* One-line note shown in place of the Alerts panel when it is hidden */
+.status-line {
+    text-align: right;
+    color: var(--text-dim);
+    margin: -8px 0 14px;
+}
 
 footer {
     text-align: right;

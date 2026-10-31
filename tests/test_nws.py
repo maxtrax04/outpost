@@ -147,6 +147,9 @@ class AlertTests(unittest.TestCase):
 
 
 class NormalizeTests(unittest.TestCase):
+    def test_alerts_are_supported(self):
+        self.assertTrue(nws.normalize(periods(), None, [])["alerts_supported"])
+
     def test_empty_forecast_raises(self):
         with self.assertRaises(RuntimeError):
             nws.normalize([], None, [])

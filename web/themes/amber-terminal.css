@@ -24,3 +24,22 @@
     --font-body: "Share Tech Mono", "Courier New", monospace;
     --title-spacing: 0.14em;
 }
+
+/* Inverse video (dark text on an amber block) makes the weather condition stand out
+   in a one-color theme, like a highlighted line on an old terminal. */
+.condition {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0 0.35em;
+    background: var(--text);
+    color: var(--bg);
+    text-shadow: none;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+.forecast-condition {
+    color: #fff1cf;
+    text-shadow: 0 0 8px rgba(255, 217, 138, 0.8);
+}

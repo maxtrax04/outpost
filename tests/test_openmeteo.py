@@ -39,6 +39,9 @@ class NormalizeTests(unittest.TestCase):
     def test_no_alerts_are_reported(self):
         self.assertEqual(openmeteo.normalize(self.raw)["alerts"], [])
 
+    def test_alerts_are_not_supported(self):
+        self.assertFalse(openmeteo.normalize(self.raw)["alerts_supported"])
+
     def test_source_attribution(self):
         self.assertEqual(openmeteo.normalize(self.raw)["source"], "Open-Meteo.com")
 

@@ -21,6 +21,24 @@
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const mod = (value, size) => ((value % size) + size) % size;
 
+    // Latitude and longitude from the settings as numbers, or null if they are missing or invalid.
+    // Number(null) and Number("") are both 0, which would silently mean "the Gulf of Guinea",
+    // so empty values are rejected explicitly.
+    function coordinates(config) {
+        const read = (value) =>
+            value === null || value === undefined || (typeof value === "string" && value.trim() === "")
+                ? NaN
+                : Number(value);
+
+        const latitude = read(config && config.latitude);
+        const longitude = read(config && config.longitude);
+
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+            return null;
+        }
+        return { latitude, longitude };
+    }
+
     // Sun elevation above the horizon in degrees (low-precision Astronomical
     // Almanac formulas, accurate to a small fraction of a degree).
     function solarElevation(date, latitude, longitude) {
@@ -48,6 +66,70 @@
             Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle);
 
         return Math.asin(clamp(sinElevation, -1, 1)) / RAD;
+    }
+
+    // ---- Sunrise and sunset ----------------------------------------------
+    // The sun's upper edge touching the horizon, allowing for atmospheric refraction.
+    const SUN_EDGE_ELEVATION = -0.833;
+    const SCAN_STEP_MS = 10 * 60000;
+
+    // Sunrise and sunset around the local calendar day of `date` (in the viewer's
+    // time zone). Returns { sunrise, sunset, polar }: Dates (or null when the sun is
+    // already up or does not set that day), and polar = "day" or "night" when the
+    // sun never crosses the horizon. Returns null if the coordinates are missing.
+    function sunTimes(date, latitude, longitude) {
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return null;
+        }
+
+        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
+        const scanEnd = start + 48 * 3600000;
+
+        const height = (time) => solarElevation(new Date(time), latitude, longitude) - SUN_EDGE_ELEVATION;
+
+        // Narrow a crossing found between two scan points down to about a second
+        const refine = (low, high, rising) => {
+            while (high - low > 1000) {
+                const middle = (low + high) / 2;
+                const up = height(middle) > 0;
+                if (up === rising) {
+                    high = middle;
+                } else {
+                    low = middle;
+                }
+            }
+            return high;
+        };
+
+        const crossings = [];
+        let previousTime = start;
+        let previousHeight = height(start);
+        for (let time = start + SCAN_STEP_MS; time <= scanEnd; time += SCAN_STEP_MS) {
+            const currentHeight = height(time);
+            if (previousHeight <= 0 && currentHeight > 0) {
+                crossings.push({ time: refine(previousTime, time, true), rising: true });
+            } else if (previousHeight > 0 && currentHeight <= 0) {
+                crossings.push({ time: refine(previousTime, time, false), rising: false });
+            }
+            previousTime = time;
+            previousHeight = currentHeight;
+        }
+
+        if (crossings.length === 0) {
+            return { sunrise: null, sunset: null, polar: height(start) > 0 ? "day" : "night" };
+        }
+
+        const rise = crossings.find((c) => c.rising && c.time < dayEnd);
+        const set = rise
+            ? crossings.find((c) => !c.rising && c.time > rise.time)
+            : crossings.find((c) => !c.rising && c.time < dayEnd);
+
+        return {
+            sunrise: rise ? new Date(rise.time) : null,
+            sunset: set ? new Date(set.time) : null,
+            polar: null,
+        };
     }
 
     // "22:30" -> 1350 (minutes after midnight), or null if invalid
@@ -107,14 +189,18 @@
         const level = clamp(Number.isFinite(Number(dim.level)) ? Number(dim.level) : DEFAULT_LEVEL, MIN_LEVEL, 1);
         const now = date || new Date();
 
-        const nightness = dim.mode === "schedule"
-            ? nightnessFromSchedule(now, dim.start, dim.end)
-            : nightnessFromSun(now, Number(config && config.latitude), Number(config && config.longitude));
+        let nightness;
+        if (dim.mode === "schedule") {
+            nightness = nightnessFromSchedule(now, dim.start, dim.end);
+        } else {
+            const place = coordinates(config);
+            nightness = place ? nightnessFromSun(now, place.latitude, place.longitude) : 0;
+        }
 
         return 1 - nightness * (1 - level);
     }
 
-    const api = { solarElevation, brightness, parseTime, DEFAULT_LEVEL };
+    const api = { coordinates, solarElevation, sunTimes, brightness, parseTime, DEFAULT_LEVEL };
     root.OutpostDim = api;
 
     if (typeof module !== "undefined" && module.exports) {

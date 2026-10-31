@@ -53,6 +53,86 @@ class VersionTests(UpdaterTestCase):
         self.assertEqual(u.USER_AGENT, f"Outpost/{u.APP_VERSION}")
 
 
+class UserAgentTests(UpdaterTestCase):
+    def test_without_contact(self):
+        self.assertEqual(u.build_user_agent("1.2.3"), "Outpost/1.2.3")
+
+    def test_with_contact(self):
+        self.assertEqual(u.build_user_agent("1.2.3", "me@example.com"), "Outpost/1.2.3 (me@example.com)")
+
+    def test_override_replaces_everything(self):
+        self.assertEqual(u.build_user_agent("1.2.3", "me@example.com", "Custom/1"), "Custom/1")
+
+    def test_valid_header_text_is_kept(self):
+        for value in ("me@example.com", "https://example.com/outpost", "  padded@example.com  "):
+            with self.subTest(value=value):
+                self.assertEqual(u.clean_header_text("X", value), value.strip())
+
+    def test_unsafe_header_text_is_rejected(self):
+        for value in ("line\nbreak", "x\r\nX-Injected: 1", "caf\u00e9@example.com", "a" * 121, "tab\tcharacter"):
+            with self.subTest(value=value):
+                self.assertEqual(u.clean_header_text("X", value), "")
+
+    def test_empty_text_is_empty(self):
+        self.assertEqual(u.clean_header_text("X", "   "), "")
+
+    def test_settings_are_read_from_the_environment(self):
+        with mock.patch.dict(os.environ, {"OUTPOST_CONTACT": "me@example.com"}):
+            contact, agent = u.load_contact_settings()
+        self.assertEqual(contact, "me@example.com")
+        self.assertEqual(agent, f"Outpost/{u.APP_VERSION} (me@example.com)")
+
+    def test_override_is_read_from_the_environment(self):
+        with mock.patch.dict(os.environ, {"OUTPOST_CONTACT": "me@example.com", "OUTPOST_USER_AGENT": "Custom/1"}):
+            self.assertEqual(u.load_contact_settings()[1], "Custom/1")
+
+    def test_an_invalid_contact_is_ignored(self):
+        with mock.patch.dict(os.environ, {"OUTPOST_CONTACT": "bad\nvalue"}):
+            contact, agent = u.load_contact_settings()
+        self.assertEqual(contact, "")
+        self.assertEqual(agent, f"Outpost/{u.APP_VERSION}")
+
+    def printed(self):
+        return " ".join(str(call) for call in self.print.call_args_list)
+
+    def test_warns_when_no_contact_is_set(self):
+        with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", "Outpost/1"):
+            u.warn_about_user_agent()
+        self.assertIn("OUTPOST_CONTACT", self.printed())
+
+    def test_no_warning_when_a_contact_is_set(self):
+        with mock.patch.object(u, "CONTACT", "me@example.com"), mock.patch.object(u, "USER_AGENT", "Outpost/1 (me@example.com)"):
+            u.warn_about_user_agent()
+        self.print.assert_not_called()
+
+    def test_an_override_containing_contact_info_counts(self):
+        with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", "Custom (https://example.com)"):
+            u.warn_about_user_agent()
+        self.print.assert_not_called()
+
+    def test_warns_only_once(self):
+        with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", "Outpost/1"):
+            u.warn_about_user_agent()
+            u.warn_about_user_agent()
+        self.assertEqual(self.print.call_count, 1)
+
+    def test_nws_updates_warn_but_open_meteo_updates_do_not(self):
+        with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", "Outpost/1"):
+            with mock.patch.object(u, "PROVIDER", "openmeteo"), \
+                    mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
+                u.update_once()
+            self.assertNotIn("OUTPOST_CONTACT", self.printed())
+            with mock.patch.object(u, "PROVIDER", "nws"), mock.patch.object(u.nws, "fetch", return_value=nws_data()):
+                u.update_once()
+            self.assertIn("OUTPOST_CONTACT", self.printed())
+
+    def test_the_user_agent_is_sent_to_the_provider(self):
+        with mock.patch.object(u, "PROVIDER", "nws"), mock.patch.object(u, "USER_AGENT", "Outpost/9 (me@example.com)"), \
+                mock.patch.object(u.nws, "fetch", return_value=nws_data()) as fetch:
+            u.update_once()
+        fetch.assert_called_once_with(u.LATITUDE, u.LONGITUDE, "Outpost/9 (me@example.com)")
+
+
 class MockProviderTests(UpdaterTestCase):
     def test_payload_contract(self):
         u.update_once()
@@ -60,13 +140,17 @@ class MockProviderTests(UpdaterTestCase):
         self.assertEqual(data["status"], "ok")
         self.assertEqual(data["version"], u.APP_VERSION)
         self.assertEqual(data["update_interval_seconds"], u.UPDATE_INTERVAL)
-        for key in ("status", "provider", "location", "generated_at", "current", "forecast", "alerts", "coordinates"):
+        for key in ("status", "provider", "location", "generated_at", "current", "forecast", "alerts", "alerts_supported", "coordinates"):
             self.assertIn(key, data)
         for key in ("temperature_f", "feels_like_f", "condition", "icon", "humidity_percent",
                     "wind_mph", "pressure_inhg", "uv_index", "visibility_miles"):
             self.assertIn(key, data["current"])
         for key in ("day", "high_f", "low_f", "condition", "icon", "precipitation_percent", "uv_index"):
             self.assertIn(key, data["forecast"][0])
+
+    def test_mock_data_supports_alerts(self):
+        u.update_once()
+        self.assertTrue(self.output()["alerts_supported"])
 
     def test_feels_like_is_close_to_the_temperature(self):
         for _ in range(50):
@@ -90,6 +174,7 @@ class LiveProviderTests(UpdaterTestCase):
         self.assertEqual((data["status"], data["provider"], data["provider_setting"]), ("ok", "openmeteo", "openmeteo"))
         self.assertEqual(data["source"], "Open-Meteo.com")
         self.assertEqual(data["filled_fields"], [])
+        self.assertFalse(data["alerts_supported"])
 
     def test_nws_does_not_gap_fill(self):
         with mock.patch.object(u, "PROVIDER", "nws"), \
@@ -119,6 +204,7 @@ class LiveProviderTests(UpdaterTestCase):
         data = self.output()
         self.assertEqual(data["status"], "error")
         self.assertEqual(data["current"]["condition"], "DATA LINK LOST")
+        self.assertFalse(data["alerts_supported"])
 
     def test_old_data_for_another_location_is_not_reused(self):
         with mock.patch.object(u, "PROVIDER", "openmeteo"):
@@ -141,6 +227,7 @@ class AutoProviderTests(UpdaterTestCase):
             u.update_once()
         data = self.output()
         self.assertEqual((data["status"], data["provider"], data["provider_setting"]), ("ok", "openmeteo", "auto"))
+        self.assertFalse(data["alerts_supported"])
 
     def test_us_uses_nws_and_fills_gaps_from_open_meteo(self):
         with mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
@@ -154,6 +241,7 @@ class AutoProviderTests(UpdaterTestCase):
         self.assertIn("Open-Meteo.com", data["source"])
         self.assertEqual(data["current"]["condition"], "Fair")  # NWS wording is kept
         self.assertEqual(len(data["alerts"]), 2)
+        self.assertTrue(data["alerts_supported"])  # still true after gap filling
 
     def test_open_meteo_failure_does_not_fail_the_update(self):
         with mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
@@ -214,6 +302,24 @@ class ConfigTests(UpdaterTestCase):
     def test_level_is_clamped(self):
         self.assertEqual(self.write_with_env({"OUTPOST_DIM_LEVEL": "0"})["dim"]["level"], 0.05)
         self.assertEqual(self.write_with_env({"OUTPOST_DIM_LEVEL": "5"})["dim"]["level"], 1.0)
+
+    def test_ui_defaults(self):
+        config = self.write_with_env({"OUTPOST_SUBTITLE": "", "OUTPOST_ALERTS_ALWAYS_SHOW": ""})
+        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False})
+
+    def test_ui_settings(self):
+        config = self.write_with_env({"OUTPOST_SUBTITLE": "  {date}  ", "OUTPOST_ALERTS_ALWAYS_SHOW": "True"})
+        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True})
+
+    def test_alerts_flag_accepts_common_spellings(self):
+        for value, expected in (("1", True), ("yes", True), ("ON", True), ("false", False), ("0", False), ("nonsense", False)):
+            with self.subTest(value=value):
+                config = self.write_with_env({"OUTPOST_ALERTS_ALWAYS_SHOW": value})
+                self.assertEqual(config["ui"]["alerts_always_show"], expected)
+
+    def test_long_subtitles_are_shortened(self):
+        config = self.write_with_env({"OUTPOST_SUBTITLE": "x" * 200})
+        self.assertEqual(len(config["ui"]["subtitle"]), 80)
 
     def test_invalid_theme_names_are_rejected(self):
         for bad in ("../etc/passwd", "My Theme", "UPPER", ""):

@@ -190,6 +190,7 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "current": normalized_current,
         "forecast": forecast,
         "alerts": [],  # Open-Meteo does not provide official alerts
+        "alerts_supported": False,
     }
 
 

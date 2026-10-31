@@ -11,7 +11,7 @@
     <main>
         <section class="panel header">
             <div class="title">OUTPOST</div>
-            <div class="subtitle">LOCAL STATUS DISPLAY</div>
+            <div id="subtitle" class="subtitle" hidden></div>
             <div id="location" class="location">Loading...</div>
         </section>
 
@@ -35,7 +35,8 @@
                 <div class="detail-box">Pressure<br><span id="pressure">--</span></div>
                 <div class="detail-box">UV Index<br><span id="uv">--</span></div>
                 <div class="detail-box">Visibility<br><span id="visibility">--</span></div>
-                <div class="detail-box">Provider<br><span id="provider">--</span></div>
+                <div class="detail-box">Sunrise<br><span id="sunrise">--</span></div>
+                <div class="detail-box">Sunset<br><span id="sunset">--</span></div>
                 <div class="detail-box">Updated<br><span id="lastUpdated">--</span></div>
             </div>
         </section>
@@ -45,10 +46,12 @@
             <div id="forecastContainer" class="forecast"></div>
         </section>
 
-        <section class="panel">
+        <section id="alertsPanel" class="panel" hidden>
             <h2>ALERTS</h2>
             <div id="alerts">LOADING...</div>
         </section>
+
+        <div id="alertsStatus" class="status-line" hidden></div>
 
         <footer>
             DATA: <span id="source">--</span> | OUTPOST v<span id="version">--</span> - STATUS: <span id="status">--</span>

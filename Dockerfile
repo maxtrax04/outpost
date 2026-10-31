@@ -1,16 +1,15 @@
 # Pinned to the nginx stable line. Dependabot proposes updates to this tag.
-FROM nginx:1.31-alpine
+FROM nginx:1.30-alpine
 
 LABEL org.opencontainers.image.title="Outpost"
 LABEL org.opencontainers.image.description="Outpost is a weather web dashboard"
 # The release workflow adds the version and other labels when it publishes the image.
 
-RUN apk add --no-cache python3 py3-pip bash curl tzdata
+# Outpost uses only Python's standard library, so there are no pip packages to install.
+# (bash runs start.sh, and tzdata makes the TZ setting work.)
+RUN apk add --no-cache python3 bash tzdata
 
 WORKDIR /app
-
-COPY requirements.txt /app/requirements.txt
-RUN pip3 install --break-system-packages --no-cache-dir -r /app/requirements.txt
 
 COPY web/ /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/

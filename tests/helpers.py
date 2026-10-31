@@ -9,8 +9,12 @@ ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = ROOT / "app"
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
-# The updater reads its settings when it is imported, so set made-up values
-# first. Tests never use a real location.
+# The updater reads its settings when it is imported. Start from a clean slate so a
+# developer's own OUTPOST_* settings cannot change the results, then set made-up values.
+# Tests never use a real location.
+for _name in [name for name in os.environ if name.startswith("OUTPOST_")]:
+    del os.environ[_name]
+
 os.environ["OUTPOST_PROVIDER"] = "mock"
 os.environ["OUTPOST_LATITUDE"] = "10.0"
 os.environ["OUTPOST_LONGITUDE"] = "20.0"
