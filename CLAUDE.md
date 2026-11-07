@@ -10,7 +10,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 
 ## Layout
 - `app/`: updater, health check, `start.sh`, `providers/{openmeteo,nws,gapfill}.py`
-- `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `themes.js`, `manifest.webmanifest`, `themes/*.css`
+- `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `themes.js`, `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
 - `assets/`: `icons/` (13 original SVGs), `app/` (PWA icons), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations
 - `docs/`: `themes.md`, `releasing.md`, `github-workflow.md`
@@ -28,6 +28,6 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (release workflow publishes `ghcr.io/maxtrax04/outpost`). See `docs/releasing.md`.
 
 ## Current state
-- v0.4.0 (mobile/portrait layout, web app manifest, on-screen theme switcher) is versioned and in its release PR; after merge, tag `v0.4.0` on `main` (see `docs/releasing.md`). Confirm the tag and GitHub Release exist before starting v0.5.0.
-- v0.5.0 next: folder-per-theme, external themes, CSP headers, logo, original decorative themes, community themes repo.
+- v0.4.0 released. v0.5.0 is being shipped as betas (`0.5.0-beta.N`, see "Beta releases" in `docs/releasing.md`); at 0.5.0, fold the beta CHANGELOG sections into one.
+- v0.5.0-beta.1: folder-per-theme (#17, breaking). Still to do for v0.5.0: external themes, CSP headers, logo, original decorative themes, community themes repo.
 - Not verified on real iOS/Android or with the real Share Tech Mono file.
