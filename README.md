@@ -23,7 +23,7 @@ A self-hosted dashboard platform for weather, alerts, sensors, power monitoring,
 Requires Docker and Docker Compose.
 
 ```bash
-git clone <your-repo-url> outpost
+git clone https://github.com/maxtrax04/outpost.git
 cd outpost
 cp .env.example .env      # then edit .env (location, units, provider)
 docker compose up -d --build
@@ -36,7 +36,7 @@ To stop: `docker compose down`
 
 ## Run the published image
 
-Once a release has been published you can skip building. Replace the `build:` section of your compose file with the image:
+To skip building, replace the `build:` section of your compose file with the image:
 
 ```yaml
 services:
