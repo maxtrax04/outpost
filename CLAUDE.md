@@ -12,7 +12,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 - `app/`: updater, health check, `start.sh`, `providers/{openmeteo,nws,gapfill}.py`
 - `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `themes.js`, `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
 - `assets/`: `icons/` (13 original SVGs), `app/` (PWA icons), `fonts/` (user supplies Share Tech Mono)
-- `tests/`: unittest and `node --test`; fixtures use made-up locations
+- `tests/`: unittest and `node --test`; fixtures use made-up locations; `tests/browser/check-themes.js` (Playwright, run by CI against the container)
 - `docs/`: `themes.md`, `releasing.md`, `github-workflow.md`
 - `nginx/default.conf`: web server config; custom themes are mounted at `/config/themes` and win over `web/themes/`
 - `examples/themes/`: example themes to mount (not built into the image)
@@ -31,5 +31,6 @@ Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (rel
 
 ## Current state
 - v0.4.0 released. v0.5.0 is being shipped as betas (`0.5.0-beta.N`, see "Beta releases" in `docs/releasing.md`); at 0.5.0, fold the beta CHANGELOG sections into one.
-- v0.5.0-beta.1: folder-per-theme (#17, breaking). Still to do for v0.5.0: external themes, CSP headers, logo, original decorative themes, community themes repo.
+- v0.5.0-beta.1: folder-per-theme (#17, breaking). v0.5.0-beta.2: external themes (#18), security headers and CSP (#19), theme-loading fix. Still to do for v0.5.0: logo, original decorative themes, community themes repo.
+- The CSP has no `unsafe-inline` or `unsafe-eval`: no inline scripts, styles, or `style=` attributes (CSSOM `style.setProperty` is fine). Playwright's `page.waitForFunction` is blocked by it too; `tests/browser/check-themes.js` polls with `page.evaluate` instead.
 - Not verified on real iOS/Android or with the real Share Tech Mono file.
