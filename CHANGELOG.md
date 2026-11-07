@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Mobile and portrait layouts: a compact phone layout (three columns of detail boxes, one forecast row per day), a short header for phones turned sideways, and a scaled-up, vertically centered layout for tall portrait screens. Content stays clear of notches and uses the dynamic viewport height.
+- Web app manifest, icons, and home-screen tags, so Outpost can be added to a phone's home screen and opens without browser bars. The browser's address bar color follows the active theme. The icon is a placeholder until the logo is designed.
+- On-screen theme switcher (bottom-left corner, faint until used). The choice is saved in the viewer's browser, wins over `OUTPOST_THEME`, and can be reset. Setting: `OUTPOST_THEME_SWITCHER` (default `true`). The theme list and names come from the files in `web/themes/`.
+
 ### Changed
 - GitHub Releases are marked "Latest" instead of "Pre-release", so the newest release shows in the repository sidebar. Only versions with a suffix, such as `0.5.0-beta.1`, are published as pre-releases.
 

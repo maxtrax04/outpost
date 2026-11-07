@@ -11,6 +11,6 @@ docker run --rm -v "$root:/work" -w /work -e PYTHONDONTWRITEBYTECODE=1 \
 
 echo "== JavaScript tests =="
 docker run --rm -v "$root:/work" -w /work -e TZ=UTC \
-  node:22-slim node --test tests/dim.test.js
+  node:22-slim node --test
 
 echo "All tests passed."

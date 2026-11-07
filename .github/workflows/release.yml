@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: "22"
       - name: JavaScript tests
-        run: node --test tests/dim.test.js
+        run: node --test
         env:
           TZ: UTC
 

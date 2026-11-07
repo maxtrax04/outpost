@@ -13,7 +13,7 @@ docker run --rm -v "${root}:/work" -w /work -e PYTHONDONTWRITEBYTECODE=1 python:
 if ($LASTEXITCODE -ne 0) { Write-Host "Python tests failed." -ForegroundColor Red; exit $LASTEXITCODE }
 
 Write-Host "`n== JavaScript tests ==" -ForegroundColor Cyan
-docker run --rm -v "${root}:/work" -w /work -e TZ=UTC node:22-slim node --test tests/dim.test.js
+docker run --rm -v "${root}:/work" -w /work -e TZ=UTC node:22-slim node --test
 if ($LASTEXITCODE -ne 0) { Write-Host "JavaScript tests failed." -ForegroundColor Red; exit $LASTEXITCODE }
 
 Write-Host "`nAll tests passed." -ForegroundColor Green

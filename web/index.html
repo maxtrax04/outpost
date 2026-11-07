@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Outpost</title>
+    <meta name="description" content="A self-hosted weather dashboard">
+    <meta name="theme-color" content="#071007">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="assets/app/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Outpost">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="style.css">
     <link id="theme" rel="stylesheet" href="themes/retro-crt.css">
 </head>
@@ -58,9 +67,26 @@
         </footer>
     </main>
 
+    <button id="themeButton" class="theme-button" type="button" aria-label="Change theme"
+            aria-haspopup="true" aria-expanded="false" hidden>
+        <svg viewBox="0 0 64 64" width="26" height="26" fill="none" stroke="currentColor" stroke-width="4"
+             stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+            <path d="M22 8H42L56 22V42L42 56H22L8 42V22Z"/>
+            <path d="M32 8H42L56 22V42L42 56H32Z" fill="currentColor"/>
+        </svg>
+    </button>
+
+    <div id="themePanel" class="theme-panel" role="menu" aria-label="Choose a theme" hidden>
+        <div class="theme-panel-title">THEME</div>
+        <div id="themeList"></div>
+        <button id="themeReset" class="theme-reset" type="button" hidden>Use server default</button>
+        <div id="themeNote" class="theme-note"></div>
+    </div>
+
     <div id="dim-overlay"></div>
 
     <script src="dim.js"></script>
+    <script src="themes.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

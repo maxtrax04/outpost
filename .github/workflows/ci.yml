@@ -76,7 +76,7 @@ jobs:
             node --check "$file"
           done
       - name: Run tests
-        run: node --test tests/dim.test.js
+        run: node --test
         env:
           TZ: UTC
 
@@ -123,12 +123,18 @@ jobs:
           assert data["current"]["temperature_f"] is not None
           print("weather.json looks good")
           PY
-          curl -fsS http://localhost:8088/data/config.json | python3 -c "import json,sys; json.load(sys.stdin); print('config.json looks good')"
+          curl -fsS http://localhost:8088/data/config.json | python3 -c "
+          import json, sys
+          config = json.load(sys.stdin)
+          assert len(config['themes']) >= 4, config['themes']
+          assert config['ui']['theme_switcher'] is True
+          print('config.json looks good:', len(config['themes']), 'themes')
+          "
 
       - name: Check the dashboard, themes, and icons are served
         run: |
           curl -fsS http://localhost:8088/ | grep -q "OUTPOST"
-          for file in style.css app.js dim.js; do
+          for file in style.css app.js dim.js themes.js manifest.webmanifest; do
             curl -fsS -o /dev/null "http://localhost:8088/$file"
           done
           for theme in retro-crt amber-terminal command-center modern-dark; do
@@ -136,6 +142,9 @@ jobs:
           done
           for icon in sunny rain unknown; do
             curl -fsS -o /dev/null "http://localhost:8088/assets/icons/$icon.svg"
+          done
+          for file in favicon.svg icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png; do
+            curl -fsS -o /dev/null "http://localhost:8088/assets/app/$file"
           done
           echo "static files are served"
 
