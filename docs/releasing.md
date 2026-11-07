@@ -31,8 +31,8 @@ the GitHub Release from the changelog.
    - The Releases page shows the new release, marked "Latest". The repository's sidebar shows it too.
      (Only versions with a suffix, such as `0.5.0-beta.1`, are marked as pre-releases. GitHub never labels a
      pre-release "Latest", so the sidebar shows only a tag count when every release is a pre-release.)
-   - `docker pull ghcr.io/maxtrax04/outpost:0.4.0` downloads the image. If it says access is denied, open the
-     package (the repository's Packages section, then Package settings) and change its visibility to public.
+   - `docker pull ghcr.io/maxtrax04/outpost:0.4.0` downloads the image. If it says `unauthorized` or access
+     is denied, the package is still private; see the one-time setup notes below.
 7. Close the milestone on GitHub (Milestones, then Close), and move any unfinished issues to the next one.
 
 ## Image tags
@@ -51,7 +51,10 @@ the GitHub Release from the changelog.
 
 ## One-time setup notes
 
-- The first image publish creates the package on ghcr.io. Packages inherit the repository's visibility, so
-  make the package public (Package settings, then Change visibility) when the repository goes public.
+- **Make the package public after the first publish.** The first image publish creates the package on
+  ghcr.io, and new packages start out private, even in a public repository. Until you change that,
+  `docker pull` fails with `unauthorized` for everyone else. To fix it: open the package (the repository's
+  sidebar, under Packages), choose Package settings, then Danger Zone, Change visibility, Public.
+  Test with `docker logout ghcr.io` followed by `docker pull ghcr.io/maxtrax04/outpost:<version>`.
 - If publishing fails with a permission error, check Settings, then Actions, then General, then
   Workflow permissions in the repository.

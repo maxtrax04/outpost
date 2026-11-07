@@ -68,6 +68,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 |---|---|---|
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
+| `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
 | `OUTPOST_AUTO_DIM` | `true` | Dim the display at night. See [Day/night dimming](#daynight-dimming). |
 | `OUTPOST_DIM_LEVEL` | `0.35` | Night brightness, from `0.05` (very dark) to `1` (no dimming). |
 | `OUTPOST_DIM_MODE` | `sun` | `sun` follows sunset and sunrise; `schedule` uses fixed times. |
@@ -124,14 +125,16 @@ A Community Apps template is planned. Until then, you can add the container manu
 ```
 app/        Updater, health check, and provider modules (Python)
 web/        Dashboard front end (HTML, CSS, JS)
-assets/     Icons and fonts
+assets/     Weather icons, app (home-screen) icons, and fonts
 tests/      Automated tests and sample data
-data/       Generated weather.json (runtime, not committed)
+data/       Generated weather.json and config.json (runtime, not committed)
 ```
 
 ## Themes
 
-Four themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, and `modern-dark`. Set `OUTPOST_THEME` to switch, or add `?theme=name` to the address to preview one. Themes are small CSS files, so making your own is easy; see [docs/themes.md](docs/themes.md).
+Four themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, and `modern-dark`. Set `OUTPOST_THEME` to choose the default for everyone, or add `?theme=name` to the address to preview one.
+
+Anyone viewing the dashboard can also pick a theme with the small button in the bottom-left corner (it is faint until you hover or tap it). The choice is remembered in that browser only, with a "Use server default" option to undo it. Set `OUTPOST_THEME_SWITCHER=false` to remove the button, for example on a wall display. Themes are small CSS files, so making your own is easy; see [docs/themes.md](docs/themes.md).
 
 <!-- TODO (public beta): add a screenshot of each theme here -->
 
@@ -142,6 +145,17 @@ The Alerts panel lists active weather warnings from the National Weather Service
 By default the panel is hidden when there is nothing to show, and a one-line note below the forecast says when alerts were last checked, for example `Alerts: none (checked 2:15 PM)`. Set `OUTPOST_ALERTS_ALWAYS_SHOW=true` to keep the panel visible. Severe and extreme alerts turn the panel red.
 
 The dashboard also shows today's sunrise and sunset (or "Midnight sun" / "Polar night" near the poles), calculated in the browser from your coordinates (no weather service needed). Times appear in the viewing device's time zone.
+
+## Phones, tablets, and tall screens
+
+The dashboard adapts to the screen: phones get a compact layout with the forecast as one row per day, tablets and wide screens keep five forecast cards in a row, phones turned sideways use a short header, and tall portrait screens (a monitor or tablet mounted upright) scale everything up and center it vertically. Notches and rounded corners are respected.
+
+**Add it to your home screen** to open it like an app, without browser bars:
+
+- **iPhone or iPad (Safari):** tap Share, then Add to Home Screen.
+- **Android (Chrome):** open the menu, then Add to Home screen (or Install app).
+
+Outpost provides the icon and settings for this. Note that browsers only offer a full "Install app" prompt over HTTPS; on a plain `http://` address on your home network, Add to Home Screen still works but creates a shortcut. The icon is a placeholder until Outpost gets its own logo.
 
 ## Day/night dimming
 
@@ -174,7 +188,7 @@ Or, with Python 3.12+ and Node 22+ installed:
 
 ```
 python -m unittest discover -s tests -b
-node --test tests/dim.test.js
+node --test
 ```
 
 Tests never call the network; weather responses are saved samples in `tests/fixtures/` with made-up locations.

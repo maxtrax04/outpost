@@ -73,7 +73,7 @@ class ThemeTests(unittest.TestCase):
         html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
         link = re.search(r'id="theme"[^>]*href="themes/([a-z0-9-]+)\.css"', html).group(1)
         self.assertTrue((THEME_DIR / f"{link}.css").exists())
-        js = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        js = (ROOT / "web" / "themes.js").read_text(encoding="utf-8")
         self.assertIn(f'DEFAULT_THEME = "{link}"', js)
 
     def test_themes_are_listed_in_the_docs(self):

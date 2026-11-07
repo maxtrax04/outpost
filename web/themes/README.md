@@ -20,6 +20,11 @@ Restart the container after changing it. The dashboard picks up the change on it
 To preview a theme without changing anything, add `?theme=name` to the address,
 for example `http://localhost:8088/?theme=modern-dark`.
 
+Viewers can also switch themes with the on-screen button in the bottom-left corner. Their choice is
+saved in their own browser (local storage) and wins over `OUTPOST_THEME`; "Use server default"
+clears it. The address `?theme=` setting wins over both. Set `OUTPOST_THEME_SWITCHER=false` to remove
+the button.
+
 If the name is misspelled or the file doesn't exist, Outpost logs a warning and uses `retro-crt`.
 
 ## Making a theme
@@ -27,6 +32,12 @@ If the name is misspelled or the file doesn't exist, Outpost logs a warning and 
 1. Copy `web/themes/retro-crt.css` to `web/themes/my-theme.css`.
 2. Change the values. Theme names may use lowercase letters, numbers, and hyphens.
 3. Rebuild the image and set `OUTPOST_THEME=my-theme`.
+
+### Theme names in the switcher
+
+The switcher lists every file in `web/themes/`. Its label is the text before the first colon in the
+file's opening comment, so `/* Retro CRT: green phosphor terminal */` shows as "Retro CRT". Without such
+a comment, the file name is used with hyphens turned into spaces ("my-theme" becomes "My Theme").
 
 ### Tokens
 

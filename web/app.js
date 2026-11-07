@@ -78,35 +78,37 @@ function renderForecast(periods) {
         return;
     }
 
+    const text = (className, value) => {
+        const element = document.createElement("div");
+        element.className = className;
+        element.textContent = value;
+        return element;
+    };
+
     periods.slice(0, 5).forEach(period => {
         const card = document.createElement("div");
         card.className = "forecast-card";
 
-        const day = document.createElement("div");
-        day.innerHTML = "<strong></strong>";
-        day.firstChild.textContent = formatDay(period.day);
+        const day = text("forecast-day", formatDay(period.day));
 
-        const icon = document.createElement("div");
-        icon.className = "wx-glow";
-        const iconInner = document.createElement("span");
-        iconInner.className = "wx-icon forecast-icon";
-        setIcon(iconInner, period.icon, period.condition);
-        icon.appendChild(iconInner);
+        const iconWrap = document.createElement("div");
+        iconWrap.className = "wx-glow forecast-icon-wrap";
+        const icon = document.createElement("span");
+        icon.className = "wx-icon forecast-icon";
+        setIcon(icon, period.icon, period.condition);
+        iconWrap.appendChild(icon);
 
-        const condition = document.createElement("div");
-        condition.className = "forecast-condition";
-        condition.textContent = period.condition || "Unknown";
+        const condition = text("forecast-condition", period.condition || "Unknown");
+        const temps = text("forecast-temps", `${valueOrDash(period.high_f, "°")} / ${valueOrDash(period.low_f, "°")}`);
 
-        const temps = document.createElement("div");
-        temps.textContent = `${valueOrDash(period.high_f, "°")} / ${valueOrDash(period.low_f, "°")}`;
+        const extra = document.createElement("div");
+        extra.className = "forecast-extra";
+        extra.append(
+            text("forecast-rain", `Rain: ${valueOrDash(period.precipitation_percent, "%")}`),
+            text("forecast-uv", `UV: ${valueOrDash(period.uv_index)}`)
+        );
 
-        const rain = document.createElement("div");
-        rain.textContent = `Rain: ${valueOrDash(period.precipitation_percent, "%")}`;
-
-        const uv = document.createElement("div");
-        uv.textContent = `UV: ${valueOrDash(period.uv_index)}`;
-
-        card.append(day, icon, condition, temps, rain, uv);
+        card.append(day, iconWrap, condition, temps, extra);
         container.appendChild(card);
     });
 }
@@ -277,15 +279,7 @@ async function loadWeather(config) {
     }
 }
 
-// ---- Themes -----------------------------------------------------------
-// The theme comes from ?theme=name in the URL (handy for previews), otherwise
-// from data/config.json (written from OUTPOST_THEME), otherwise the default.
-const DEFAULT_THEME = "retro-crt";
-
-function validTheme(name) {
-    return typeof name === "string" && /^[a-z0-9-]+$/.test(name) ? name : null;
-}
-
+// ---- Settings -----------------------------------------------------------
 // Reads data/config.json. If it has no usable coordinates (for example an old file written
 // by an earlier version), the coordinates stored in weather.json are used instead, so
 // sunrise, sunset, and sun-based dimming keep working.
@@ -315,36 +309,6 @@ async function loadConfig() {
     }
 
     return config;
-}
-
-function loadStylesheet(link, href) {
-    return new Promise(resolve => {
-        link.onload = () => resolve(true);
-        link.onerror = () => resolve(false);
-        link.href = href;
-    });
-}
-
-async function applyTheme(config) {
-    try {
-        const params = new URLSearchParams(window.location.search);
-        const wanted = validTheme(params.get("theme")) || validTheme(config.theme) || DEFAULT_THEME;
-
-        const link = document.getElementById("theme");
-        const href = `themes/${wanted}.css`;
-
-        if (link.getAttribute("href") !== href) {
-            const loaded = await loadStylesheet(link, href);
-            if (!loaded) {
-                console.error(`Theme "${wanted}" not found; using ${DEFAULT_THEME}`);
-                await loadStylesheet(link, `themes/${DEFAULT_THEME}.css`);
-            }
-        }
-
-        document.documentElement.dataset.theme = wanted;
-    } finally {
-        document.body.classList.remove("theme-loading");
-    }
 }
 
 // ---- Day/night dimming ------------------------------------------------
@@ -379,6 +343,7 @@ async function refresh() {
     const config = await loadConfig();
     applyDim(config);
     await applyTheme(config);
+    renderThemeSwitcher(config);
     renderSubtitle(config);
     renderSun(config);
     await loadWeather(config);

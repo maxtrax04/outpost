@@ -10,6 +10,7 @@ data/
 
 # Docs and repo files the container doesn't need
 README.md
+CLAUDE.md
 CHANGELOG.md
 THIRD_PARTY.md
 LICENSE

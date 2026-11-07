@@ -305,17 +305,48 @@ class ConfigTests(UpdaterTestCase):
 
     def test_ui_defaults(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "", "OUTPOST_ALERTS_ALWAYS_SHOW": ""})
-        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False})
+        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False, "theme_switcher": True})
 
     def test_ui_settings(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "  {date}  ", "OUTPOST_ALERTS_ALWAYS_SHOW": "True"})
-        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True})
+        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True, "theme_switcher": True})
 
     def test_alerts_flag_accepts_common_spellings(self):
         for value, expected in (("1", True), ("yes", True), ("ON", True), ("false", False), ("0", False), ("nonsense", False)):
             with self.subTest(value=value):
                 config = self.write_with_env({"OUTPOST_ALERTS_ALWAYS_SHOW": value})
                 self.assertEqual(config["ui"]["alerts_always_show"], expected)
+
+    def test_theme_switcher_can_be_turned_off(self):
+        for value in ("false", "0", "no", "off"):
+            with self.subTest(value=value):
+                self.assertFalse(self.write_with_env({"OUTPOST_THEME_SWITCHER": value})["ui"]["theme_switcher"])
+        self.assertTrue(self.write_with_env({"OUTPOST_THEME_SWITCHER": "true"})["ui"]["theme_switcher"])
+
+    def test_no_theme_list_without_a_themes_folder(self):
+        self.assertEqual(self.write_with_env()["themes"], [])
+
+    def test_theme_list_comes_from_the_css_files(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            (folder / "retro-crt.css").write_text("/* Retro CRT: green phosphor terminal */\n:root {}")
+            (folder / "modern-dark.css").write_text("/* Modern Dark: clean and flat */\n:root {}")
+            (folder / "no-comment.css").write_text(":root {}")
+            (folder / "Bad Name.css").write_text("/* Bad: ignored */")
+            (folder / "notes.txt").write_text("not a theme")
+            themes = self.write_with_env(themes_dir=folder)["themes"]
+        self.assertEqual(themes, [
+            {"id": "modern-dark", "name": "Modern Dark"},
+            {"id": "no-comment", "name": "No Comment"},
+            {"id": "retro-crt", "name": "Retro CRT"},
+        ])
+
+    def test_real_themes_have_readable_names(self):
+        with mock.patch.object(u, "THEMES_DIR", ROOT / "web" / "themes"):
+            names = {t["id"]: t["name"] for t in u.list_themes()}
+        self.assertEqual(names["retro-crt"], "Retro CRT")
+        self.assertEqual(names["amber-terminal"], "Amber Terminal")
+        self.assertEqual(len(names), len(list((ROOT / "web" / "themes").glob("*.css"))))
 
     def test_long_subtitles_are_shortened(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "x" * 200})

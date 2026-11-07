@@ -195,7 +195,32 @@ def build_ui_config() -> Dict[str, Any]:
     return {
         "subtitle": subtitle,
         "alerts_always_show": env_flag("OUTPOST_ALERTS_ALWAYS_SHOW", False),
+        "theme_switcher": env_flag("OUTPOST_THEME_SWITCHER", True),
     }
+
+def theme_label(path: Path) -> str:
+    """
+    A theme's display name: the text before the first colon in its opening comment
+    (for example "/* Retro CRT: green phosphor ... */"), or the file name made readable.
+    """
+    try:
+        head = path.read_text(encoding="utf-8")[:300]
+    except OSError:
+        head = ""
+    match = re.match(r"\s*/\*\s*([^:*\n]{1,40}?)\s*:", head)
+    if match:
+        return match.group(1).strip()
+    return path.stem.replace("-", " ").title()
+
+def list_themes() -> List[Dict[str, str]]:
+    """The themes found in the web folder, for the on-screen theme switcher."""
+    if not THEMES_DIR.is_dir():
+        return []
+    themes = []
+    for path in sorted(THEMES_DIR.glob("*.css")):
+        if re.fullmatch(r"[a-z0-9-]+", path.stem):
+            themes.append({"id": path.stem, "name": theme_label(path)})
+    return themes
 
 def write_config() -> None:
     """
@@ -219,7 +244,8 @@ def write_config() -> None:
             "latitude": LATITUDE,
             "longitude": LONGITUDE,
             "dim": build_dim_config(),
-            "ui": build_ui_config()
+            "ui": build_ui_config(),
+            "themes": list_themes()
         },
         DATA_PATH.with_name("config.json")
     )

@@ -37,9 +37,9 @@ Automated builds and tests, published images, tidy project settings, and the fir
 
 A layout that works on phones and portrait screens, a theme switcher, and a home-screen manifest.
 
-- [ ] Mobile and portrait layout
-- [ ] Add a web app manifest for Add to Home Screen
-- [ ] On-screen theme switcher that remembers the choice in the browser
+- [x] Mobile and portrait layout
+- [x] Add a web app manifest for Add to Home Screen
+- [x] On-screen theme switcher that remembers the choice in the browser
 
 ### v0.5.0 - Themes and customization
 
