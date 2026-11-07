@@ -27,3 +27,5 @@ unless you prefer otherwise.
   the internet; put it behind a reverse proxy with authentication if you need remote access.
 - `weather.json` and `config.json` contain your location. Anyone who can reach the dashboard can read them.
 - Your `OUTPOST_CONTACT` value is sent to weather services in the User-Agent header.
+- Theme files in a folder mounted at `/config/themes` (CSS, fonts, and images only) are served to anyone who
+  can reach the dashboard. Mount a folder that holds only themes, read-only.

@@ -14,6 +14,8 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 - `assets/`: `icons/` (13 original SVGs), `app/` (PWA icons), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations
 - `docs/`: `themes.md`, `releasing.md`, `github-workflow.md`
+- `nginx/default.conf`: web server config; custom themes are mounted at `/config/themes` and win over `web/themes/`
+- `examples/themes/`: example themes to mount (not built into the image)
 
 ## Rules
 1. Privacy: never commit real `data/weather.json`, `.env`, or real coordinates. Fixtures use fictional places.

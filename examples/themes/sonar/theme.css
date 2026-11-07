@@ -1,0 +1,34 @@
+/* Sonar: deep teal display with a faint grid. An example of a theme in its own folder. */
+:root {
+    --bg: #041218;
+    --bg-glow: rgba(40, 190, 175, 0.16);
+    --panel: rgba(6, 30, 36, 0.9);
+    --cell-bg: rgba(2, 14, 18, 0.7);
+
+    --text: #8ff0e2;
+    --text-dim: #4f9c94;
+    --accent: #ffd166;
+    --warn: #ffd166;
+    --danger: #ff6f61;
+    --danger-bg: rgba(90, 24, 20, 0.6);
+
+    --border: #2f7f78;
+    --border-width: 1px;
+    --radius: 6px;
+
+    --text-glow: 0 0 4px rgba(143, 240, 226, 0.35);
+    --icon-glow: drop-shadow(0 0 4px rgba(143, 240, 226, 0.4));
+    --scanlines: 0;
+
+    --font-display: "Share Tech Mono", "Courier New", monospace;
+    --font-body: "Share Tech Mono", "Courier New", monospace;
+    --title-spacing: 0.2em;
+}
+
+/* A file from the theme's own folder: url() paths are relative to this theme.css. */
+body {
+    background:
+        url("grid.svg") center / 40px 40px,
+        radial-gradient(circle at center, var(--bg-glow), transparent 65%),
+        var(--bg);
+}

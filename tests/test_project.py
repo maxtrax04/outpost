@@ -106,6 +106,35 @@ class SettingsDocumentationTests(unittest.TestCase):
                 self.assertIn(name, text)
 
 
+class WebServerTests(unittest.TestCase):
+    def setUp(self):
+        self.conf = read("nginx/default.conf")
+        self.theme_pattern = re.compile(re.search(r'location ~ "([^"]+)"', self.conf).group(1))
+
+    def test_dockerfile_installs_the_config(self):
+        self.assertIn("COPY nginx/default.conf /etc/nginx/conf.d/default.conf", read("Dockerfile"))
+
+    def test_weather_data_is_never_cached(self):
+        self.assertRegex(self.conf, r'location /data/ \{\s*add_header Cache-Control "no-store";')
+
+    def test_custom_themes_are_checked_before_built_in_ones(self):
+        self.assertRegex(self.conf, r"root /config;\s*try_files \$uri @builtin_theme;")
+        self.assertRegex(self.conf, r"location @builtin_theme \{\s*root /usr/share/nginx/html;")
+
+    def test_only_theme_files_are_served_from_the_custom_folder(self):
+        for good in ("/themes/sonar/theme.css", "/themes/my-theme-2/fonts/Font.woff2", "/themes/a/img/bg.min.svg"):
+            with self.subTest(path=good):
+                self.assertRegex(good, self.theme_pattern)
+        bad = (
+            "/themes/sonar/.env", "/themes/sonar/.git/config.css", "/themes/My Theme/theme.css",
+            "/themes/sonar/notes.txt", "/themes/sonar/script.js", "/themes/sonar/page.html",
+            "/themes/theme.css", "/themes/.hidden/theme.css", "/themes/sonar/",
+        )
+        for path in bad:
+            with self.subTest(path=path):
+                self.assertNotRegex(path, self.theme_pattern)
+
+
 class FontLicenseTests(unittest.TestCase):
     def test_every_bundled_font_has_a_license_file(self):
         folder = ROOT / "assets" / "fonts"

@@ -16,13 +16,13 @@ COPY assets/ /usr/share/nginx/html/assets/
 COPY app/ /app/
 COPY VERSION /app/VERSION
 
-# nginx serves weather.json from the persistent /data volume
-RUN mkdir -p /data \
+# nginx serves weather.json from the persistent /data volume.
+# /config/themes is where people mount their own themes (empty unless something is mounted there).
+RUN mkdir -p /data /config/themes \
     && ln -sfn /data /usr/share/nginx/html/data \
     && chmod +x /app/start.sh
 
-# Never let browsers cache the weather JSON
-RUN printf 'server {\n  listen 80;\n  root /usr/share/nginx/html;\n  index index.html;\n  location /data/ {\n    add_header Cache-Control "no-store";\n  }\n}\n' > /etc/nginx/conf.d/default.conf
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
 VOLUME /data
 EXPOSE 80

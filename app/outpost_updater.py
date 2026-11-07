@@ -127,6 +127,8 @@ CONTACT, USER_AGENT = load_contact_settings()
 DEFAULT_THEME = "retro-crt"
 THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
 THEMES_DIR = Path("/usr/share/nginx/html/themes")
+# People mount their own themes here. nginx checks it first too (see nginx/default.conf).
+CUSTOM_THEMES_DIR = Path("/config/themes")
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -201,9 +203,22 @@ def build_ui_config() -> Dict[str, Any]:
 THEME_FILE = "theme.css"
 THEME_NAME_PATTERN = r"[a-z0-9-]+"
 
-def theme_file(theme_id: str) -> Path:
-    """Each theme is a folder, themes/<id>/theme.css, so it can carry its own fonts and images."""
-    return THEMES_DIR / theme_id / THEME_FILE
+def theme_dirs() -> List[Path]:
+    """Where themes are looked up, in order: the mounted custom folder, then the built-in themes."""
+    return [CUSTOM_THEMES_DIR, THEMES_DIR]
+
+def find_theme(theme_id: str) -> Optional[Path]:
+    """
+    The theme.css for a theme id, or None. Each theme is a folder, <id>/theme.css, so it can carry
+    its own fonts and images. A custom theme wins over a built-in theme with the same id.
+    """
+    if not re.fullmatch(THEME_NAME_PATTERN, theme_id):
+        return None
+    for folder in theme_dirs():
+        css = folder / theme_id / THEME_FILE
+        if css.is_file():
+            return css
+    return None
 
 def theme_label(path: Path) -> str:
     """
@@ -219,27 +234,47 @@ def theme_label(path: Path) -> str:
         return match.group(1).strip()
     return path.parent.name.replace("-", " ").title()
 
-def list_themes() -> List[Dict[str, str]]:
-    """The themes found in the web folder, for the on-screen theme switcher."""
-    if not THEMES_DIR.is_dir():
+def theme_ids_in(folder: Path) -> List[str]:
+    """The valid theme folders (a usable name and a theme.css) directly inside one folder."""
+    if not folder.is_dir():
         return []
-    themes = []
-    for folder in sorted(path for path in THEMES_DIR.iterdir() if path.is_dir()):
-        css = folder / THEME_FILE
-        if re.fullmatch(THEME_NAME_PATTERN, folder.name) and css.is_file():
-            themes.append({"id": folder.name, "name": theme_label(css)})
-    return themes
+    return sorted(
+        path.name for path in folder.iterdir()
+        if path.is_dir() and re.fullmatch(THEME_NAME_PATTERN, path.name) and (path / THEME_FILE).is_file()
+    )
 
-def warn_about_old_theme_files() -> None:
-    """Before 0.5.0 a theme was a single themes/<id>.css file. Those are no longer loaded."""
-    if not THEMES_DIR.is_dir():
+def list_themes() -> List[Dict[str, str]]:
+    """Every theme from the custom and built-in folders, for the on-screen theme switcher."""
+    ids = sorted({theme_id for folder in theme_dirs() for theme_id in theme_ids_in(folder)})
+    return [{"id": theme_id, "name": theme_label(find_theme(theme_id))} for theme_id in ids]
+
+def check_theme_folders() -> None:
+    """Log what was found in the custom themes folder, and anything there that cannot be used."""
+    def warn(message: str) -> None:
+        print(f"[Outpost] {message}", file=sys.stderr, flush=True)
+
+    # Before 0.5.0 a theme was a single <id>.css file. Those are no longer loaded.
+    for folder in theme_dirs():
+        if folder.is_dir():
+            for path in sorted(folder.glob("*.css")):
+                warn(f"Ignoring {folder / path.name}: themes are now folders. Move it to {folder / path.stem / THEME_FILE}")
+
+    if not CUSTOM_THEMES_DIR.is_dir():
         return
-    for path in sorted(THEMES_DIR.glob("*.css")):
-        print(
-            f"[Outpost] Ignoring {path.name}: themes are now folders. "
-            f"Move it to themes/{path.stem}/{THEME_FILE}",
-            file=sys.stderr, flush=True,
-        )
+
+    for path in sorted(CUSTOM_THEMES_DIR.iterdir()):
+        if not path.is_dir() or path.name.startswith("."):
+            continue
+        if not re.fullmatch(THEME_NAME_PATTERN, path.name):
+            warn(f"Ignoring theme folder '{path.name}': names may use only lowercase letters, numbers, and hyphens")
+        elif not (path / THEME_FILE).is_file():
+            warn(f"Ignoring theme folder '{path.name}': it has no {THEME_FILE}")
+
+    custom = theme_ids_in(CUSTOM_THEMES_DIR)
+    if custom:
+        built_in = set(theme_ids_in(THEMES_DIR))
+        names = ", ".join(f"{theme_id} (replaces the built-in one)" if theme_id in built_in else theme_id for theme_id in custom)
+        print(f"[Outpost] Custom themes in {CUSTOM_THEMES_DIR}: {names}", flush=True)
 
 def write_config() -> None:
     """
@@ -251,8 +286,9 @@ def write_config() -> None:
     if not re.fullmatch(THEME_NAME_PATTERN, theme):
         print(f"[Outpost] Invalid OUTPOST_THEME '{theme}'; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
         theme = DEFAULT_THEME
-    elif THEMES_DIR.is_dir() and not theme_file(theme).is_file():
-        print(f"[Outpost] Theme '{theme}' not found in {THEMES_DIR}; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
+    elif any(folder.is_dir() for folder in theme_dirs()) and find_theme(theme) is None:
+        searched = " or ".join(str(folder) for folder in theme_dirs())
+        print(f"[Outpost] Theme '{theme}' not found in {searched}; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
         theme = DEFAULT_THEME
 
     write_json(
@@ -548,7 +584,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    warn_about_old_theme_files()
+    check_theme_folders()
     write_config()
 
     if args.loop:

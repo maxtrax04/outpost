@@ -118,6 +118,7 @@ A Community Apps template is planned. Until then, you can add the container manu
 
 - **Port:** container `80` to a host port of your choice
 - **Path:** container `/data` to `/mnt/user/appdata/outpost`
+- **Path (optional, your own themes):** container `/config/themes` to `/mnt/user/appdata/outpost/themes`, access mode Read Only. Put each theme in its own folder there, for example `/mnt/user/appdata/outpost/themes/sonar/theme.css`, then restart the container. See [docs/themes.md](docs/themes.md#adding-themes-without-rebuilding).
 - **Variables:** each `OUTPOST_*` setting from the table above
 
 ## Project layout
@@ -134,7 +135,9 @@ data/       Generated weather.json and config.json (runtime, not committed)
 
 Four themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, and `modern-dark`. Set `OUTPOST_THEME` to choose the default for everyone, or add `?theme=name` to the address to preview one.
 
-Anyone viewing the dashboard can also pick a theme with the small button in the bottom-left corner (it is faint until you hover or tap it). The choice is remembered in that browser only, with a "Use server default" option to undo it. Set `OUTPOST_THEME_SWITCHER=false` to remove the button, for example on a wall display. Themes are small CSS files, so making your own is easy; see [docs/themes.md](docs/themes.md).
+Anyone viewing the dashboard can also pick a theme with the small button in the bottom-left corner (it is faint until you hover or tap it). The choice is remembered in that browser only, with a "Use server default" option to undo it. Set `OUTPOST_THEME_SWITCHER=false` to remove the button, for example on a wall display.
+
+Themes are small CSS files, so making your own is easy. Mount a folder of your own themes at `/config/themes` to add them without rebuilding the image; [examples/themes/](examples/themes/) has one to start from. See [docs/themes.md](docs/themes.md).
 
 <!-- TODO (public beta): add a screenshot of each theme here -->
 
