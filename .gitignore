@@ -42,3 +42,5 @@ Desktop.ini
 .vscode/
 ci-themes/
 /themes/
+tests/browser/node_modules/
+tests/browser/package*.json

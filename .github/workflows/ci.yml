@@ -169,6 +169,23 @@ jobs:
           done
           echo "static files are served"
 
+      - name: Check every theme in a real browser, under the security headers
+        run: >
+          docker run --rm --network host -v "$PWD/tests/browser:/work" -w /work
+          mcr.microsoft.com/playwright:v1.49.1-noble
+          sh -c "npm install --silent --no-save --no-audit --no-fund playwright@1.49.1 && node check-themes.js"
+
+      - name: Check the security headers
+        run: |
+          headers=$(curl -fsSI http://localhost:8088/)
+          echo "$headers" | grep -i "^content-security-policy: default-src 'none'; script-src 'self'"
+          echo "$headers" | grep -i "frame-ancestors 'self'"
+          echo "$headers" | grep -i "^x-content-type-options: nosniff"
+          echo "$headers" | grep -i "^referrer-policy: no-referrer"
+          # Locations with their own headers must still send the security headers
+          curl -fsSI http://localhost:8088/data/weather.json | grep -i "^content-security-policy:"
+          curl -fsSI http://localhost:8088/themes/sonar/theme.css | grep -i "^content-security-policy:"
+
       - name: Run the container's health check
         run: docker exec outpost-ci python3 /app/outpost_health.py
 

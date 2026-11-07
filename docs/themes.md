@@ -88,6 +88,11 @@ To try it, copy the example theme from the repository: `cp -r examples/themes/so
 Paths in `url(...)` inside `theme.css` are relative to the theme's folder, so a font in
 `my-theme/fonts/` is `url("fonts/MyFont.woff2")`.
 
+A theme can only use files served by Outpost: its own folder, `assets/`, or another theme. Fonts and
+images from other sites (such as a web font service), `@import` of a remote stylesheet, and `data:` URLs
+are blocked by the browser, because of Outpost's Content-Security-Policy (see
+[SECURITY.md](../SECURITY.md#security-headers)). Download the file into the theme's folder instead.
+
 ### Moving a theme from before 0.5.0
 
 Before 0.5.0 a theme was a single file, `web/themes/my-theme.css`. Those files are no longer loaded,
