@@ -34,16 +34,28 @@ A quick guide to the GitHub features this project uses and how they fit together
    git push -u origin fix-alerts-message
    ```
    GitHub prints a link to open the pull request. Fill in the template and write `Closes #7` so the issue closes by itself when the PR is merged.
-5. **Wait for the checks** (once CI exists), fix anything that fails by pushing more commits to the same branch.
-6. **Merge** the PR (a squash merge keeps `main` tidy), then delete the branch and update your copy:
+5. **Wait for the checks**, and fix anything that fails by pushing more commits to the same branch.
+6. **Merge** the PR with a squash merge, which keeps `main` tidy. The branch is deleted automatically. Then update your copy:
    ```
    git switch main
    git pull
    ```
 
-## Requiring checks before merging
+   The maintainer can instead turn on auto-merge when opening the PR, and it merges by itself once the checks pass:
+   ```
+   gh pr merge --auto --squash
+   ```
 
-The CI workflow reports four checks on every PR: Repository hygiene, Python tests, JavaScript tests, and Docker build and smoke test. In the repository settings (Settings, then Rules or Branches) you can require them to pass before a PR can be merged into `main`. On GitHub's free plan this is only available for public repositories; for a private repository it needs a paid plan, so until then, simply check that the PR shows green checks before merging.
+## Repository rules
+
+Two rulesets (Settings, then Rules, then Rulesets) control what can be merged:
+
+| Ruleset | Applies to | What it requires |
+|---|---|---|
+| **main: CI must pass** | `main`, for everyone, with no exceptions | The CI checks (Repository hygiene, Python tests on 3.12 and 3.13, JavaScript tests, Docker build and smoke test) and a CodeQL scan with no errors or security alerts |
+| **Non-RepoOwner** | All branches, for everyone except repository admins | Changes go through a pull request with an approval from someone other than the last pusher, signed commits, linear history, resolved review threads, and the CodeQL scan; no branch creation, deletion, or force pushes |
+
+Repository admins are exempt from **Non-RepoOwner**, so the maintainer's own PRs need no approval, but they still cannot merge until **main: CI must pass** is satisfied. CodeQL runs on every PR (Settings, then Code security, default setup).
 
 ## Releasing
 
