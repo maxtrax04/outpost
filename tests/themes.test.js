@@ -33,6 +33,11 @@ test("theme names are validated", () => {
     for (const bad of ["../etc", "Upper", "with space", "", null, undefined, 5, "a/b", "a.css"]) assert.equal(themes.validTheme(bad), null, String(bad));
 });
 
+test("each theme loads from its own folder", () => {
+    assert.equal(themes.themeHref("modern-dark"), "themes/modern-dark/theme.css");
+    for (const bad of ["../etc", "a/b", "", null]) assert.equal(themes.themeHref(bad), "themes/retro-crt/theme.css", String(bad));
+});
+
 test("available themes are read from the config and sanitized", () => {
     assert.deepEqual(themes.availableThemes(config).map((t) => t.id), ["amber-terminal", "modern-dark", "retro-crt"]);
     assert.equal(themes.availableThemes(config)[0].name, "Amber Terminal");

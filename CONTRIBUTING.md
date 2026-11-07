@@ -83,7 +83,7 @@ The full walkthrough, with commands, is in [docs/github-workflow.md](docs/github
 - **A weather provider:** add a module in `app/providers/` with a `fetch(latitude, longitude, user_agent)` that
   returns the normalized data (see `openmeteo.py` and `nws.py`), wire it into `outpost_updater.py`, add fixtures
   and tests, and add it to the README provider table with its attribution and terms.
-- **A theme:** copy a file in `web/themes/`, follow [docs/themes.md](docs/themes.md), and check text contrast
+- **A theme:** copy a folder in `web/themes/`, follow [docs/themes.md](docs/themes.md), and check text contrast
   (a test does this for you).
 - **An icon:** follow the steps in the README's Icons section.
 

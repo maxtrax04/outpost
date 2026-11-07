@@ -198,10 +198,17 @@ def build_ui_config() -> Dict[str, Any]:
         "theme_switcher": env_flag("OUTPOST_THEME_SWITCHER", True),
     }
 
+THEME_FILE = "theme.css"
+THEME_NAME_PATTERN = r"[a-z0-9-]+"
+
+def theme_file(theme_id: str) -> Path:
+    """Each theme is a folder, themes/<id>/theme.css, so it can carry its own fonts and images."""
+    return THEMES_DIR / theme_id / THEME_FILE
+
 def theme_label(path: Path) -> str:
     """
     A theme's display name: the text before the first colon in its opening comment
-    (for example "/* Retro CRT: green phosphor ... */"), or the file name made readable.
+    (for example "/* Retro CRT: green phosphor ... */"), or the folder name made readable.
     """
     try:
         head = path.read_text(encoding="utf-8")[:300]
@@ -210,17 +217,29 @@ def theme_label(path: Path) -> str:
     match = re.match(r"\s*/\*\s*([^:*\n]{1,40}?)\s*:", head)
     if match:
         return match.group(1).strip()
-    return path.stem.replace("-", " ").title()
+    return path.parent.name.replace("-", " ").title()
 
 def list_themes() -> List[Dict[str, str]]:
     """The themes found in the web folder, for the on-screen theme switcher."""
     if not THEMES_DIR.is_dir():
         return []
     themes = []
-    for path in sorted(THEMES_DIR.glob("*.css")):
-        if re.fullmatch(r"[a-z0-9-]+", path.stem):
-            themes.append({"id": path.stem, "name": theme_label(path)})
+    for folder in sorted(path for path in THEMES_DIR.iterdir() if path.is_dir()):
+        css = folder / THEME_FILE
+        if re.fullmatch(THEME_NAME_PATTERN, folder.name) and css.is_file():
+            themes.append({"id": folder.name, "name": theme_label(css)})
     return themes
+
+def warn_about_old_theme_files() -> None:
+    """Before 0.5.0 a theme was a single themes/<id>.css file. Those are no longer loaded."""
+    if not THEMES_DIR.is_dir():
+        return
+    for path in sorted(THEMES_DIR.glob("*.css")):
+        print(
+            f"[Outpost] Ignoring {path.name}: themes are now folders. "
+            f"Move it to themes/{path.stem}/{THEME_FILE}",
+            file=sys.stderr, flush=True,
+        )
 
 def write_config() -> None:
     """
@@ -229,10 +248,10 @@ def write_config() -> None:
     """
     theme = THEME
 
-    if not re.fullmatch(r"[a-z0-9-]+", theme):
+    if not re.fullmatch(THEME_NAME_PATTERN, theme):
         print(f"[Outpost] Invalid OUTPOST_THEME '{theme}'; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
         theme = DEFAULT_THEME
-    elif THEMES_DIR.is_dir() and not (THEMES_DIR / f"{theme}.css").exists():
+    elif THEMES_DIR.is_dir() and not theme_file(theme).is_file():
         print(f"[Outpost] Theme '{theme}' not found in {THEMES_DIR}; using {DEFAULT_THEME}", file=sys.stderr, flush=True)
         theme = DEFAULT_THEME
 
@@ -529,6 +548,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    warn_about_old_theme_files()
     write_config()
 
     if args.loop:

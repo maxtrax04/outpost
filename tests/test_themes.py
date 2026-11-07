@@ -32,19 +32,23 @@ class ThemeTests(unittest.TestCase):
         css = (ROOT / "web" / "style.css").read_text(encoding="utf-8")
         root_block = re.search(r":root\s*\{(.*?)\n\}", css, re.S).group(1)
         self.required = tokens_in(root_block) - {"--icon", "--dim"}
-        self.themes = sorted(THEME_DIR.glob("*.css"))
+        self.themes = sorted(THEME_DIR.glob("*/theme.css"))
 
     def test_there_are_themes(self):
         self.assertGreaterEqual(len(self.themes), 4)
 
     def test_theme_names_are_valid(self):
         for path in self.themes:
-            with self.subTest(theme=path.name):
-                self.assertRegex(path.stem, r"^[a-z0-9-]+$")
+            with self.subTest(theme=path.parent.name):
+                self.assertRegex(path.parent.name, r"^[a-z0-9-]+$")
+
+    def test_themes_are_folders_not_loose_files(self):
+        self.assertEqual(sorted(p.name for p in THEME_DIR.glob("*.css")), [],
+                         "Themes live in web/themes/<name>/theme.css")
 
     def test_every_theme_defines_every_token(self):
         for path in self.themes:
-            with self.subTest(theme=path.name):
+            with self.subTest(theme=path.parent.name):
                 missing = self.required - tokens_in(path.read_text(encoding="utf-8"))
                 self.assertEqual(missing, set())
 
@@ -60,27 +64,27 @@ class ThemeTests(unittest.TestCase):
         for path in self.themes:
             css = path.read_text(encoding="utf-8")
             background = hex_color(css, "--bg")
-            self.assertIsNotNone(background, f"{path.name} needs a #rrggbb --bg for this check")
+            self.assertIsNotNone(background, f"{path.parent.name} needs a #rrggbb --bg for this check")
             for token, minimum in minimums.items():
                 color = hex_color(css, token)
                 if color is None:
                     continue
-                with self.subTest(theme=path.stem, token=token):
+                with self.subTest(theme=path.parent.name, token=token):
                     ratio = contrast(color, background)
                     self.assertGreaterEqual(ratio, minimum, f"{token} {color} on {background} has contrast {ratio:.1f}")
 
     def test_the_default_theme_exists_and_is_linked(self):
         html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-        link = re.search(r'id="theme"[^>]*href="themes/([a-z0-9-]+)\.css"', html).group(1)
-        self.assertTrue((THEME_DIR / f"{link}.css").exists())
+        link = re.search(r'id="theme"[^>]*href="themes/([a-z0-9-]+)/theme\.css"', html).group(1)
+        self.assertTrue((THEME_DIR / link / "theme.css").exists())
         js = (ROOT / "web" / "themes.js").read_text(encoding="utf-8")
         self.assertIn(f'DEFAULT_THEME = "{link}"', js)
 
     def test_themes_are_listed_in_the_docs(self):
         docs = (ROOT / "docs" / "themes.md").read_text(encoding="utf-8")
         for path in self.themes:
-            with self.subTest(theme=path.stem):
-                self.assertIn(f"`{path.stem}`", docs)
+            with self.subTest(theme=path.parent.name):
+                self.assertIn(f"`{path.parent.name}`", docs)
 
 
 if __name__ == "__main__":

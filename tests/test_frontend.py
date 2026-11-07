@@ -115,7 +115,7 @@ class HomeScreenTests(unittest.TestCase):
         self.assertEqual(png_size(ROOT / "assets" / "app" / "apple-touch-icon.png"), (180, 180))
 
     def test_manifest_colors_match_the_default_theme(self):
-        css = read("web/themes/retro-crt.css")
+        css = read("web/themes/retro-crt/theme.css")
         background = re.search(r"--bg:\s*(#[0-9a-fA-F]{6})", css).group(1).lower()
         self.assertEqual(self.manifest["theme_color"].lower(), background)
         self.assertEqual(self.manifest["background_color"].lower(), background)

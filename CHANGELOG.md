@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0-beta.1] - 2026-11-07
+
+This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+
+### Changed
+- **Breaking:** each theme is now a folder, `web/themes/<name>/theme.css`, instead of a single `web/themes/<name>.css` file, so a theme can carry its own fonts and images. `url(...)` paths in a theme are relative to its folder. The `OUTPOST_THEME` values are unchanged.
+- At startup, Outpost logs a warning for each old single-file theme it finds in `web/themes/`, with the path to move it to.
+
+### Upgrading from 0.4.0
+- If you only use the built-in themes, nothing changes. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.1`.
+- If you made your own theme, move `web/themes/my-theme.css` to `web/themes/my-theme/theme.css` and rebuild. If it uses `url(...)` paths, add `../` to each one, or move those files into the theme's folder. See [docs/themes.md](docs/themes.md).
+
 ## [0.4.0] - 2026-11-07
 
 ### Added

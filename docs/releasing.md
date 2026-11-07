@@ -1,9 +1,8 @@
 # Releasing
 
-Outpost uses [Semantic Versioning](https://semver.org/). To publish a test version, give it a suffix
-(`VERSION` `0.5.0-beta.1`, changelog heading `## [0.5.0-beta.1]`, tag `v0.5.0-beta.1`); it is published as a
-pre-release. Before 1.0, bump the minor version
+Outpost uses [Semantic Versioning](https://semver.org/). Before 1.0, bump the minor version
 (0.3.0 to 0.4.0) for new features or breaking changes, and the patch version (0.3.0 to 0.3.1) for fixes only.
+Test versions get a suffix, such as `0.5.0-beta.1`; see [Beta releases](#beta-releases).
 
 Pushing a version tag does the rest: the release workflow (`.github/workflows/release.yml`) runs the
 tests, builds the image for amd64 and arm64, publishes it to `ghcr.io/maxtrax04/outpost`, and creates
@@ -35,19 +34,43 @@ the GitHub Release from the changelog.
      is denied, the package is still private; see the one-time setup notes below.
 7. Close the milestone on GitHub (Milestones, then Close), and move any unfinished issues to the next one.
 
+## Beta releases
+
+A beta lets people try a version, especially one with breaking changes, before it is final. It uses the
+same checklist with a suffix on the version: `0.5.0-beta.1`, then `0.5.0-beta.2`, and so on.
+
+1. While you work, changes go under `[Unreleased]` as usual.
+2. To publish a beta, set `VERSION` to `0.5.0-beta.1` and rename `[Unreleased]` to
+   `[0.5.0-beta.1] - <date>` with a fresh empty `[Unreleased]` above it. That section lists only what is
+   new since the previous beta, and becomes that beta's release notes. Include upgrade steps for breaking
+   changes, since beta testers need them first.
+3. Open the pull request, merge it, and tag the merge commit `v0.5.0-beta.1`, as in steps 3 to 5 above.
+4. The release is marked as a pre-release, and the image is published only as `0.5.0-beta.1` (and `edge`).
+   `latest` and `0.5` do not move, and the repository sidebar keeps showing the last full release, so
+   people who are not testing are not affected.
+5. Between betas, `VERSION` stays at the last beta, so an `edge` image may show `0.5.0-beta.1` while it
+   already has newer changes.
+
+For the final release, set `VERSION` to `0.5.0` and merge every `0.5.0-beta.N` section and `[Unreleased]`
+into one `## [0.5.0] - <date>` section, removing the beta sections. Its notes then cover everything since
+0.4.0, which is what people upgrading from the last full release need. The beta tags and GitHub pre-releases
+stay as the record of each beta.
+
 ## Image tags
 
 | Tag | Meaning |
 |---|---|
 | `0.4.0` | That exact release |
 | `0.4` | The newest patch release of 0.4 |
-| `latest` | The newest release |
+| `latest` | The newest release (never a beta) |
+| `0.5.0-beta.1` | That exact beta; betas get no other tags |
 | `edge` | The newest commit on `main`, for early testers (not a release) |
 
 ## Before pushing, every time
 
 - `git status` should not list `.env` or anything in `data/`.
-- Any font in `assets/fonts/` has its license file beside it and an entry in `THIRD_PARTY.md`.
+- Any font in `assets/fonts/` or in a theme's folder has its license file beside it and an entry in
+  `THIRD_PARTY.md`.
 
 ## One-time setup notes
 
