@@ -125,9 +125,9 @@ A Community Apps template is planned. Until then, you can add the container manu
 ```
 app/        Updater, health check, and provider modules (Python)
 web/        Dashboard front end (HTML, CSS, JS)
-assets/     Icons and fonts
+assets/     Weather icons, app (home-screen) icons, and fonts
 tests/      Automated tests and sample data
-data/       Generated weather.json (runtime, not committed)
+data/       Generated weather.json and config.json (runtime, not committed)
 ```
 
 ## Themes

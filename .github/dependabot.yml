@@ -26,4 +26,5 @@ updates:
       github-actions:
         patterns: ["*"]
 
-  # If requirements.txt ever lists packages, add a "pip" entry here as well.
+  # Outpost has no third-party Python packages. If that ever changes, add a requirements.txt,
+  # install it in the Dockerfile, and add a "pip" entry here.

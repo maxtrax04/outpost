@@ -28,6 +28,6 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (release workflow publishes `ghcr.io/maxtrax04/outpost`). See `docs/releasing.md`.
 
 ## Current state
-- v0.3.0 released. v0.4.0 (mobile/portrait layout, web app manifest, on-screen theme switcher) is built and browser-tested; confirm it is merged before starting v0.5.0.
+- v0.4.0 (mobile/portrait layout, web app manifest, on-screen theme switcher) is versioned and in its release PR; after merge, tag `v0.4.0` on `main` (see `docs/releasing.md`). Confirm the tag and GitHub Release exist before starting v0.5.0.
 - v0.5.0 next: folder-per-theme, external themes, CSP headers, logo, original decorative themes, community themes repo.
 - Not verified on real iOS/Android or with the real Share Tech Mono file.

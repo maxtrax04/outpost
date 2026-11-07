@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-07
+
 ### Added
 - Mobile and portrait layouts: a compact phone layout (three columns of detail boxes, one forecast row per day), a short header for phones turned sideways, and a scaled-up, vertically centered layout for tall portrait screens. Content stays clear of notches and uses the dynamic viewport height.
 - Web app manifest, icons, and home-screen tags, so Outpost can be added to a phone's home screen and opens without browser bars. The browser's address bar color follows the active theme. The icon is a placeholder until the logo is designed.
@@ -13,6 +15,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 - GitHub Releases are marked "Latest" instead of "Pre-release", so the newest release shows in the repository sidebar. Only versions with a suffix, such as `0.5.0-beta.1`, are published as pre-releases.
+- `config.json` now includes a `themes` list (each theme's id and display name) and a `ui.theme_switcher` flag, for the on-screen switcher.
+- The nginx base image moved from `1.30-alpine` to `1.31-alpine`.
+- `scripts/test.sh`, `scripts/test.ps1`, and CI now run every JavaScript test file (`node --test`) instead of only `tests/dim.test.js`.
+
+### Upgrading from 0.3.0
+- No settings need to change. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.4.0`.
+- On a wall display or kiosk, set `OUTPOST_THEME_SWITCHER=false` to hide the theme button.
+- Viewers who pick a theme with the switcher keep it in that browser even if `OUTPOST_THEME` changes later. Choose "Use server default" in the switcher to go back.
 
 ## [0.3.0] - 2026-10-31
 
