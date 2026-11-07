@@ -23,6 +23,8 @@ RUN mkdir -p /data /config/themes \
     && chmod +x /app/start.sh
 
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+# Default security headers; start.sh writes them again with the container's settings
+RUN python3 /app/outpost_web.py && nginx -t
 
 VOLUME /data
 EXPOSE 80

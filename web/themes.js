@@ -73,11 +73,40 @@ function chooseTheme(config, search, storage) {
     return { wanted: fromAddress || remembered || server, fromAddress, saved: remembered, server };
 }
 
-function loadStylesheet(link, href) {
+const THEME_LOAD_TIMEOUT_MS = 4000;
+
+// Loads a theme stylesheet in a new <link> next to the current one, then removes the old one.
+// Changing the href of an existing <link> does not reliably fire "load" (Chrome never does), so
+// a fresh element is used, and the wait is capped so a theme can never hold up the weather.
+// Resolves to true when the new stylesheet is in use, false when it failed and was removed.
+function loadStylesheet(current, href, timeoutMs = THEME_LOAD_TIMEOUT_MS, doc = document) {
     return new Promise((resolve) => {
-        link.onload = () => resolve(true);
-        link.onerror = () => resolve(false);
-        link.href = href;
+        const next = doc.createElement("link");
+        next.rel = "stylesheet";
+        let timer = null;
+
+        const finish = (ok) => {
+            if (timer === null) {
+                return; // already finished
+            }
+            clearTimeout(timer);
+            timer = null;
+            next.onload = next.onerror = null;
+            if (ok) {
+                next.id = current.id;
+                current.remove();
+            } else {
+                next.remove();
+            }
+            resolve(ok);
+        };
+
+        next.onload = () => finish(true);
+        next.onerror = () => finish(false);
+        // No answer in time: keep the new stylesheet if the browser has parsed it
+        timer = setTimeout(() => finish(Boolean(next.sheet)), timeoutMs);
+        next.href = href;
+        current.after(next);
     });
 }
 
@@ -96,18 +125,21 @@ function updateThemeColor() {
 async function applyTheme(config) {
     try {
         const { wanted } = chooseTheme(config);
-        const link = document.getElementById("theme");
-        const href = themeHref(wanted);
+        let applied = wanted;
 
-        if (link.getAttribute("href") !== href) {
-            const loaded = await loadStylesheet(link, href);
+        if (document.getElementById("theme").getAttribute("href") !== themeHref(wanted)) {
+            // loadStylesheet replaces the <link>, so look it up again each time
+            const loaded = await loadStylesheet(document.getElementById("theme"), themeHref(wanted));
             if (!loaded) {
                 console.error(`Theme "${wanted}" not found; using ${DEFAULT_THEME}`);
-                await loadStylesheet(link, themeHref(DEFAULT_THEME));
+                applied = DEFAULT_THEME;
+                if (document.getElementById("theme").getAttribute("href") !== themeHref(DEFAULT_THEME)) {
+                    await loadStylesheet(document.getElementById("theme"), themeHref(DEFAULT_THEME));
+                }
             }
         }
 
-        document.documentElement.dataset.theme = wanted;
+        document.documentElement.dataset.theme = applied;
         updateThemeColor();
     } finally {
         document.body.classList.remove("theme-loading");
@@ -246,5 +278,5 @@ function renderThemeSwitcher(config) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-    module.exports = { DEFAULT_THEME, THEME_STORAGE_KEY, validTheme, readSavedTheme, writeSavedTheme, availableThemes, chooseTheme, themeHref };
+    module.exports = { DEFAULT_THEME, THEME_STORAGE_KEY, validTheme, readSavedTheme, writeSavedTheme, availableThemes, chooseTheme, themeHref, loadStylesheet };
 }

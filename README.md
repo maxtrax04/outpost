@@ -82,6 +82,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`. It is sent in the User-Agent header. |
 | `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>)`). |
+| `OUTPOST_FRAME_ANCESTORS` | *(empty)* | Sites allowed to show Outpost in a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. Empty allows only Outpost itself. See [SECURITY.md](SECURITY.md#security-headers). |
 | `OUTPOST_WEB_PORT` | `8088` | Host port for the web UI (Compose only). |
 
 The defaults point at Goodsprings, NV. Set your own latitude and longitude to see your local weather.

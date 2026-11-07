@@ -108,3 +108,54 @@ test("blocked storage never throws", () => {
     assert.equal(themes.writeSavedTheme("modern-dark", storage), false);
     assert.equal(themes.chooseTheme(config, "", storage).wanted, "retro-crt");
 });
+
+// A tiny stand-in for the DOM: a parent holding <link> elements
+const fakeDocument = () => {
+    const children = [];
+    const makeLink = () => {
+        const link = {
+            id: "", rel: "", href: "", sheet: null, onload: null, onerror: null,
+            after(other) { children.splice(children.indexOf(link) + 1, 0, other); },
+            remove() { const i = children.indexOf(link); if (i >= 0) children.splice(i, 1); },
+        };
+        return link;
+    };
+    const current = makeLink();
+    current.id = "theme";
+    current.href = "themes/retro-crt/theme.css";
+    children.push(current);
+    return { children, current, createElement: makeLink };
+};
+
+test("a theme loads in a new link that replaces the old one", async () => {
+    const doc = fakeDocument();
+    const pending = themes.loadStylesheet(doc.current, "themes/modern-dark/theme.css", 1000, doc);
+    const next = doc.children[1];
+    assert.equal(next.href, "themes/modern-dark/theme.css");
+    next.onload();
+    assert.equal(await pending, true);
+    assert.deepEqual(doc.children, [next]);
+    assert.equal(next.id, "theme");
+});
+
+test("a theme that fails to load is removed and the old one stays", async () => {
+    const doc = fakeDocument();
+    const pending = themes.loadStylesheet(doc.current, "themes/missing/theme.css", 1000, doc);
+    doc.children[1].onerror();
+    assert.equal(await pending, false);
+    assert.deepEqual(doc.children, [doc.current]);
+    assert.equal(doc.current.id, "theme");
+});
+
+test("a theme never holds up the page: the wait is capped", async () => {
+    // No load or error event at all (what Chrome did when an existing link's href changed)
+    const doc = fakeDocument();
+    const parsed = themes.loadStylesheet(doc.current, "themes/modern-dark/theme.css", 20, doc);
+    doc.children[1].sheet = {};
+    assert.equal(await parsed, true);
+
+    const doc2 = fakeDocument();
+    const nothing = themes.loadStylesheet(doc2.current, "themes/modern-dark/theme.css", 20, doc2);
+    assert.equal(await nothing, false);
+    assert.deepEqual(doc2.children, [doc2.current]);
+});

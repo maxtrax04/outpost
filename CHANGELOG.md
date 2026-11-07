@@ -6,39 +6,64 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0-beta.2] - 2026-11-07
+
+This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+
 ### Added
+
+- Security headers on every response: a Content-Security-Policy that lets the dashboard load scripts, styles, fonts, images, and data only from Outpost itself, plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`. See "Security headers" in `SECURITY.md`.
+- `OUTPOST_FRAME_ANCESTORS` setting: the sites allowed to show Outpost inside a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. By default only Outpost itself may.
 - Custom themes without rebuilding: mount a folder of themes at `/config/themes` (one folder per theme, like the built-in ones). They appear in the on-screen switcher and can be chosen with `OUTPOST_THEME`, and a custom theme with the same name as a built-in one replaces it. Only theme files (CSS, fonts, and images) are served from that folder. At startup the log lists the custom themes it found and explains any folder it skipped. See "Adding themes without rebuilding" in `docs/themes.md`, and the README for the unRAID path mapping.
 - An example theme to start from, `sonar`, in `examples/themes/`. It is not built into the image.
 
 ### Changed
+
 - The nginx configuration is now a file in the repository (`nginx/default.conf`) instead of being generated in the Dockerfile. Theme files are sent with `Cache-Control: no-cache`, so browsers check for edits on reload.
+- Themes can only use files served by Outpost. A theme's `url()` or `@import` pointing at another site, or a `data:` URL, is now blocked by the browser.
+- CI loads every theme in a real browser under the security headers, on phone and wide screens, and checks that the weather appears and nothing is blocked.
+
+### Fixed
+
+- Choosing any theme other than the one the page starts with (with the on-screen switcher, `?theme=`, or `OUTPOST_THEME`) showed the theme but never loaded the weather, leaving "Waiting for signal..." on screen. This affected 0.4.0 and 0.5.0-beta.1. Themes now load in a new stylesheet that replaces the old one, and loading a theme can no longer hold up the weather.
+
+### Upgrading from 0.5.0-beta.1
+
+- If you show Outpost inside another page, such as a Home Assistant webpage card, add that page's address to `OUTPOST_FRAME_ANCESTORS` (for example `OUTPOST_FRAME_ANCESTORS=http://homeassistant.local:8123`). Without it, the frame stays blank.
+- If a custom theme loads fonts or images from another site, download them into the theme's folder.
+- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.2`.
 
 ## [0.5.0-beta.1] - 2026-11-07
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
 
 ### Changed
+
 - **Breaking:** each theme is now a folder, `web/themes/<name>/theme.css`, instead of a single `web/themes/<name>.css` file, so a theme can carry its own fonts and images. `url(...)` paths in a theme are relative to its folder. The `OUTPOST_THEME` values are unchanged.
 - At startup, Outpost logs a warning for each old single-file theme it finds in `web/themes/`, with the path to move it to.
 
 ### Upgrading from 0.4.0
+
 - If you only use the built-in themes, nothing changes. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.1`.
 - If you made your own theme, move `web/themes/my-theme.css` to `web/themes/my-theme/theme.css` and rebuild. If it uses `url(...)` paths, add `../` to each one, or move those files into the theme's folder. See [docs/themes.md](docs/themes.md).
 
 ## [0.4.0] - 2026-11-07
 
 ### Added
+
 - Mobile and portrait layouts: a compact phone layout (three columns of detail boxes, one forecast row per day), a short header for phones turned sideways, and a scaled-up, vertically centered layout for tall portrait screens. Content stays clear of notches and uses the dynamic viewport height.
 - Web app manifest, icons, and home-screen tags, so Outpost can be added to a phone's home screen and opens without browser bars. The browser's address bar color follows the active theme. The icon is a placeholder until the logo is designed.
 - On-screen theme switcher (bottom-left corner, faint until used). The choice is saved in the viewer's browser, wins over `OUTPOST_THEME`, and can be reset. Setting: `OUTPOST_THEME_SWITCHER` (default `true`). The theme list and names come from the files in `web/themes/`.
 
 ### Changed
+
 - GitHub Releases are marked "Latest" instead of "Pre-release", so the newest release shows in the repository sidebar. Only versions with a suffix, such as `0.5.0-beta.1`, are published as pre-releases.
 - `config.json` now includes a `themes` list (each theme's id and display name) and a `ui.theme_switcher` flag, for the on-screen switcher.
 - The nginx base image moved from `1.30-alpine` to `1.31-alpine`.
 - `scripts/test.sh`, `scripts/test.ps1`, and CI now run every JavaScript test file (`node --test`) instead of only `tests/dim.test.js`.
 
 ### Upgrading from 0.3.0
+
 - No settings need to change. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.4.0`.
 - On a wall display or kiosk, set `OUTPOST_THEME_SWITCHER=false` to hide the theme button.
 - Viewers who pick a theme with the switcher keep it in that browser even if `OUTPOST_THEME` changes later. Choose "Use server default" in the switcher to go back.
@@ -59,6 +84,7 @@ This is a test release. It is published as a pre-release, and the `latest` image
 - Project files: `ROADMAP.md`, `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates, and `docs/github-workflow.md`.
 
 ### Changed
+
 - The Provider box was removed from the current conditions (the data source is already shown in the footer).
 - The header no longer shows "Local Status Display" by default; use `OUTPOST_SUBTITLE` to add a line.
 - The Alerts panel is hidden when there are no alerts, unless `OUTPOST_ALERTS_ALWAYS_SHOW=true`.
@@ -70,10 +96,12 @@ This is a test release. It is published as a pre-release, and the `latest` image
 - The version number now lives only in the `VERSION` file; the image labels are added by the release workflow.
 
 ### Fixed
+
 - Sunrise, sunset, and sun-based dimming fall back to the coordinates stored in `weather.json` when `config.json` has none. Empty or null coordinates are no longer treated as latitude 0, longitude 0, and the Sunrise and Sunset boxes say "No coordinates" when none are available.
 - The updater logs whether the coordinates came from `OUTPOST_LATITUDE` and `OUTPOST_LONGITUDE` or from the built-in example values (it never logs the coordinates themselves).
 
 ### Upgrading from 0.2.0
+
 - Auto-dim is on by default. Set `OUTPOST_AUTO_DIM=false` to turn it off.
 - If you use `nws` or `auto`, add `OUTPOST_CONTACT=you@example.com` to your `.env`.
 - To keep the old header and always-visible alerts, set `OUTPOST_SUBTITLE=Local Status Display` and `OUTPOST_ALERTS_ALWAYS_SHOW=true`.
@@ -83,6 +111,7 @@ This is a test release. It is published as a pre-release, and the `latest` image
 ## [0.2.0] - 2026-10-09
 
 ### Added
+
 - Live weather from Open-Meteo (`OUTPOST_PROVIDER=openmeteo`), no API key needed.
 - National Weather Service provider (`nws`) for US locations, including active watches and warnings.
   Alerts are sorted by severity and styled amber (moderate) or red (severe/extreme).
@@ -99,6 +128,7 @@ This is a test release. It is published as a pre-release, and the `latest` image
 - Health check now also fails when `weather.json` is stale, so a stopped updater is detected.
 
 ### Changed
+
 - Outpost now runs as a single container (nginx plus the updater) instead of two.
 - The front end is split into `index.html`, `style.css`, and `app.js`; visuals are driven by theme variables.
 - When an update fails, the dashboard keeps showing the last good data with a warning banner instead of going blank.
@@ -107,6 +137,7 @@ This is a test release. It is published as a pre-release, and the `latest` image
 - The version number now lives in one file, `VERSION`.
 
 ### Fixed
+
 - Updater syntax errors, and `start.sh` calling a file that did not exist.
 - Typo in the web volume path (`/user/share`) in `docker-compose.yml`.
 - Misspelled `tempurature_f` key, which is now `temperature_f`; stray colon in the `low_f` key.
@@ -114,6 +145,7 @@ This is a test release. It is published as a pre-release, and the `latest` image
 - Forecast not rendering because its container element was missing.
 
 ### Upgrading from 0.1.0
+
 - Rename `OUTPOST_SOURCE` to `OUTPOST_PROVIDER` and `OUTPOST_PORT` to `OUTPOST_WEB_PORT` in your `.env`.
 - Move `index.html`, `style.css`, and `app.js` into `web/`, and add `web/themes/`.
 - Rebuild the image with `docker compose up -d --build`.
@@ -121,5 +153,6 @@ This is a test release. It is published as a pre-release, and the `latest` image
 ## [0.1.0]
 
 ### Added
+
 - Initial foundation: Docker build and Compose startup, a mock weather provider, normalized `weather.json`
   written to a shared volume and served by nginx, and a first dashboard that reads it.
