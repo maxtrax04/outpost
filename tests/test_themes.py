@@ -5,6 +5,7 @@ import helpers
 from helpers import ROOT
 
 THEME_DIR = ROOT / "web" / "themes"
+EXAMPLE_DIR = ROOT / "examples" / "themes"
 
 
 def hex_color(css, token):
@@ -32,10 +33,28 @@ class ThemeTests(unittest.TestCase):
         css = (ROOT / "web" / "style.css").read_text(encoding="utf-8")
         root_block = re.search(r":root\s*\{(.*?)\n\}", css, re.S).group(1)
         self.required = tokens_in(root_block) - {"--icon", "--dim"}
-        self.themes = sorted(THEME_DIR.glob("*/theme.css"))
+        # Built-in themes and the example themes meant to be mounted get the same checks
+        self.themes = sorted(THEME_DIR.glob("*/theme.css")) + sorted(EXAMPLE_DIR.glob("*/theme.css"))
 
     def test_there_are_themes(self):
-        self.assertGreaterEqual(len(self.themes), 4)
+        self.assertGreaterEqual(len(list(THEME_DIR.glob("*/theme.css"))), 4)
+        self.assertGreaterEqual(len(list(EXAMPLE_DIR.glob("*/theme.css"))), 1)
+
+    def test_files_a_theme_points_to_are_in_its_folder(self):
+        for path in self.themes:
+            for target in re.findall(r"""url\(\s*["']?([^"')]+)["']?\s*\)""", path.read_text(encoding="utf-8")):
+                if target.startswith(("data:", "http:", "https:", "/")):
+                    continue
+                with self.subTest(theme=path.parent.name, url=target):
+                    resolved = (path.parent / target).resolve()
+                    self.assertTrue(resolved.is_file(), f"{target} does not exist")
+                    self.assertTrue(resolved.is_relative_to(path.parent.resolve()), f"{target} is outside the theme folder")
+
+    def test_example_names_do_not_clash_with_built_in_themes(self):
+        built_in = {p.parent.name for p in THEME_DIR.glob("*/theme.css")}
+        for path in EXAMPLE_DIR.glob("*/theme.css"):
+            with self.subTest(theme=path.parent.name):
+                self.assertNotIn(path.parent.name, built_in)
 
     def test_theme_names_are_valid(self):
         for path in self.themes:

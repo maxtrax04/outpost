@@ -10,4 +10,6 @@ services:
       - .env
     volumes:
       - ./data:/data
+      # Your own themes, one folder each (see docs/themes.md). Uncomment to use.
+      # - ./themes:/config/themes:ro
     restart: unless-stopped

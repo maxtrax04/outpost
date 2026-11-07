@@ -40,3 +40,5 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+ci-themes/
+/themes/

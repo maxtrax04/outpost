@@ -97,8 +97,18 @@ jobs:
           load: true
           tags: outpost:ci
 
+      - name: Make a custom themes folder
+        run: |
+          # The example theme, a file that must never be served, and an override of a built-in theme
+          mkdir -p ci-themes/retro-crt
+          cp -r examples/themes/sonar ci-themes/
+          echo "not a theme file" > ci-themes/sonar/notes.txt
+          echo "/* CI Override: replaces the built-in retro-crt */ :root {}" > ci-themes/retro-crt/theme.css
+
       - name: Start the container with the mock provider
-        run: docker run -d --name outpost-ci -e OUTPOST_PROVIDER=mock -p 8088:80 outpost:ci
+        run: >
+          docker run -d --name outpost-ci -e OUTPOST_PROVIDER=mock -p 8088:80
+          -v "$PWD/ci-themes:/config/themes:ro" outpost:ci
 
       - name: Wait for the dashboard data
         run: |
@@ -126,7 +136,10 @@ jobs:
           curl -fsS http://localhost:8088/data/config.json | python3 -c "
           import json, sys
           config = json.load(sys.stdin)
-          assert len(config['themes']) >= 4, config['themes']
+          assert len(config['themes']) >= 5, config['themes']
+          names = {theme['id']: theme['name'] for theme in config['themes']}
+          assert names['sonar'] == 'Sonar', names
+          assert names['retro-crt'] == 'CI Override', names
           assert config['ui']['theme_switcher'] is True
           print('config.json looks good:', len(config['themes']), 'themes')
           "
@@ -137,9 +150,17 @@ jobs:
           for file in style.css app.js dim.js themes.js manifest.webmanifest; do
             curl -fsS -o /dev/null "http://localhost:8088/$file"
           done
-          for theme in retro-crt amber-terminal command-center modern-dark; do
+          for theme in retro-crt amber-terminal command-center modern-dark sonar; do
             curl -fsS -o /dev/null "http://localhost:8088/themes/$theme/theme.css"
           done
+          curl -fsS -o /dev/null http://localhost:8088/themes/sonar/grid.svg
+          curl -fsS http://localhost:8088/themes/retro-crt/theme.css | grep -q "CI Override"
+          curl -fsSI http://localhost:8088/themes/sonar/theme.css | grep -qi "cache-control: no-cache"
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8088/themes/sonar/notes.txt)
+          if [ "$status" != "404" ]; then
+            echo "::error::A non-theme file in the custom themes folder was served (HTTP $status)"
+            exit 1
+          fi
           for icon in sunny rain unknown; do
             curl -fsS -o /dev/null "http://localhost:8088/assets/icons/$icon.svg"
           done

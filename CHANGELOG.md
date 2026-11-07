@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Custom themes without rebuilding: mount a folder of themes at `/config/themes` (one folder per theme, like the built-in ones). They appear in the on-screen switcher and can be chosen with `OUTPOST_THEME`, and a custom theme with the same name as a built-in one replaces it. Only theme files (CSS, fonts, and images) are served from that folder. At startup the log lists the custom themes it found and explains any folder it skipped. See "Adding themes without rebuilding" in `docs/themes.md`, and the README for the unRAID path mapping.
+- An example theme to start from, `sonar`, in `examples/themes/`. It is not built into the image.
+
+### Changed
+- The nginx configuration is now a file in the repository (`nginx/default.conf`) instead of being generated in the Dockerfile. Theme files are sent with `Cache-Control: no-cache`, so browsers check for edits on reload.
+
 ## [0.5.0-beta.1] - 2026-11-07
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.

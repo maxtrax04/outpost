@@ -17,6 +17,7 @@ LICENSE
 docs/
 .github/
 scripts/
+examples/
 tests/
 docker-compose*.yml
 

@@ -36,6 +36,7 @@ class UpdaterTestCase(unittest.TestCase):
         mock.patch.object(u, "PROVIDER", "mock").start()
         mock.patch.object(u, "LOCATION_NAME", "Test Site").start()
         mock.patch.object(u, "_warned_user_agent", False).start()
+        mock.patch.object(u, "CUSTOM_THEMES_DIR", Path("/does/not/exist/custom")).start()
         self.print = mock.patch("builtins.print").start()
 
     def output(self):
@@ -271,15 +272,24 @@ class AutoProviderTests(UpdaterTestCase):
 
 
 class ConfigTests(UpdaterTestCase):
-    def write_with_env(self, env=None, theme="retro-crt", themes_dir=None):
+    def write_with_env(self, env=None, theme="retro-crt", themes_dir=None, custom_dir=None):
         with mock.patch.dict(os.environ):
             for name in DIM_VARS:
                 os.environ.pop(name, None)
             os.environ.update(env or {})
             with mock.patch.object(u, "THEME", theme), \
-                    mock.patch.object(u, "THEMES_DIR", themes_dir or Path("/does/not/exist")):
+                    mock.patch.object(u, "THEMES_DIR", themes_dir or Path("/does/not/exist")), \
+                    mock.patch.object(u, "CUSTOM_THEMES_DIR", custom_dir or Path("/does/not/exist/custom")):
                 u.write_config()
         return self.config()
+
+    def printed(self):
+        return "\n".join(str(call.args[0]) for call in self.print.call_args_list)
+
+    def check_folders(self, built_in, custom):
+        with mock.patch.object(u, "THEMES_DIR", built_in), mock.patch.object(u, "CUSTOM_THEMES_DIR", custom):
+            u.check_theme_folders()
+        return self.printed()
 
     def test_defaults(self):
         config = self.write_with_env()
@@ -356,16 +366,65 @@ class ConfigTests(UpdaterTestCase):
         self.assertEqual(len(names), len(list((ROOT / "web" / "themes").glob("*/theme.css"))))
 
     def test_old_single_file_themes_are_reported(self):
-        with tempfile.TemporaryDirectory() as folder:
-            folder = Path(folder)
-            (folder / "my-theme.css").write_text(":root {}")
-            self.make_theme(folder, "retro-crt")
-            with mock.patch.object(u, "THEMES_DIR", folder):
-                u.warn_about_old_theme_files()
-        printed = " ".join(str(call.args[0]) for call in self.print.call_args_list)
-        self.assertEqual(self.print.call_count, 1)
-        self.assertIn("my-theme.css", printed)
-        self.assertIn("themes/my-theme/theme.css", printed)
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom:
+            built_in, custom = Path(built_in), Path(custom)
+            (built_in / "my-theme.css").write_text(":root {}")
+            (custom / "mounted.css").write_text(":root {}")
+            self.make_theme(built_in, "retro-crt")
+            printed = self.check_folders(built_in, custom)
+        self.assertEqual(self.print.call_count, 2)
+        self.assertIn(str(built_in / "my-theme" / "theme.css"), printed)
+        self.assertIn(str(custom / "mounted" / "theme.css"), printed)
+
+    def test_custom_themes_are_listed_with_the_built_in_ones(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom:
+            built_in, custom = Path(built_in), Path(custom)
+            self.make_theme(built_in, "retro-crt", "/* Retro CRT: built in */")
+            self.make_theme(custom, "sonar", "/* Sonar: mounted */")
+            themes = self.write_with_env(themes_dir=built_in, custom_dir=custom)["themes"]
+        self.assertEqual(themes, [{"id": "retro-crt", "name": "Retro CRT"}, {"id": "sonar", "name": "Sonar"}])
+
+    def test_a_custom_theme_replaces_a_built_in_one_with_the_same_name(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom:
+            built_in, custom = Path(built_in), Path(custom)
+            self.make_theme(built_in, "retro-crt", "/* Retro CRT: built in */")
+            self.make_theme(custom, "retro-crt", "/* My CRT: tweaked */")
+            themes = self.write_with_env(themes_dir=built_in, custom_dir=custom)["themes"]
+            with mock.patch.object(u, "THEMES_DIR", built_in), mock.patch.object(u, "CUSTOM_THEMES_DIR", custom):
+                self.assertEqual(u.find_theme("retro-crt"), custom / "retro-crt" / "theme.css")
+            printed = self.check_folders(built_in, custom)
+        self.assertEqual(themes, [{"id": "retro-crt", "name": "My CRT"}])
+        self.assertIn("retro-crt (replaces the built-in one)", printed)
+
+    def test_a_custom_theme_can_be_the_server_default(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom:
+            built_in, custom = Path(built_in), Path(custom)
+            self.make_theme(built_in, "retro-crt")
+            self.make_theme(custom, "sonar")
+            config = self.write_with_env(theme="sonar", themes_dir=built_in, custom_dir=custom)
+        self.assertEqual(config["theme"], "sonar")
+
+    def test_unusable_custom_theme_folders_are_reported_and_skipped(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom:
+            built_in, custom = Path(built_in), Path(custom)
+            self.make_theme(built_in, "retro-crt")
+            self.make_theme(custom, "My Theme")
+            (custom / "no-css").mkdir()
+            (custom / ".hidden").mkdir()
+            (custom / "notes.txt").write_text("not a theme")
+            printed = self.check_folders(built_in, custom)
+            themes = self.write_with_env(themes_dir=built_in, custom_dir=custom)["themes"]
+        self.assertIn("'My Theme': names may use only lowercase letters", printed)
+        self.assertIn("'no-css': it has no theme.css", printed)
+        self.assertNotIn(".hidden", printed)
+        self.assertNotIn("Custom themes in", printed)
+        self.assertEqual([t["id"] for t in themes], ["retro-crt"])
+
+    def test_a_missing_custom_folder_is_fine(self):
+        with tempfile.TemporaryDirectory() as built_in:
+            self.make_theme(Path(built_in), "retro-crt")
+            printed = self.check_folders(Path(built_in), Path(built_in) / "missing")
+        self.assertEqual(printed, "")
 
     def test_long_subtitles_are_shortened(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "x" * 200})
