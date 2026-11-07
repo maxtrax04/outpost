@@ -50,6 +50,11 @@ function availableThemes(config) {
         .filter((theme) => theme.id);
 }
 
+// Each theme is a folder, so it can carry its own fonts and images next to theme.css
+function themeHref(name) {
+    return `themes/${validTheme(name) || DEFAULT_THEME}/theme.css`;
+}
+
 function chooseTheme(config, search, storage) {
     const params = new URLSearchParams(search !== undefined ? search : window.location.search);
     const fromAddress = validTheme(params.get("theme"));
@@ -92,13 +97,13 @@ async function applyTheme(config) {
     try {
         const { wanted } = chooseTheme(config);
         const link = document.getElementById("theme");
-        const href = `themes/${wanted}.css`;
+        const href = themeHref(wanted);
 
         if (link.getAttribute("href") !== href) {
             const loaded = await loadStylesheet(link, href);
             if (!loaded) {
                 console.error(`Theme "${wanted}" not found; using ${DEFAULT_THEME}`);
-                await loadStylesheet(link, `themes/${DEFAULT_THEME}.css`);
+                await loadStylesheet(link, themeHref(DEFAULT_THEME));
             }
         }
 
@@ -241,5 +246,5 @@ function renderThemeSwitcher(config) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-    module.exports = { DEFAULT_THEME, THEME_STORAGE_KEY, validTheme, readSavedTheme, writeSavedTheme, availableThemes, chooseTheme };
+    module.exports = { DEFAULT_THEME, THEME_STORAGE_KEY, validTheme, readSavedTheme, writeSavedTheme, availableThemes, chooseTheme, themeHref };
 }

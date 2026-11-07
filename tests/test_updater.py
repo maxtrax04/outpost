@@ -326,13 +326,20 @@ class ConfigTests(UpdaterTestCase):
     def test_no_theme_list_without_a_themes_folder(self):
         self.assertEqual(self.write_with_env()["themes"], [])
 
-    def test_theme_list_comes_from_the_css_files(self):
+    @staticmethod
+    def make_theme(folder, name, css=""):
+        (folder / name).mkdir()
+        (folder / name / "theme.css").write_text(css)
+
+    def test_theme_list_comes_from_the_theme_folders(self):
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
-            (folder / "retro-crt.css").write_text("/* Retro CRT: green phosphor terminal */\n:root {}")
-            (folder / "modern-dark.css").write_text("/* Modern Dark: clean and flat */\n:root {}")
-            (folder / "no-comment.css").write_text(":root {}")
-            (folder / "Bad Name.css").write_text("/* Bad: ignored */")
+            self.make_theme(folder, "retro-crt", "/* Retro CRT: green phosphor terminal */\n:root {}")
+            self.make_theme(folder, "modern-dark", "/* Modern Dark: clean and flat */\n:root {}")
+            self.make_theme(folder, "no-comment", ":root {}")
+            self.make_theme(folder, "Bad Name", "/* Bad: ignored */")
+            (folder / "empty-folder").mkdir()
+            (folder / "old-style.css").write_text("/* Old: a loose file is no longer a theme */")
             (folder / "notes.txt").write_text("not a theme")
             themes = self.write_with_env(themes_dir=folder)["themes"]
         self.assertEqual(themes, [
@@ -346,7 +353,19 @@ class ConfigTests(UpdaterTestCase):
             names = {t["id"]: t["name"] for t in u.list_themes()}
         self.assertEqual(names["retro-crt"], "Retro CRT")
         self.assertEqual(names["amber-terminal"], "Amber Terminal")
-        self.assertEqual(len(names), len(list((ROOT / "web" / "themes").glob("*.css"))))
+        self.assertEqual(len(names), len(list((ROOT / "web" / "themes").glob("*/theme.css"))))
+
+    def test_old_single_file_themes_are_reported(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            (folder / "my-theme.css").write_text(":root {}")
+            self.make_theme(folder, "retro-crt")
+            with mock.patch.object(u, "THEMES_DIR", folder):
+                u.warn_about_old_theme_files()
+        printed = " ".join(str(call.args[0]) for call in self.print.call_args_list)
+        self.assertEqual(self.print.call_count, 1)
+        self.assertIn("my-theme.css", printed)
+        self.assertIn("themes/my-theme/theme.css", printed)
 
     def test_long_subtitles_are_shortened(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "x" * 200})
@@ -359,13 +378,18 @@ class ConfigTests(UpdaterTestCase):
 
     def test_unknown_theme_falls_back(self):
         with tempfile.TemporaryDirectory() as folder:
-            (Path(folder) / "retro-crt.css").write_text("")
+            self.make_theme(Path(folder), "retro-crt")
             self.assertEqual(self.write_with_env(theme="nope", themes_dir=Path(folder))["theme"], "retro-crt")
 
     def test_existing_theme_is_used(self):
         with tempfile.TemporaryDirectory() as folder:
-            (Path(folder) / "mine.css").write_text("")
+            self.make_theme(Path(folder), "mine")
             self.assertEqual(self.write_with_env(theme="mine", themes_dir=Path(folder))["theme"], "mine")
+
+    def test_an_old_single_file_theme_is_not_used(self):
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / "mine.css").write_text("")
+            self.assertEqual(self.write_with_env(theme="mine", themes_dir=Path(folder))["theme"], "retro-crt")
 
 
 if __name__ == "__main__":
