@@ -60,7 +60,12 @@ async function checkTheme(browser, theme, name, viewport) {
         fonts: [...document.fonts].filter((font) => font.status === "error").map((font) => font.family),
         logoHeight: document.querySelector(".title-logo").getBoundingClientRect().height,
         titleTextSize: parseFloat(getComputedStyle(document.querySelector(".title-text")).fontSize),
+        gauges: document.querySelectorAll(".detail-box[data-gauge]").length,
+        humidity: getComputedStyle(document.documentElement).getPropertyValue("--wx-humidity"),
     }));
+    // Values for theme gauges (web/gauges.js) reach the page
+    if (state.gauges !== 6) problems.push(`${state.gauges} readings are marked as gauges, expected 6`);
+    if (!/^0?\.\d+$|^[01](\.0+)?$/.test(state.humidity.trim())) problems.push(`--wx-humidity is "${state.humidity}", expected 0..1`);
     // The header shows the logo or the text title (the theme's --title-logo), never both or neither
     if ((state.logoHeight > 0) === (state.titleTextSize > 0)) {
         problems.push(`the title shows ${state.logoHeight > 0 ? "both the logo and the text" : "neither the logo nor the text"}`);

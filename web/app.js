@@ -88,6 +88,7 @@ function renderForecast(periods) {
     periods.slice(0, 5).forEach(period => {
         const card = document.createElement("div");
         card.className = "forecast-card";
+        OutpostGauges.applyForecast(card, period);
 
         const day = text("forecast-day", formatDay(period.day));
 
@@ -255,6 +256,7 @@ async function loadWeather(config) {
         setText("lastUpdated", formatDateTime(weather.generated_at));
 
         setIcon(document.getElementById("currentIcon"), current.icon, current.condition);
+        OutpostGauges.applyCurrent(current);
 
         // Data is stale after 3 missed updates (interval comes from the updater)
         const staleAfterMs = Math.max(MIN_STALE_MS, (weather.update_interval_seconds || 60) * 3 * 1000);

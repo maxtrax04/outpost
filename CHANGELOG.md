@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Hooks for decorative themes: every reading is named (`data-metric="humidity"` and so on) and given to CSS as a value from 0 to 1 (`--wx-humidity`, and `--value` on its box), so a theme can draw dials and bars with CSS alone. Panels are named with `data-panel`, panels, readings, and forecast cards are free for `::before` and `::after` decorations, and a new full-screen `.frame` layer with `--frame-inset` takes a bezel. No change to how the existing themes look. See "Decorations and gauges" in `docs/themes.md`.
+
+### Fixed
+
+- Scanlines now cover the logo and weather icons too. Elements with a glow used to sit above them.
+
 ## [0.5.0-beta.3] - 2026-11-07
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.

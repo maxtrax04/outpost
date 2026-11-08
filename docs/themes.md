@@ -153,6 +153,65 @@ one color (the color is replaced by `--text`) and set its width-to-height ratio:
 A theme can also include normal CSS rules for one-off tweaks (see `command-center/theme.css`),
 but prefer tokens so your theme keeps working as the layout evolves.
 
+### Decorations and gauges
+
+Tokens change colors and sizes. For frames, plates, stripes, and dials, a theme adds normal CSS rules
+that use the hooks below. All of them are optional.
+
+**Places to draw.** `::before` and `::after` are free on these elements, and each one is
+`position: relative`, so `position: absolute` places a decoration inside it.
+
+| Selector | What it is |
+|---|---|
+| `.panel` | Every panel. One panel: `[data-panel="header"]`, `"banner"` (the warning banner), `"current"`, `"forecast"`, or `"alerts"` |
+| `.detail-box` | Each reading in the current-weather panel. One reading: `[data-metric="humidity"]` (names below) |
+| `.forecast-card` | Each forecast day |
+| `.frame` | An empty layer over the whole screen, above the content and scanlines, for a bezel. Set `--frame-inset` (for example `--frame-inset: 32px;` in `:root`) to move the content in from the edges so the bezel does not cover it |
+
+Decorations must not cover text, and should not catch taps (`.frame` already ignores them).
+
+**Values for gauges.** Each reading is given to CSS as a number from `0` to `1`, so a dial or bar
+needs no code. The scale stays the same whatever units the dashboard shows. A value outside the range
+stops at `0` or `1`.
+
+| Reading | `data-metric` | Property on the page | `0` | `1` |
+|---|---|---|---|---|
+| Temperature | `temperature` | `--wx-temperature` | -20 °F | 120 °F |
+| Feels like | `feels-like` | `--wx-feels-like` | -20 °F | 120 °F |
+| Humidity | `humidity` | `--wx-humidity` | 0% | 100% |
+| Wind | `wind` | `--wx-wind` | 0 mph | 60 mph |
+| Pressure | `pressure` | `--wx-pressure` | 28.5 inHg (965 hPa) | 31 inHg (1050 hPa) |
+| UV index | `uv` | `--wx-uv` | 0 | 11 |
+| Visibility | `visibility` | `--wx-visibility` | 0 mi | 10 mi |
+
+The element with that `data-metric` also gets the value as `--value` and a `data-gauge` attribute, so
+one rule can draw every dial. When a reading is not available, `--value` and `--wx-<name>` are removed
+and the element gets `data-missing`. The `sunrise`, `sunset`, and `updated` boxes have a `data-metric`
+but no value.
+
+Each forecast card gets `--wx-high` and `--wx-low` (same scale as temperature), `--wx-rain` (chance of
+rain, 0 to 100%), and `--wx-uv`.
+
+For example, a needle in the corner of every reading that has a value:
+
+```css
+.detail-box[data-gauge]:not([data-missing])::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    bottom: 10px;
+    width: 2px;
+    height: 16px;
+    background: var(--accent);
+    transform-origin: bottom center;
+    transform: rotate(calc(-90deg + var(--value) * 180deg));
+}
+```
+
+Images a theme draws with (a dial face, a bezel, a stripe tile) go in its folder, like any other file.
+For a frame that fits any screen shape, use `border-image` with a nine-slice image: its corners keep
+their size and its edges stretch, so one file works on a phone, a portrait tablet, and a wide screen.
+
 ### Fonts in themes
 
 Only use fonts you can legally ship. The bundled Share Tech Mono is available to every theme,

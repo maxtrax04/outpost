@@ -34,7 +34,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
 
     def test_scripts_are_loaded_in_the_right_order(self):
         scripts = re.findall(r'<script src="([^"]+)"', self.html)
-        self.assertEqual(scripts, ["dim.js", "themes.js", "app.js"])
+        self.assertEqual(scripts, ["dim.js", "themes.js", "gauges.js", "app.js"])
 
     def test_every_script_file_exists(self):
         for name in re.findall(r'<script src="([^"]+)"', self.html):

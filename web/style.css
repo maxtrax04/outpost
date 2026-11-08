@@ -78,6 +78,7 @@ body::before {
     content: "";
     position: fixed;
     inset: 0;
+    z-index: 40; /* above the content (see "Layers" below) */
     pointer-events: none;
     opacity: var(--scanlines);
     background: repeating-linear-gradient(
@@ -88,6 +89,18 @@ body::before {
         transparent 4px
     );
     mix-blend-mode: overlay;
+}
+
+/* Layers, bottom to top: page content, scanlines (40), the .frame decoration (50), the theme
+   switcher (100), and the night dimming (9999). */
+
+/* An empty full-screen layer for a theme to draw a bezel or frame on (with ::before and ::after, or
+   a background). It never catches taps. */
+.frame {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
 }
 
 /* Day/night dimming: a black layer whose opacity is set from --dim (1 = full brightness).
@@ -106,15 +119,18 @@ body::before {
 main {
     width: min(1200px, 100vw);
     margin: 0 auto;
-    padding: 28px;
+    /* --frame-inset (optional, set by a theme with a .frame bezel) keeps content inside the bezel */
+    --pad: calc(28px + var(--frame-inset, 0px));
+    padding: var(--pad);
     /* Keep content clear of notches and rounded screen corners */
-    padding-top: max(28px, env(safe-area-inset-top));
-    padding-right: max(28px, env(safe-area-inset-right));
-    padding-bottom: max(28px, env(safe-area-inset-bottom));
-    padding-left: max(28px, env(safe-area-inset-left));
+    padding-top: max(var(--pad), env(safe-area-inset-top));
+    padding-right: max(var(--pad), env(safe-area-inset-right));
+    padding-bottom: max(var(--pad), env(safe-area-inset-bottom));
+    padding-left: max(var(--pad), env(safe-area-inset-left));
 }
 
 .panel {
+    position: relative; /* so a theme can place decorations with ::before and ::after */
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius);
     background: var(--panel);
@@ -210,6 +226,7 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 }
 
 .detail-box {
+    position: relative;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 12px;
@@ -223,6 +240,7 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 }
 
 .forecast-card {
+    position: relative;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px;
