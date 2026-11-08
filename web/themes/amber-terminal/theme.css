@@ -23,6 +23,7 @@
     --font-display: "Share Tech Mono", "Courier New", monospace;
     --font-body: "Share Tech Mono", "Courier New", monospace;
     --title-spacing: 0.14em;
+    --title-logo: 1;
 }
 
 /* Inverse video (dark text on an amber block) makes the weather condition stand out

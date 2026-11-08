@@ -23,6 +23,7 @@
     --font-display: "Share Tech Mono", "Courier New", monospace;
     --font-body: "Share Tech Mono", "Courier New", monospace;
     --title-spacing: 0.2em;
+    --title-logo: 1;
 }
 
 /* A file from the theme's own folder: url() paths are relative to this theme.css. */

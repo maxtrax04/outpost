@@ -18,6 +18,7 @@ docs/
 .github/
 scripts/
 examples/
+design/
 tests/
 docker-compose*.yml
 

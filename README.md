@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/logo-banner.svg" alt="Outpost logo: a riveted stencil plate reading OUTPOST" width="480"></p>
+
 # Outpost
 
 [![CI](https://github.com/maxtrax04/outpost/actions/workflows/ci.yml/badge.svg)](https://github.com/maxtrax04/outpost/actions/workflows/ci.yml)
@@ -127,7 +129,7 @@ A Community Apps template is planned. Until then, you can add the container manu
 ```
 app/        Updater, health check, and provider modules (Python)
 web/        Dashboard front end (HTML, CSS, JS)
-assets/     Weather icons, app (home-screen) icons, and fonts
+assets/     Weather icons, app (home-screen) icons, the logo, and fonts
 tests/      Automated tests and sample data
 data/       Generated weather.json and config.json (runtime, not committed)
 ```
@@ -178,6 +180,12 @@ Outpost ships an original, monochrome icon set (13 icons covering clear, cloudy,
 ![Outpost icon set](docs/images/icon-set.png)
 
 To add or change an icon, draw it on a 64x64 grid with a 3px stroke, square caps, and `currentColor`, then add its name to the `ICONS` list in `web/app.js`.
+
+### Logo
+
+The Outpost logo is an original stencil plate design in `assets/logo/`: `mark.svg` (the square "OP" plate), `wordmark.svg` (the plate reading OUTPOST, shown in the dashboard header), and `lockup.svg` (both together). Like the icons, they are one-color SVGs tinted with CSS, so each theme shows them in its own colors. A theme can show the plain text title instead (see `--title-logo` in [docs/themes.md](docs/themes.md#tokens)).
+
+The favicon and home-screen icons in `assets/app/` are made from `mark.svg`. After changing the mark, rebuild them with `scripts/build-app-icons.js` (the command is at the top of the file); a test fails if the favicon no longer matches the mark.
 
 ## Development
 

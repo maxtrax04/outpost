@@ -41,6 +41,7 @@
     --font-display: "Share Tech Mono", "Courier New", monospace;
     --font-body: "Share Tech Mono", "Courier New", monospace;
     --title-spacing: 0.14em;
+    --title-logo: 1;
 }
 
 * { box-sizing: border-box; }
@@ -125,11 +126,33 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 
 .header { text-align: center; }
 
+/* The title is the logo (--title-logo: 1) or the word OUTPOST in the theme's font (--title-logo: 0).
+   The text stays in the page either way, so screen readers always read it. */
 .title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(3rem, 9vw, 7rem);
-    letter-spacing: var(--title-spacing);
     font-weight: bold;
+}
+
+/* A filter is applied before a mask, so the glow goes on a wrapper (like .wx-glow) */
+.title-logo-glow { filter: var(--icon-glow); }
+
+.title-logo {
+    display: block;
+    height: calc(var(--title-logo) * clamp(3.5rem, 11vw, 7.5rem));
+    aspect-ratio: 148 / 44;
+    background-color: currentColor;
+    /* A theme can use its own logo with a rule here; the url is relative to its theme.css */
+    -webkit-mask: url("assets/logo/wordmark.svg") center / contain no-repeat;
+    mask: url("assets/logo/wordmark.svg") center / contain no-repeat;
+}
+
+.title-text {
+    font-size: calc((1 - var(--title-logo)) * clamp(3rem, 9vw, 7rem));
+    letter-spacing: var(--title-spacing);
 }
 
 .subtitle {

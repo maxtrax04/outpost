@@ -130,7 +130,25 @@ the first colon in the file's opening comment, so `/* Retro CRT: green phosphor 
 | `--scanlines` | Scanline strength from `0` (off) to `1` |
 | `--font-display` | Title and large temperature |
 | `--font-body` | Everything else |
-| `--title-spacing` | Letter spacing of the "OUTPOST" title |
+| `--title-logo` | `1` shows the Outpost logo as the title, `0` shows the word OUTPOST in `--font-display` |
+| `--title-spacing` | Letter spacing of the text title (when `--title-logo` is `0`) |
+
+### Logo
+
+The header shows the Outpost logo, tinted with `--text` and glowing with `--icon-glow`, when a theme sets
+`--title-logo: 1`. With `--title-logo: 0` it shows the word OUTPOST in the theme's display font and
+`--title-spacing` instead (`modern-dark` does this). Screen readers read "OUTPOST" either way.
+
+To show your own logo, add a rule to your `theme.css` and put the file in the theme's folder. Draw it in
+one color (the color is replaced by `--text`) and set its width-to-height ratio:
+
+```css
+.title-logo {
+    -webkit-mask-image: url("logo.svg");
+    mask-image: url("logo.svg");
+    aspect-ratio: 3 / 1;
+}
+```
 
 A theme can also include normal CSS rules for one-off tweaks (see `command-center/theme.css`),
 but prefer tokens so your theme keeps working as the layout evolves.
