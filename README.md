@@ -71,6 +71,8 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
 | `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
+| `OUTPOST_EFFECTS` | `full` | `reduced` turns off scanlines, glow, and animation for everyone. See [Reduced effects](#reduced-effects). |
+| `OUTPOST_EFFECTS_TOGGLE` | `true` | Show the "Reduced effects" checkbox in the theme panel. Set `false` so viewers cannot change `OUTPOST_EFFECTS`. |
 | `OUTPOST_AUTO_DIM` | `true` | Dim the display at night. See [Day/night dimming](#daynight-dimming). |
 | `OUTPOST_DIM_LEVEL` | `0.35` | Night brightness, from `0.05` (very dark) to `1` (no dimming). |
 | `OUTPOST_DIM_MODE` | `sun` | `sun` follows sunset and sunrise; `schedule` uses fixed times. |
@@ -143,6 +145,15 @@ Anyone viewing the dashboard can also pick a theme with the small button in the 
 Themes are small CSS files, so making your own is easy. Mount a folder of your own themes at `/config/themes` to add them without rebuilding the image; [examples/themes/](examples/themes/) has one to start from. See [docs/themes.md](docs/themes.md).
 
 <!-- TODO (public beta): add a screenshot of each theme here -->
+
+### Reduced effects
+
+Scanlines, glow, and animation can be turned off in every theme, which helps readability and slow wall tablets:
+
+- **For everyone:** set `OUTPOST_EFFECTS=reduced`.
+- **Automatically:** a device set to reduce motion (in its accessibility settings) gets reduced effects.
+- **Per browser:** the "Reduced effects" checkbox in the theme panel turns them off or back on in that browser, and wins over the two above. "Use server default" forgets it. Set `OUTPOST_EFFECTS_TOGGLE=false` to remove the checkbox, so everyone gets `OUTPOST_EFFECTS`. The checkbox is in the theme panel, so `OUTPOST_THEME_SWITCHER=false` removes it too.
+- **To preview:** add `?effects=reduced` (or `?effects=full`) to the address.
 
 ## Alerts
 

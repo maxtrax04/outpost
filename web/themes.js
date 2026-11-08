@@ -197,10 +197,16 @@ function buildThemeList() {
         list.appendChild(option);
     }
 
+    // Reduced-effects toggle (web/effects.js), unless the server hides it
+    const effects = document.getElementById("effectsToggle");
+    effects.hidden = !OutpostEffects.toggleAllowed(themeConfig);
+    effects.setAttribute("aria-checked", String(OutpostEffects.current() === "reduced"));
+    const savedEffects = !effects.hidden && OutpostEffects.savedChoice();
+
     const serverName = (themes.find((theme) => theme.id === server) || {}).name || server;
-    reset.hidden = !saved;
+    reset.hidden = !(saved || savedEffects);
     reset.textContent = `Use server default (${serverName})`;
-    note.textContent = saved ? "Saved in this browser." : "Using the server's theme.";
+    note.textContent = saved || savedEffects ? "Saved in this browser." : "Using the server's settings.";
 }
 
 async function selectTheme(id) {
@@ -217,6 +223,7 @@ async function selectTheme(id) {
 
 async function resetTheme() {
     writeSavedTheme(null);
+    OutpostEffects.clear();
     sessionTheme = null;
     removeThemeFromAddress();
     await applyTheme(themeConfig);
@@ -236,6 +243,13 @@ function wireThemeSwitcher() {
     });
 
     document.getElementById("themeReset").addEventListener("click", resetTheme);
+    document.getElementById("effectsToggle").addEventListener("click", () => {
+        const stored = OutpostEffects.toggle();
+        buildThemeList();
+        if (!stored) {
+            document.getElementById("themeNote").textContent = "This browser blocks saving; the choice lasts until you reload.";
+        }
+    });
 
     document.addEventListener("click", (event) => {
         if (themePanelOpen() && !panel.contains(event.target) && !button.contains(event.target)) {

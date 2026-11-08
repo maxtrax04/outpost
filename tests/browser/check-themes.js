@@ -99,6 +99,56 @@ async function checkSwitching(browser, themes) {
     return problems;
 }
 
+async function checkReducedEffects(browser) {
+    // Reduced effects (web/effects.js): from the device setting, the address, and the viewer's toggle
+    const problems = [];
+    const effectsState = (page) => page.evaluate(() => ({
+        effects: document.documentElement.dataset.effects,
+        scanlines: getComputedStyle(document.body, "::before").opacity,
+        glow: getComputedStyle(document.querySelector(".title-logo-glow")).filter,
+        textShadow: getComputedStyle(document.body).textShadow,
+    }));
+    const isReduced = (s) => s.effects === "reduced" && s.scanlines === "0" && s.glow === "none" && s.textShadow === "none";
+    const open = async (page, path) => {
+        await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
+        await waitFor(page, () => !document.body.classList.contains("theme-loading"), null, 3000);
+        return effectsState(page);
+    };
+
+    // A device set to reduce motion gets reduced effects, and the page still renders
+    let page = await browser.newPage({ viewport: VIEWPORTS.wide, reducedMotion: "reduce" });
+    let state = await open(page, "/");
+    if (!isReduced(state)) problems.push(`a device set to reduce motion got ${JSON.stringify(state)}`);
+    if (!await waitFor(page, () => /\d/.test(document.getElementById("temperature").textContent), null, 3000)) {
+        problems.push("the weather never appeared with reduced effects");
+    }
+    await page.close();
+
+    page = await browser.newPage({ viewport: VIEWPORTS.wide, reducedMotion: "no-preference" });
+    state = await open(page, "/");
+    if (state.effects !== "full") problems.push(`effects are "${state.effects}" by default, expected full`);
+    state = await open(page, "/?effects=reduced");
+    if (!isReduced(state)) problems.push(`?effects=reduced gave ${JSON.stringify(state)}`);
+
+    // The checkbox in the theme panel turns them off, is remembered, and "Use server default" undoes it
+    state = await open(page, "/");
+    await page.click("#themeButton");
+    await page.click("#effectsToggle");
+    if (!await waitFor(page, () => document.documentElement.dataset.effects === "reduced", null, 2000)) {
+        problems.push("the Reduced effects checkbox did not reduce effects");
+    }
+    if (await page.getAttribute("#effectsToggle", "aria-checked") !== "true") problems.push("the checkbox is not shown as checked");
+    state = await open(page, "/");
+    if (!isReduced(state)) problems.push(`the checkbox choice was not remembered after a reload: ${JSON.stringify(state)}`);
+    await page.click("#themeButton");
+    await page.click("#themeReset");
+    if (!await waitFor(page, () => document.documentElement.dataset.effects === "full", null, 2000)) {
+        problems.push('"Use server default" did not bring the effects back');
+    }
+    await page.close();
+    return problems;
+}
+
 async function checkFraming(browser) {
     // A page on another site must not be able to show the dashboard in a frame
     const page = await browser.newPage();
@@ -131,6 +181,7 @@ async function checkFraming(browser) {
         }
     }
     report("switching themes with the on-screen switcher", await checkSwitching(browser, themes));
+    report("reduced effects (device setting, address, and checkbox)", await checkReducedEffects(browser));
     report("embedding from another site is blocked", await checkFraming(browser));
 
     await browser.close();

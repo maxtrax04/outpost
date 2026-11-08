@@ -76,9 +76,10 @@
         </svg>
     </button>
 
-    <div id="themePanel" class="theme-panel" role="menu" aria-label="Choose a theme" hidden>
+    <div id="themePanel" class="theme-panel" role="menu" aria-label="Theme and display options" hidden>
         <div class="theme-panel-title">THEME</div>
         <div id="themeList"></div>
+        <button id="effectsToggle" class="theme-option effects-toggle" type="button" role="menuitemcheckbox" aria-checked="false" hidden>Reduced effects</button>
         <button id="themeReset" class="theme-reset" type="button" hidden>Use server default</button>
         <div id="themeNote" class="theme-note"></div>
     </div>
@@ -88,6 +89,7 @@
     <div id="dim-overlay"></div>
 
     <script src="dim.js"></script>
+    <script src="effects.js"></script>
     <script src="themes.js"></script>
     <script src="gauges.js"></script>
     <script src="app.js"></script>

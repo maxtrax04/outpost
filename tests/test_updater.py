@@ -12,6 +12,7 @@ import outpost_updater as u
 from providers import nws, openmeteo
 
 DIM_VARS = ["OUTPOST_AUTO_DIM", "OUTPOST_DIM_LEVEL", "OUTPOST_DIM_MODE", "OUTPOST_DIM_START", "OUTPOST_DIM_END"]
+UI_VARS = ["OUTPOST_SUBTITLE", "OUTPOST_ALERTS_ALWAYS_SHOW", "OUTPOST_THEME_SWITCHER", "OUTPOST_EFFECTS", "OUTPOST_EFFECTS_TOGGLE"]
 
 
 def nws_data():
@@ -274,7 +275,7 @@ class AutoProviderTests(UpdaterTestCase):
 class ConfigTests(UpdaterTestCase):
     def write_with_env(self, env=None, theme="retro-crt", themes_dir=None, custom_dir=None):
         with mock.patch.dict(os.environ):
-            for name in DIM_VARS:
+            for name in DIM_VARS + UI_VARS:
                 os.environ.pop(name, None)
             os.environ.update(env or {})
             with mock.patch.object(u, "THEME", theme), \
@@ -315,11 +316,13 @@ class ConfigTests(UpdaterTestCase):
 
     def test_ui_defaults(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "", "OUTPOST_ALERTS_ALWAYS_SHOW": ""})
-        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False, "theme_switcher": True})
+        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False, "theme_switcher": True,
+                                        "effects": "full", "effects_toggle": True})
 
     def test_ui_settings(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "  {date}  ", "OUTPOST_ALERTS_ALWAYS_SHOW": "True"})
-        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True, "theme_switcher": True})
+        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True, "theme_switcher": True,
+                                        "effects": "full", "effects_toggle": True})
 
     def test_alerts_flag_accepts_common_spellings(self):
         for value, expected in (("1", True), ("yes", True), ("ON", True), ("false", False), ("0", False), ("nonsense", False)):
@@ -332,6 +335,22 @@ class ConfigTests(UpdaterTestCase):
             with self.subTest(value=value):
                 self.assertFalse(self.write_with_env({"OUTPOST_THEME_SWITCHER": value})["ui"]["theme_switcher"])
         self.assertTrue(self.write_with_env({"OUTPOST_THEME_SWITCHER": "true"})["ui"]["theme_switcher"])
+
+    def test_effects_can_be_reduced_for_everyone(self):
+        for value in ("reduced", "REDUCED", " reduced "):
+            with self.subTest(value=value):
+                self.assertEqual(self.write_with_env({"OUTPOST_EFFECTS": value})["ui"]["effects"], "reduced")
+        self.assertEqual(self.write_with_env({"OUTPOST_EFFECTS": "full"})["ui"]["effects"], "full")
+
+    def test_unknown_effects_value_warns_and_uses_full(self):
+        self.assertEqual(self.write_with_env({"OUTPOST_EFFECTS": "minimal"})["ui"]["effects"], "full")
+        self.assertTrue(any("OUTPOST_EFFECTS" in str(call) for call in self.print.call_args_list))
+
+    def test_effects_toggle_can_be_hidden(self):
+        for value in ("false", "0", "no", "off"):
+            with self.subTest(value=value):
+                self.assertFalse(self.write_with_env({"OUTPOST_EFFECTS_TOGGLE": value})["ui"]["effects_toggle"])
+        self.assertTrue(self.write_with_env({"OUTPOST_EFFECTS_TOGGLE": "true"})["ui"]["effects_toggle"])
 
     def test_no_theme_list_without_a_themes_folder(self):
         self.assertEqual(self.write_with_env()["themes"], [])

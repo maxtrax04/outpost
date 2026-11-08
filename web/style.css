@@ -356,6 +356,31 @@ footer {
 .theme-reset { margin-top: 6px; color: var(--accent); }
 .theme-note { margin-top: 8px; font-size: 0.85rem; color: var(--text-dim); }
 
+/* The reduced-effects toggle is a checkbox, not a theme: [x] or [ ], set apart from the list */
+.effects-toggle { margin-top: 8px; }
+.theme-option.effects-toggle::before { content: "[ ] "; }
+.theme-option.effects-toggle[aria-checked="true"]::before { content: "[x] "; }
+
+/* ---- Reduced effects ---------------------------------------------------------
+   web/effects.js sets data-effects="reduced" (OUTPOST_EFFECTS, the viewer's toggle, or the
+   device's reduced-motion setting). Scanlines, glow, and animation go in every theme, which
+   also helps slow wall tablets. A theme's own effects should check it too (docs/themes.md).
+   These win over a theme's :root tokens because the selector is more specific. */
+:root[data-effects="reduced"] {
+    --scanlines: 0;
+    --text-glow: none;
+    --icon-glow: none;
+}
+
+/* body keeps its reveal animation (the safety net in body.theme-loading), and the night
+   dimming keeps its slow fade */
+:root[data-effects="reduced"] *:not(body):not(#dim-overlay),
+:root[data-effects="reduced"] *::before,
+:root[data-effects="reduced"] *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
 /* ---- Small screens ----------------------------------------------------------
    Tablets and phones: stack the current conditions, use three columns of detail
    boxes, and keep the forecast to one row of five cards.                      */

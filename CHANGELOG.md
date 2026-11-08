@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0-beta.5] - 2026-11-07
+
+This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+
+### Added
+
+- Reduced effects: scanlines, glow, and animation can be turned off in every theme, for readability and for slow wall tablets. `OUTPOST_EFFECTS=reduced` does it for everyone, a device set to reduce motion gets it automatically, and a "Reduced effects" checkbox in the theme panel lets each viewer turn effects off or back on in their browser. `OUTPOST_EFFECTS_TOGGLE=false` removes the checkbox. Add `?effects=reduced` to the address to preview it. See "Reduced effects" in the README, and in `docs/themes.md` for theme authors.
+
+### Upgrading from 0.5.0-beta.4
+
+- Nothing is required. To turn effects off for everyone, add `OUTPOST_EFFECTS=reduced` to your `.env`.
+- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.5`.
+
 ## [0.5.0-beta.4] - 2026-11-07
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
