@@ -58,7 +58,13 @@ async function checkTheme(browser, theme, name, viewport) {
         icons: [...document.querySelectorAll(".wx-icon")]
             .filter((element) => getComputedStyle(element).getPropertyValue("--icon").includes("assets/icons/")).length,
         fonts: [...document.fonts].filter((font) => font.status === "error").map((font) => font.family),
+        logoHeight: document.querySelector(".title-logo").getBoundingClientRect().height,
+        titleTextSize: parseFloat(getComputedStyle(document.querySelector(".title-text")).fontSize),
     }));
+    // The header shows the logo or the text title (the theme's --title-logo), never both or neither
+    if ((state.logoHeight > 0) === (state.titleTextSize > 0)) {
+        problems.push(`the title shows ${state.logoHeight > 0 ? "both the logo and the text" : "neither the logo nor the text"}`);
+    }
     if (state.applied !== theme) problems.push(`theme applied is "${state.applied}", expected "${theme}"`);
     if (state.themeLinks !== 1) problems.push(`${state.themeLinks} theme stylesheets on the page, expected 1`);
     if (state.icons === 0) problems.push("no weather icons were set");

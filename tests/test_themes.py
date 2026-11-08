@@ -77,6 +77,13 @@ class ThemeTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(f"`{token}`", docs)
 
+    def test_title_logo_is_on_or_off(self):
+        # style.css multiplies sizes by it, so anything but 0 or 1 would shrink or blow up the title
+        for path in self.themes:
+            values = re.findall(r"--title-logo\s*:\s*([^;]+);", path.read_text(encoding="utf-8"))
+            with self.subTest(theme=path.parent.name):
+                self.assertTrue(set(v.strip() for v in values) <= {"0", "1"}, values)
+
     def test_text_is_readable_on_the_background(self):
         # Minimum contrast ratios: main text 7 (WCAG AAA), colored text 4.5 (AA), dim text 3.5
         minimums = {"--text": 7.0, "--accent": 4.5, "--warn": 4.5, "--danger": 4.5, "--text-dim": 3.5}

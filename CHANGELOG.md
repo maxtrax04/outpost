@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0-beta.3] - 2026-11-07
+
+This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+
+### Added
+
+- An original Outpost logo: a riveted stencil plate. The dashboard header shows it in place of the text title, in each theme's colors and glow. The files are in `assets/logo/` (`mark.svg`, `wordmark.svg`, `lockup.svg`), and the README shows it at the top.
+- `--title-logo` theme token: `1` shows the logo as the title, `0` shows the word OUTPOST in the theme's font as before. `modern-dark` uses `0`. A custom theme made before this release shows the logo. A theme can also use its own logo file; see "Logo" in `docs/themes.md`.
+- `scripts/build-app-icons.js` rebuilds the favicon and home-screen icons from the logo.
+
+### Changed
+
+- The favicon and home-screen icons are the Outpost "OP" plate instead of the sun icon. A phone that already has Outpost on its home screen may keep the old icon until it is removed and added again.
+- The header title is now a heading (`<h1>`), so screen readers can jump to it.
+
+### Upgrading from 0.5.0-beta.2
+
+- Nothing is required. A custom theme now shows the logo as its title; to keep the text title, add `--title-logo: 0;` to its `:root` block.
+- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.3`.
+
 ## [0.5.0-beta.2] - 2026-11-07
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.

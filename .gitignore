@@ -44,3 +44,9 @@ ci-themes/
 /themes/
 tests/browser/node_modules/
 tests/browser/package*.json
+
+# ---------------------------------------------------------------
+# Design working files (Illustrator masters, logo concepts).
+# Finished, cleaned SVGs are committed under assets/ instead.
+# ---------------------------------------------------------------
+design/

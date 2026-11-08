@@ -23,6 +23,7 @@
     --font-display: "Share Tech Mono", "Courier New", monospace;
     --font-body: "Share Tech Mono", "Courier New", monospace;
     --title-spacing: 0.3em;
+    --title-logo: 1;
 }
 
 .panel { border-left-width: 4px; }
