@@ -212,6 +212,23 @@ Images a theme draws with (a dial face, a bezel, a stripe tile) go in its folder
 For a frame that fits any screen shape, use `border-image` with a nine-slice image: its corners keep
 their size and its edges stretch, so one file works on a phone, a portrait tablet, and a wide screen.
 
+### Reduced effects
+
+When effects are reduced (see "Reduced effects" in the [README](../README.md#reduced-effects)), the page has
+`data-effects="reduced"` on `<html>`. Outpost then sets `--scanlines: 0`, `--text-glow: none`, and
+`--icon-glow: none` over any theme, and stops all animations and transitions. A theme does not need to
+do anything for those.
+
+If a theme adds its own effects, such as a flicker, a glowing bezel, a moving needle, or a busy background
+image, turn them off there too:
+
+```css
+:root[data-effects="reduced"] .frame { box-shadow: none; }
+:root[data-effects="reduced"] body { background-image: none; }
+```
+
+Decorations that do not move, such as a plain bezel or a dial face, can stay.
+
 ### Fonts in themes
 
 Only use fonts you can legally ship. The bundled Share Tech Mono is available to every theme,

@@ -187,6 +187,18 @@ def env_flag(name: str, default: bool) -> bool:
         return default
     return value.strip().lower() in ("1", "true", "yes", "on")
 
+EFFECTS_VALUES = ("full", "reduced")
+
+def effects_setting() -> str:
+    """OUTPOST_EFFECTS: full (default) or reduced (no scanlines, glow, or animation for anyone)."""
+    value = os.getenv("OUTPOST_EFFECTS", "").strip().lower()
+    if not value:
+        return "full"
+    if value in EFFECTS_VALUES:
+        return value
+    print(f"[Outpost] Unknown OUTPOST_EFFECTS \"{value}\" (use full or reduced); using full", file=sys.stderr, flush=True)
+    return "full"
+
 def build_ui_config() -> Dict[str, Any]:
     """Dashboard display settings from the environment."""
     subtitle = os.getenv("OUTPOST_SUBTITLE", "").strip()
@@ -198,6 +210,8 @@ def build_ui_config() -> Dict[str, Any]:
         "subtitle": subtitle,
         "alerts_always_show": env_flag("OUTPOST_ALERTS_ALWAYS_SHOW", False),
         "theme_switcher": env_flag("OUTPOST_THEME_SWITCHER", True),
+        "effects": effects_setting(),
+        "effects_toggle": env_flag("OUTPOST_EFFECTS_TOGGLE", True),
     }
 
 THEME_FILE = "theme.css"

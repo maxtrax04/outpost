@@ -34,7 +34,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
 
     def test_scripts_are_loaded_in_the_right_order(self):
         scripts = re.findall(r'<script src="([^"]+)"', self.html)
-        self.assertEqual(scripts, ["dim.js", "themes.js", "gauges.js", "app.js"])
+        self.assertEqual(scripts, ["dim.js", "effects.js", "themes.js", "gauges.js", "app.js"])
 
     def test_every_script_file_exists(self):
         for name in re.findall(r'<script src="([^"]+)"', self.html):
@@ -46,7 +46,8 @@ class FrontEndConsistencyTests(unittest.TestCase):
 
     def test_settings_the_script_reads_are_written_by_the_updater(self):
         updater = read("app/outpost_updater.py")
-        for key in ("latitude", "longitude", "theme", "themes", "dim", "ui", "subtitle", "alerts_always_show", "theme_switcher"):
+        for key in ("latitude", "longitude", "theme", "themes", "dim", "ui", "subtitle", "alerts_always_show", "theme_switcher",
+                    "effects", "effects_toggle"):
             with self.subTest(key=key):
                 self.assertIn(f'"{key}"', updater)
 

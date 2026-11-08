@@ -32,6 +32,6 @@ Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (rel
 
 ## Current state
 - v0.4.0 released. v0.5.0 is being shipped as betas (`0.5.0-beta.N`, see "Beta releases" in `docs/releasing.md`); at 0.5.0, fold the beta CHANGELOG sections into one.
-- v0.5.0-beta.1: folder-per-theme (#17, breaking). v0.5.0-beta.2: external themes (#18), security headers and CSP (#19), theme-loading fix. v0.5.0-beta.3: logo (#20). Still to do for v0.5.0: original decorative themes, community themes repo.
+- v0.5.0-beta.1: folder-per-theme (#17, breaking). v0.5.0-beta.2: external themes (#18), security headers and CSP (#19), theme-loading fix. v0.5.0-beta.3: logo (#20). v0.5.0-beta.4: theme hooks for decorations and gauges (#57, part of #21). v0.5.0-beta.5: reduced effects (#58). Still to do for v0.5.0: the decorative themes Field Station (#59) and an Atomic Age broadcast theme (#60), and the community themes repo (#22).
 - The CSP has no `unsafe-inline` or `unsafe-eval`: no inline scripts, styles, or `style=` attributes (CSSOM `style.setProperty` is fine). Playwright's `page.waitForFunction` is blocked by it too; `tests/browser/check-themes.js` polls with `page.evaluate` instead.
 - Not verified on real iOS/Android or with the real Share Tech Mono file.

@@ -344,6 +344,7 @@ function applyDim(config) {
 async function refresh() {
     const config = await loadConfig();
     applyDim(config);
+    OutpostEffects.apply(config);
     await applyTheme(config);
     renderThemeSwitcher(config);
     renderSubtitle(config);
