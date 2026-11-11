@@ -129,6 +129,8 @@ THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
 THEMES_DIR = Path("/usr/share/nginx/html/themes")
 # People mount their own themes here. nginx checks it first too (see nginx/default.conf).
 CUSTOM_THEMES_DIR = Path("/config/themes")
+# Community themes downloaded by outpost_community.py (OUTPOST_COMMUNITY_THEMES)
+COMMUNITY_THEMES_DIR = Path("/data/community/themes")
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -231,16 +233,22 @@ def build_ui_config() -> Dict[str, Any]:
     }
 
 THEME_FILE = "theme.css"
-THEME_NAME_PATTERN = r"[a-z0-9-]+"
+FOLDER_NAME_PATTERN = r"[a-z0-9-]+"
+# A theme id is a folder name, or <username>/<theme> for a community theme (a theme folder inside
+# a folder named after the person who made it)
+THEME_NAME_PATTERN = rf"{FOLDER_NAME_PATTERN}(?:/{FOLDER_NAME_PATTERN})?"
 
 def theme_dirs() -> List[Path]:
-    """Where themes are looked up, in order: the mounted custom folder, then the built-in themes."""
-    return [CUSTOM_THEMES_DIR, THEMES_DIR]
+    """
+    Where themes are looked up, in order: the mounted custom folder, downloaded community themes,
+    then the built-in themes. nginx serves theme files in the same order.
+    """
+    return [CUSTOM_THEMES_DIR, COMMUNITY_THEMES_DIR, THEMES_DIR]
 
 def find_theme(theme_id: str) -> Optional[Path]:
     """
     The theme.css for a theme id, or None. Each theme is a folder, <id>/theme.css, so it can carry
-    its own fonts and images. A custom theme wins over a built-in theme with the same id.
+    its own fonts and images. The first folder in theme_dirs() that has the theme wins.
     """
     if not re.fullmatch(THEME_NAME_PATTERN, theme_id):
         return None
@@ -264,19 +272,44 @@ def theme_label(path: Path) -> str:
         return match.group(1).strip()
     return path.parent.name.replace("-", " ").title()
 
+def is_theme_folder(path: Path) -> bool:
+    return path.is_dir() and re.fullmatch(FOLDER_NAME_PATTERN, path.name) is not None and (path / THEME_FILE).is_file()
+
+def is_owner_folder(path: Path) -> bool:
+    """A folder named after a person, holding their themes (<username>/<theme>/theme.css)."""
+    return (path.is_dir() and re.fullmatch(FOLDER_NAME_PATTERN, path.name) is not None
+            and not (path / THEME_FILE).is_file()
+            and any(is_theme_folder(child) for child in path.iterdir()))
+
 def theme_ids_in(folder: Path) -> List[str]:
-    """The valid theme folders (a usable name and a theme.css) directly inside one folder."""
+    """
+    The valid themes in one folder: theme folders directly inside it (a usable name and a
+    theme.css), and <username>/<theme> folders one level down.
+    """
     if not folder.is_dir():
         return []
-    return sorted(
-        path.name for path in folder.iterdir()
-        if path.is_dir() and re.fullmatch(THEME_NAME_PATTERN, path.name) and (path / THEME_FILE).is_file()
-    )
+    ids = []
+    for path in folder.iterdir():
+        if is_theme_folder(path):
+            ids.append(path.name)
+        elif is_owner_folder(path):
+            ids.extend(f"{path.name}/{child.name}" for child in path.iterdir() if is_theme_folder(child))
+    return sorted(ids)
 
 def list_themes() -> List[Dict[str, str]]:
-    """Every theme from the custom and built-in folders, for the on-screen theme switcher."""
+    """
+    Every theme from the theme folders, for the on-screen theme switcher. Names are shown without
+    the username, unless two themes have the same name: then those get it, as "Name (username)".
+    """
     ids = sorted({theme_id for folder in theme_dirs() for theme_id in theme_ids_in(folder)})
-    return [{"id": theme_id, "name": theme_label(find_theme(theme_id))} for theme_id in ids]
+    themes = [{"id": theme_id, "name": theme_label(find_theme(theme_id))} for theme_id in ids]
+    counts: Dict[str, int] = {}
+    for theme in themes:
+        counts[theme["name"]] = counts.get(theme["name"], 0) + 1
+    for theme in themes:
+        if counts[theme["name"]] > 1 and "/" in theme["id"]:
+            theme["name"] = f"{theme['name']} ({theme['id'].split('/')[0]})"
+    return themes
 
 def check_theme_folders() -> None:
     """Log what was found in the custom themes folder, and anything there that cannot be used."""
@@ -295,8 +328,13 @@ def check_theme_folders() -> None:
     for path in sorted(CUSTOM_THEMES_DIR.iterdir()):
         if not path.is_dir() or path.name.startswith("."):
             continue
-        if not re.fullmatch(THEME_NAME_PATTERN, path.name):
+        if not re.fullmatch(FOLDER_NAME_PATTERN, path.name):
             warn(f"Ignoring theme folder '{path.name}': names may use only lowercase letters, numbers, and hyphens")
+        elif is_owner_folder(path):
+            for child in sorted(path.iterdir()):
+                if child.is_dir() and not child.name.startswith(".") and not is_theme_folder(child):
+                    warn(f"Ignoring theme folder '{path.name}/{child.name}': it needs a name of lowercase letters, "
+                         f"numbers, and hyphens, and a {THEME_FILE}")
         elif not (path / THEME_FILE).is_file():
             warn(f"Ignoring theme folder '{path.name}': it has no {THEME_FILE}")
 

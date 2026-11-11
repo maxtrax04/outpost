@@ -29,13 +29,14 @@ const config = {
 };
 
 test("theme names are validated", () => {
-    for (const good of ["retro-crt", "a", "theme-2"]) assert.equal(themes.validTheme(good), good);
-    for (const bad of ["../etc", "Upper", "with space", "", null, undefined, 5, "a/b", "a.css"]) assert.equal(themes.validTheme(bad), null, String(bad));
+    for (const good of ["retro-crt", "a", "theme-2", "maxtrax04/weather-desk"]) assert.equal(themes.validTheme(good), good);
+    for (const bad of ["../etc", "Upper", "with space", "", null, undefined, 5, "a.css", "a/b/c", "/a", "a/", "a//b", "../a", "a/..", "User/theme"]) assert.equal(themes.validTheme(bad), null, String(bad));
 });
 
 test("each theme loads from its own folder", () => {
     assert.equal(themes.themeHref("modern-dark"), "themes/modern-dark/theme.css");
-    for (const bad of ["../etc", "a/b", "", null]) assert.equal(themes.themeHref(bad), "themes/retro-crt/theme.css", String(bad));
+    assert.equal(themes.themeHref("maxtrax04/weather-desk"), "themes/maxtrax04/weather-desk/theme.css");
+    for (const bad of ["../etc", "a/b/c", "", null]) assert.equal(themes.themeHref(bad), "themes/retro-crt/theme.css", String(bad));
 });
 
 test("available themes are read from the config and sanitized", () => {

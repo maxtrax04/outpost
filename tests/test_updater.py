@@ -39,6 +39,7 @@ class UpdaterTestCase(unittest.TestCase):
         mock.patch.object(u, "LOCATION_NAME", "Test Site").start()
         mock.patch.object(u, "_warned_user_agent", False).start()
         mock.patch.object(u, "CUSTOM_THEMES_DIR", Path("/does/not/exist/custom")).start()
+        mock.patch.object(u, "COMMUNITY_THEMES_DIR", Path("/does/not/exist/community")).start()
         self.print = mock.patch("builtins.print").start()
 
     def output(self):
@@ -290,14 +291,15 @@ class AutoProviderTests(UpdaterTestCase):
 
 
 class ConfigTests(UpdaterTestCase):
-    def write_with_env(self, env=None, theme="retro-crt", themes_dir=None, custom_dir=None):
+    def write_with_env(self, env=None, theme="retro-crt", themes_dir=None, custom_dir=None, community_dir=None):
         with mock.patch.dict(os.environ):
             for name in DIM_VARS + UI_VARS:
                 os.environ.pop(name, None)
             os.environ.update(env or {})
             with mock.patch.object(u, "THEME", theme), \
                     mock.patch.object(u, "THEMES_DIR", themes_dir or Path("/does/not/exist")), \
-                    mock.patch.object(u, "CUSTOM_THEMES_DIR", custom_dir or Path("/does/not/exist/custom")):
+                    mock.patch.object(u, "CUSTOM_THEMES_DIR", custom_dir or Path("/does/not/exist/custom")), \
+                    mock.patch.object(u, "COMMUNITY_THEMES_DIR", community_dir or Path("/does/not/exist/community")):
                 u.write_config()
         return self.config()
 
@@ -473,6 +475,71 @@ class ConfigTests(UpdaterTestCase):
         self.assertNotIn("Custom themes in", printed)
         self.assertEqual([t["id"] for t in themes], ["retro-crt"])
 
+    @staticmethod
+    def make_community_theme(folder, theme_id, css=""):
+        (folder / theme_id).mkdir(parents=True)
+        (folder / theme_id / "theme.css").write_text(css)
+
+    def test_community_themes_are_listed_by_name_without_the_username(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as community:
+            built_in, community = Path(built_in), Path(community)
+            self.make_theme(built_in, "retro-crt", "/* Retro CRT: built in */")
+            self.make_community_theme(community, "maxtrax04/weather-desk", "/* Weather Desk: local news */")
+            self.make_community_theme(community, "someone/sonar-two", ":root {}")
+            config = self.write_with_env(theme="maxtrax04/weather-desk", themes_dir=built_in, community_dir=community)
+        self.assertEqual(config["theme"], "maxtrax04/weather-desk")
+        self.assertEqual(config["themes"], [
+            {"id": "maxtrax04/weather-desk", "name": "Weather Desk"},
+            {"id": "retro-crt", "name": "Retro CRT"},
+            {"id": "someone/sonar-two", "name": "Sonar Two"},
+        ])
+
+    def test_themes_with_the_same_name_show_the_username(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as community:
+            built_in, community = Path(built_in), Path(community)
+            self.make_theme(built_in, "retro-crt", "/* Retro CRT: built in */")
+            self.make_community_theme(community, "maxtrax04/weather-desk", "/* Weather Desk: one */")
+            self.make_community_theme(community, "someone/weather-desk", "/* Weather Desk: two */")
+            self.make_community_theme(community, "someone/crt", "/* Retro CRT: a remake */")
+            themes = self.write_with_env(themes_dir=built_in, community_dir=community)["themes"]
+        self.assertEqual({t["id"]: t["name"] for t in themes}, {
+            "maxtrax04/weather-desk": "Weather Desk (maxtrax04)",
+            "someone/weather-desk": "Weather Desk (someone)",
+            "someone/crt": "Retro CRT (someone)",
+            "retro-crt": "Retro CRT",
+        })
+
+    def test_themes_are_found_in_the_custom_then_community_then_built_in_folders(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom, \
+                tempfile.TemporaryDirectory() as community:
+            built_in, custom, community = Path(built_in), Path(custom), Path(community)
+            self.make_theme(built_in, "retro-crt", "/* Retro CRT: built in */")
+            self.make_community_theme(community, "maxtrax04/weather-desk", "/* Weather Desk: downloaded */")
+            # A clone of the community repository mounted as the custom folder
+            self.make_community_theme(custom, "maxtrax04/weather-desk", "/* Weather Desk: my copy */")
+            with mock.patch.object(u, "THEMES_DIR", built_in), mock.patch.object(u, "CUSTOM_THEMES_DIR", custom), \
+                    mock.patch.object(u, "COMMUNITY_THEMES_DIR", community):
+                self.assertEqual(u.find_theme("maxtrax04/weather-desk"), custom / "maxtrax04" / "weather-desk" / "theme.css")
+                self.assertEqual(u.find_theme("retro-crt"), built_in / "retro-crt" / "theme.css")
+                self.assertEqual(u.list_themes(), [
+                    {"id": "maxtrax04/weather-desk", "name": "Weather Desk"},
+                    {"id": "retro-crt", "name": "Retro CRT"},
+                ])
+
+    def test_unusable_folders_in_a_username_folder_are_reported(self):
+        with tempfile.TemporaryDirectory() as built_in, tempfile.TemporaryDirectory() as custom:
+            built_in, custom = Path(built_in), Path(custom)
+            self.make_theme(built_in, "retro-crt")
+            self.make_community_theme(custom, "maxtrax04/good")
+            (custom / "maxtrax04" / "Bad Name").mkdir()
+            (custom / "maxtrax04" / "no-css").mkdir()
+            printed = self.check_folders(built_in, custom)
+            themes = self.write_with_env(themes_dir=built_in, custom_dir=custom)["themes"]
+        self.assertIn("'maxtrax04/Bad Name'", printed)
+        self.assertIn("'maxtrax04/no-css'", printed)
+        self.assertIn("Custom themes in", printed)
+        self.assertEqual([t["id"] for t in themes], ["maxtrax04/good", "retro-crt"])
+
     def test_a_missing_custom_folder_is_fine(self):
         with tempfile.TemporaryDirectory() as built_in:
             self.make_theme(Path(built_in), "retro-crt")
@@ -484,7 +551,7 @@ class ConfigTests(UpdaterTestCase):
         self.assertEqual(len(config["ui"]["subtitle"]), 80)
 
     def test_invalid_theme_names_are_rejected(self):
-        for bad in ("../etc/passwd", "My Theme", "UPPER", ""):
+        for bad in ("../etc/passwd", "My Theme", "UPPER", "", "a/b/c", "a/../b", "/a", "Owner/theme"):
             with self.subTest(theme=bad):
                 self.assertEqual(self.write_with_env(theme=bad)["theme"], "retro-crt")
 
