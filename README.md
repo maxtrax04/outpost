@@ -71,6 +71,8 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
 | `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
+| `OUTPOST_COMMUNITY_THEMES` | (empty) | Community themes to download when the container starts, as `username/theme` separated by commas. See [Community themes](#community-themes). |
+| `OUTPOST_COMMUNITY_THEMES_REF` | `main` | Which version of the community themes to download: a branch, tag, or commit. |
 | `OUTPOST_EFFECTS` | `full` | `reduced` turns off scanlines, glow, and animation for everyone. See [Reduced effects](#reduced-effects). |
 | `OUTPOST_EFFECTS_TOGGLE` | `true` | Show the "Reduced effects" checkbox in the theme panel. Set `false` so viewers cannot change `OUTPOST_EFFECTS`. |
 | `OUTPOST_AUTO_DIM` | `true` | Dim the display at night. See [Day/night dimming](#daynight-dimming). |
@@ -148,6 +150,24 @@ Anyone viewing the dashboard can also pick a theme with the small button in the 
 Themes are small CSS files, so making your own is easy. Mount a folder of your own themes at `/config/themes` to add them without rebuilding the image; [examples/themes/](examples/themes/) has one to start from. See [docs/themes.md](docs/themes.md).
 
 <!-- TODO (public beta): add a screenshot of each theme here -->
+
+### Community themes
+
+More themes, made by Outpost users, are in the [outpost-themes](https://github.com/maxtrax04/outpost-themes) repository. Each is named after the person who made it, such as `maxtrax04/weather-desk`, and shows in the theme switcher by its name alone (with the username added only if two themes share a name).
+
+List the ones you want, and Outpost downloads them when the container starts:
+
+```
+OUTPOST_COMMUNITY_THEMES=maxtrax04/weather-desk,maxtrax04/wristcomp
+```
+
+- They are downloaded once per start, not again while it runs, so restart the container to get updates. They are kept in your data volume, so after the first download they keep working with no internet. If a download fails, Outpost uses the copies it has, logs one warning, and carries on; nothing waits for it.
+- Themes you take off the list are removed at the next start. A theme that builds on another theme by the same person (such as `maxtrax04/weather-desk-live` on `maxtrax04/weather-desk`) brings it along automatically.
+- Use one with `OUTPOST_THEME=maxtrax04/weather-desk` or `?theme=maxtrax04/weather-desk`, like any other theme.
+- `OUTPOST_COMMUNITY_THEMES_REF` picks a version of the repository (a branch, tag, or commit) instead of the latest.
+- Themes are only CSS, fonts, and images, and Outpost's security headers stop them from running scripts or loading anything from other sites.
+
+To use community themes with no internet at all, clone the repository and mount it as your custom themes folder instead: `- ./outpost-themes:/config/themes:ro`. Themes in it keep the same names. Your own themes can sit beside them.
 
 ### Reduced effects
 

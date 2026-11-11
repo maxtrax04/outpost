@@ -123,9 +123,30 @@ class WebServerTests(unittest.TestCase):
         server_level = re.split(r"^\s*location\b", self.conf, maxsplit=1, flags=re.MULTILINE)[0]
         self.assertIn('add_header Cache-Control "no-cache";', server_level)
 
-    def test_custom_themes_are_checked_before_built_in_ones(self):
-        self.assertRegex(self.conf, r"root /config;\s*try_files \$uri @builtin_theme;")
+    def test_custom_themes_are_checked_before_community_then_built_in_ones(self):
+        self.assertRegex(self.conf, r"root /config;\s*try_files \$uri @community_theme;")
+        self.assertRegex(self.conf, r"location @community_theme \{\s*root /data/community;\s*try_files \$uri @builtin_theme;")
         self.assertRegex(self.conf, r"location @builtin_theme \{\s*root /usr/share/nginx/html;")
+
+    def test_downloaded_community_themes_are_not_served_from_the_data_folder(self):
+        # They are in /data/community, which /data/ would otherwise serve without the theme file rules
+        self.assertRegex(self.conf, r"location /data/community/ \{\s*return 404;\s*\}")
+
+    def test_community_theme_paths_are_served(self):
+        for good in ("/themes/maxtrax04/weather-desk/theme.css", "/themes/maxtrax04/weather-desk/wordmark-white.svg"):
+            with self.subTest(path=good):
+                self.assertRegex(good, self.theme_pattern)
+
+    def test_the_community_download_keeps_the_file_types_nginx_serves(self):
+        import outpost_community
+        served = re.search(r"\\\.\(\?:([a-z0-9|?]+)\)\$", self.theme_pattern.pattern).group(1)
+        served = set(served.replace("jpe?g", "jpg|jpeg").split("|"))
+        self.assertEqual(outpost_community.FILE_TYPES, served)
+
+    def test_community_themes_are_downloaded_before_the_first_update(self):
+        script = read("app/start.sh")
+        self.assertLess(script.index("outpost_community.py"), script.index("outpost_updater.py"))
+        self.assertIn("python3 /app/outpost_community.py || true", script)
 
     def test_only_theme_files_are_served_from_the_custom_folder(self):
         for good in ("/themes/sonar/theme.css", "/themes/my-theme-2/fonts/Font.woff2", "/themes/a/img/bg.min.svg"):

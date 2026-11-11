@@ -29,6 +29,10 @@ unless you prefer otherwise.
 - Your `OUTPOST_CONTACT` value is sent to weather services in the User-Agent header.
 - Theme files in a folder mounted at `/config/themes` (CSS, fonts, and images only) are served to anyone who
   can reach the dashboard. Mount a folder that holds only themes, read-only.
+- With `OUTPOST_COMMUNITY_THEMES` set, Outpost downloads those themes from GitHub (`codeload.github.com`) once each time
+  the container starts, sending only `Outpost/<version>` as the User-Agent. Without it, the only outside requests are
+  to your weather services. Downloaded themes are kept in `/data/community` and only their CSS, font, and image files
+  are served.
 
 ## Security headers
 

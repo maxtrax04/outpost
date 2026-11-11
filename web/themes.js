@@ -12,8 +12,9 @@ const THEME_STORAGE_KEY = "outpost.theme";
 // Used when browser storage is blocked, so a choice still lasts until the page is reloaded
 let sessionTheme = null;
 
+// A theme folder name, or <username>/<theme> for a community theme
 function validTheme(name) {
-    return typeof name === "string" && /^[a-z0-9-]+$/.test(name) ? name : null;
+    return typeof name === "string" && /^[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(name) ? name : null;
 }
 
 // Browser storage can be blocked (private browsing, kiosk policies), so never assume it works.

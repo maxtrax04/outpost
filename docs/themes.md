@@ -79,6 +79,26 @@ Then:
 To try it, copy the example theme from the repository: `cp -r examples/themes/sonar themes/`.
 `sonar` is a deep teal theme with a faint grid, and shows how a theme uses a file from its own folder.
 
+### Themes in a username folder
+
+A folder that has no `theme.css` but holds theme folders is a username folder, as in the
+[community themes](../README.md#community-themes) repository. Its themes are named `<username>/<theme>`:
+
+```
+themes/                 mounted at /config/themes
+  sonar/                sonar
+  maxtrax04/
+    weather-desk/       maxtrax04/weather-desk
+      theme.css
+```
+
+That is how a clone of the community repository works as a mounted folder. A theme there that builds
+on a built-in one reaches it one folder further up: `@import url("../../atomic-broadcast/theme.css");`. One that
+builds on another theme by the same person uses `../<theme>/`, and the community download brings that theme along.
+
+Themes are looked up in this order, and the first one found wins: the mounted folder, downloaded community
+themes (`OUTPOST_COMMUNITY_THEMES`), then the built-in themes. The same goes for each file a theme uses.
+
 ## Making a theme
 
 1. Copy the `web/themes/retro-crt/` folder to `web/themes/my-theme/`, or to `my-theme/` in your

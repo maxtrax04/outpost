@@ -75,7 +75,7 @@ async function checkTheme(browser, theme, name, viewport) {
     if (state.icons === 0) problems.push("no weather icons were set");
     if (state.fonts.length) problems.push(`fonts failed to load: ${state.fonts.join(", ")}`);
 
-    if (SCREENSHOTS) await page.screenshot({ path: `${SCREENSHOTS}/${theme}-${name}.png` });
+    if (SCREENSHOTS) await page.screenshot({ path: `${SCREENSHOTS}/${theme.replace("/", "--")}-${name}.png` });
     await page.close();
     return problems;
 }
