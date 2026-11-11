@@ -207,6 +207,35 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.root.parent.iterdir()), ["themes"])
         self.assertEqual(list(self.root.iterdir()), [])
 
+    def test_themes_a_listed_theme_builds_on_are_downloaded_and_kept(self):
+        files = dict(REPOSITORY)
+        files["maxtrax04/weather-desk-live/theme.css"] = (
+            b'/* Weather Desk Live: no boxes */\n@import url("../weather-desk/theme.css");\n'
+            b'@import url("../../atomic-broadcast/theme.css");')
+        self.run_update("maxtrax04/weather-desk-live", self.fetch_from(files))
+        # The sibling it builds on comes too; a built-in theme (../../) is not downloaded
+        self.assertEqual(self.installed(), ["maxtrax04/weather-desk", "maxtrax04/weather-desk-live"])
+        self.assertIn("because a listed theme builds on it: maxtrax04/weather-desk", self.printed())
+        # Offline later: both copies stay
+        self.run_update("maxtrax04/weather-desk-live", self.offline)
+        self.assertEqual(self.installed(), ["maxtrax04/weather-desk", "maxtrax04/weather-desk-live"])
+        # Taken off the list: both go
+        self.run_update("", self.offline)
+        self.assertEqual(self.installed(), [])
+
+    def test_a_missing_dependency_is_reported_once(self):
+        files = {"maxtrax04/a/theme.css": b'@import url("../b/theme.css");',
+                 "maxtrax04/c/theme.css": b'@import url("../a/theme.css"); @import url("../d/theme.css");'}
+        self.run_update("maxtrax04/c", self.fetch_from(files))
+        self.assertEqual(self.installed(), ["maxtrax04/a", "maxtrax04/c"])
+        self.assertIn("builds on themes not found in maxtrax04/outpost-themes (main): maxtrax04/b, maxtrax04/d", self.printed())
+
+    def test_dependencies_are_found_in_the_css(self):
+        css = ('@import url("../base/theme.css"); .x { background: url(../base/img.svg), url("../../field-station/dial.svg"), '
+               'url("own.svg"), url("sub/../x.svg"); }')
+        self.assertEqual(c.dependencies("me/theme", css), {"me/base"})
+        self.assertEqual(c.dependencies("me/base", '@import url("../base/theme.css");'), set())
+
     def test_main_never_raises(self):
         with mock.patch.object(c, "update", side_effect=RuntimeError("boom")):
             self.assertEqual(c.main(), 1)

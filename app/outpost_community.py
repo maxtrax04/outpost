@@ -145,6 +145,33 @@ def extract(archive: bytes, wanted: Set[str], destination: Path) -> Set[str]:
     return found
 
 
+def dependencies(theme_id: str, css: str) -> Set[str]:
+    """
+    Other themes by the same person that a theme builds on: files it uses from a sibling folder,
+    such as @import url("../weather-desk/theme.css"). (Built-in themes, reached with ../../,
+    are part of Outpost and need no download.)
+    """
+    owner = theme_id.split("/")[0]
+    names = re.findall(r"(?<![./])\.\./([a-z0-9-]+)/", css)
+    return {f"{owner}/{name}" for name in names} - {theme_id}
+
+
+def with_dependencies(ids: Set[str], folder: Path) -> Set[str]:
+    """The ids plus every theme they build on, as far as the copies in folder show."""
+    result = set(ids)
+    pending = list(ids)
+    while pending:
+        css_path = folder / pending.pop() / THEME_FILE
+        try:
+            css = css_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for needed in dependencies(css_path.parent.relative_to(folder).as_posix(), css) - result:
+            result.add(needed)
+            pending.append(needed)
+    return result
+
+
 def installed_themes(root: Path) -> List[str]:
     if not root.is_dir():
         return []
@@ -207,7 +234,9 @@ def update(env: Dict[str, str], root: Path = COMMUNITY_DIR, fetch=download) -> i
         for leftover in root.parent.glob(".download-*"):
             delete(leftover)
 
-    removed = remove_unlisted(root, set(ids))
+    # Keep the themes that listed ones build on, as the copies from before show (for when the
+    # download below fails)
+    removed = remove_unlisted(root, with_dependencies(set(ids), root))
     if removed:
         log(f"Removed community themes that are no longer listed: {', '.join(removed)}")
     if not ids:
@@ -225,7 +254,21 @@ def update(env: Dict[str, str], root: Path = COMMUNITY_DIR, fetch=download) -> i
     staging = Path(tempfile.mkdtemp(prefix=".download-", dir=root.parent))
     try:
         try:
-            found = extract(fetch(url, user_agent), set(ids), staging)
+            archive = fetch(url, user_agent)
+            found = extract(archive, set(ids), staging)
+            # Add the themes they build on, and the ones those build on (each asked for once)
+            asked = set(ids)
+            needed = with_dependencies(found, staging) - asked
+            while needed:
+                asked |= needed
+                found |= extract(archive, needed, staging)
+                needed = with_dependencies(found, staging) - asked
+            missing_needed = sorted(asked - set(ids) - found)
+            if missing_needed:
+                warn(f"A listed theme builds on themes not found in {REPOSITORY} ({ref}): {', '.join(missing_needed)}")
+            extra = sorted(found - set(ids))
+            if extra:
+                log(f"Also downloaded, because a listed theme builds on it: {', '.join(extra)}")
         except (urllib.error.URLError, OSError, tarfile.TarError, ValueError, EOFError) as error:
             have = [theme_id for theme_id in ids if theme_id in installed_themes(root)]
             reason = getattr(error, "reason", None) or error

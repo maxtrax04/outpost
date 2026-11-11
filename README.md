@@ -162,7 +162,7 @@ OUTPOST_COMMUNITY_THEMES=maxtrax04/weather-desk,maxtrax04/wristcomp
 ```
 
 - They are downloaded once per start, not again while it runs, so restart the container to get updates. They are kept in your data volume, so after the first download they keep working with no internet. If a download fails, Outpost uses the copies it has, logs one warning, and carries on; nothing waits for it.
-- Themes you take off the list are removed at the next start.
+- Themes you take off the list are removed at the next start. A theme that builds on another theme by the same person (such as `maxtrax04/weather-desk-live` on `maxtrax04/weather-desk`) brings it along automatically.
 - Use one with `OUTPOST_THEME=maxtrax04/weather-desk` or `?theme=maxtrax04/weather-desk`, like any other theme.
 - `OUTPOST_COMMUNITY_THEMES_REF` picks a version of the repository (a branch, tag, or commit) instead of the latest.
 - Themes are only CSS, fonts, and images, and Outpost's security headers stop them from running scripts or loading anything from other sites.

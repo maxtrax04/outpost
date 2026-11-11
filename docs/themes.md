@@ -93,7 +93,8 @@ themes/                 mounted at /config/themes
 ```
 
 That is how a clone of the community repository works as a mounted folder. A theme there that builds
-on a built-in one reaches it one folder further up: `@import url("../../atomic-broadcast/theme.css");`.
+on a built-in one reaches it one folder further up: `@import url("../../atomic-broadcast/theme.css");`. One that
+builds on another theme by the same person uses `../<theme>/`, and the community download brings that theme along.
 
 Themes are looked up in this order, and the first one found wins: the mounted folder, downloaded community
 themes (`OUTPOST_COMMUNITY_THEMES`), then the built-in themes. The same goes for each file a theme uses.

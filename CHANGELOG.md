@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- Community themes: `OUTPOST_COMMUNITY_THEMES` lists themes from the [outpost-themes](https://github.com/maxtrax04/outpost-themes) repository, named `username/theme`, to download when the container starts. They are downloaded once per start and kept in the data volume, so they keep working offline; a failed download keeps the copies from before and logs one warning. Themes taken off the list are removed. `OUTPOST_COMMUNITY_THEMES_REF` picks a branch, tag, or commit. See "Community themes" in the README.
+- Community themes: `OUTPOST_COMMUNITY_THEMES` lists themes from the [outpost-themes](https://github.com/maxtrax04/outpost-themes) repository, named `username/theme`, to download when the container starts. They are downloaded once per start and kept in the data volume, so they keep working offline; a failed download keeps the copies from before and logs one warning. Themes taken off the list are removed. A theme that builds on another theme by the same person brings it along. `OUTPOST_COMMUNITY_THEMES_REF` picks a branch, tag, or commit. See "Community themes" in the README.
 - Theme folders can be grouped in a username folder (`<username>/<theme>/theme.css`), so a clone of the community repository can be mounted at `/config/themes` for use with no internet. The theme switcher shows these themes by name, adding the username only when two themes share a name.
 
 ## [0.5.0-beta.7] - 2026-11-11
