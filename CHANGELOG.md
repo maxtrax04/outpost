@@ -6,9 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0-beta.7] - 2026-11-11
+
+This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+
 ### Added
 
 - Two decorative themes. `field-station`: a riveted steel instrument panel, with analog dials for the readings, a stamped plate for each panel title, and hazard stripes on the warning shown when the weather data is old or missing. `atomic-broadcast`: a 1950s television set, with the dashboard on its screen fitted to the window, a test card while the weather loads or when it is lost, tuning-dial readings, and alerts as a news crawl along the bottom of the screen. With reduced effects, the crawl stands still and wraps.
+
+### Upgrading from 0.5.0-beta.6
+
+- Nothing is required. To try the new themes, pick them with the theme button or add `?theme=field-station` or `?theme=atomic-broadcast` to the address.
+- If you were already using your own copies of these themes from `/config/themes`, remove them: a custom theme with the same folder name replaces the built-in one.
+- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.7`.
 
 ## [0.5.0-beta.6] - 2026-11-11
 
