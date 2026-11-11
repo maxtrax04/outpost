@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="16" viewBox="0 0 200 16" preserveAspectRatio="none">
+  <title>Atomic Broadcast tuning scale</title>
+  <rect x="0.5" y="0.5" width="199" height="15" rx="3" fill="#2a2f2f" stroke="#2e7f76" vector-effect="non-scaling-stroke"/>
+  <path fill="none" stroke="#ecdfc0" stroke-opacity="0.8" stroke-width="1" vector-effect="non-scaling-stroke" d="M4 2V14M13.6 6V14M23.2 6V14M32.8 6V14M42.4 6V14M52 2V14M61.6 6V14M71.2 6V14M80.8 6V14M90.4 6V14M100 2V14M109.6 6V14M119.2 6V14M128.8 6V14M138.4 6V14M148 2V14M157.6 6V14M167.2 6V14M176.8 6V14M186.4 6V14M196 2V14"/>
+</svg>

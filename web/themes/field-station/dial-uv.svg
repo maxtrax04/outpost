@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="76" viewBox="0 0 120 76">
+  <title>Field Station UV dial</title>
+  <defs>
+    <linearGradient id="housing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a3a68f"/><stop offset="1" stop-color="#3d4034"/>
+    </linearGradient>
+    <radialGradient id="face" cx="0.5" cy="0.9" r="0.9">
+      <stop offset="0" stop-color="#efe6c4"/><stop offset="0.75" stop-color="#d6c897"/><stop offset="1" stop-color="#b7a877"/>
+    </radialGradient>
+    <radialGradient id="screw" cx="0.35" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#e2e4d2"/><stop offset="0.5" stop-color="#868a76"/><stop offset="1" stop-color="#2c2e24"/>
+    </radialGradient>
+  </defs>
+  <path fill="url(#housing)" stroke="#1d1f17" stroke-width="1" d="M3 67A57 57 0 0 1 117 67V74H3Z"/>
+  <path fill="url(#face)" stroke="#1d1f17" stroke-width="1.2" d="M9 66A51 51 0 0 1 111 66Z"/>
+  <g fill="none" stroke-width="5" stroke-linecap="butt">
+    <path d="M18 66A42 42 0 0 1 32.5 34.26" stroke="#6f9a3c"/>
+    <path d="M32.5 34.26A42 42 0 0 1 65.98 24.43" stroke="#d9c02a"/>
+    <path d="M65.98 24.43A42 42 0 0 1 87.5 34.26" stroke="#e09a2c"/>
+    <path d="M87.5 34.26A42 42 0 0 1 101.57 60.02" stroke="#c23a22"/>
+    <path d="M101.57 60.02A42 42 0 0 1 102 66" stroke="#7a4fa0"/>
+  </g>
+  <g fill="none" stroke="#22231c" stroke-linecap="butt">
+    <path d="M15 66L24 66" stroke-width="2.2"/>
+    <path d="M15.55 58.96L20.49 59.74" stroke-width="1"/>
+    <path d="M17.2 52.09L21.96 53.64" stroke-width="1"/>
+    <path d="M19.9 45.57L24.36 47.84" stroke-width="1"/>
+    <path d="M23.59 39.55L27.64 42.49" stroke-width="1"/>
+    <path d="M28.18 34.18L34.54 40.54" stroke-width="2.2"/>
+    <path d="M33.55 29.59L36.49 33.64" stroke-width="1"/>
+    <path d="M39.57 25.9L41.84 30.36" stroke-width="1"/>
+    <path d="M46.09 23.2L47.64 27.96" stroke-width="1"/>
+    <path d="M52.96 21.55L53.74 26.49" stroke-width="1"/>
+    <path d="M60 21L60 30" stroke-width="2.2"/>
+    <path d="M67.04 21.55L66.26 26.49" stroke-width="1"/>
+    <path d="M73.91 23.2L72.36 27.96" stroke-width="1"/>
+    <path d="M80.43 25.9L78.16 30.36" stroke-width="1"/>
+    <path d="M86.45 29.59L83.51 33.64" stroke-width="1"/>
+    <path d="M91.82 34.18L85.46 40.54" stroke-width="2.2"/>
+    <path d="M96.41 39.55L92.36 42.49" stroke-width="1"/>
+    <path d="M100.1 45.57L95.64 47.84" stroke-width="1"/>
+    <path d="M102.8 52.09L98.04 53.64" stroke-width="1"/>
+    <path d="M104.45 58.96L99.51 59.74" stroke-width="1"/>
+    <path d="M105 66L96 66" stroke-width="2.2"/>
+  </g>
+  <path fill="#ffffff" fill-opacity="0.22" d="M18 58A44 44 0 0 1 52 21A50 50 0 0 0 24 58Z"/>
+  <g fill="url(#screw)" stroke="#1d1f17" stroke-width="0.6">
+    <circle cx="9" cy="71" r="2.6"/><circle cx="111" cy="71" r="2.6"/>
+  </g>
+</svg>

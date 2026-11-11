@@ -1,6 +1,7 @@
 # Third-party notices
 
-Outpost's own code, icons, and logo (`assets/logo/`, and the favicon and app icons made from it) are original
+Outpost's own code, icons, and logo (`assets/logo/`, and the favicon and app icons made from it), and the
+artwork in the built-in themes (`web/themes/`, such as the bezels, dials, and television cabinet) are original
 work released under the MIT License (see `LICENSE`).
 The items below are included under their own licenses.
 

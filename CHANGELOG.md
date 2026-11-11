@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Two decorative themes. `field-station`: a riveted steel instrument panel, with analog dials for the readings, a stamped plate for each panel title, and hazard stripes on the warning shown when the weather data is old or missing. `atomic-broadcast`: a 1950s television set, with the dashboard on its screen fitted to the window, a test card while the weather loads or when it is lost, tuning-dial readings, and alerts as a news crawl along the bottom of the screen. With reduced effects, the crawl stands still and wraps.
+
 ## [0.5.0-beta.6] - 2026-11-11
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.

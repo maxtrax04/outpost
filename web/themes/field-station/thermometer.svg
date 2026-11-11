@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="96" viewBox="0 0 28 96">
+  <title>Field Station thermometer</title>
+  <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5d6150"/><stop offset="0.35" stop-color="#e9e4cc"/><stop offset="1" stop-color="#8d907c"/>
+    </linearGradient>
+    <radialGradient id="bulb" cx="0.38" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#f08a6c"/><stop offset="0.5" stop-color="#c23a22"/><stop offset="1" stop-color="#6e1d10"/>
+    </radialGradient>
+  </defs>
+  <path fill="url(#glass)" stroke="#1d1f17" stroke-width="1" d="M9 8A5 5 0 0 1 19 8V76.5A10 10 0 1 1 9 76.5Z"/>
+  <rect x="12" y="6" width="4" height="74" rx="2" fill="#2a2c22"/>
+  <circle cx="14" cy="85" r="7.5" fill="url(#bulb)"/>
+  <path fill="none" stroke="#e9dfb8" stroke-width="1" d="M19.5 72H25M19.5 67.57H23M19.5 63.14H25M19.5 58.71H23M19.5 54.29H25M19.5 49.86H23M19.5 45.43H25M19.5 41H23M19.5 36.57H25M19.5 32.14H23M19.5 27.71H25M19.5 23.29H23M19.5 18.86H25M19.5 14.43H23M19.5 10H25"/>
+  <path fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1" stroke-linecap="round" d="M10.6 10V72"/>
+</svg>

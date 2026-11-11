@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <title>Field Station hazard stripes (tile)</title>
+  <rect width="32" height="32" fill="#e3b02b"/>
+  <path fill="#1c1b16" d="M0 0H8L0 8Z M16 0H24L0 24V16Z M32 0V8L8 32H0Z M32 16V24L24 32H16Z"/>
+</svg>
