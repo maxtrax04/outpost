@@ -247,6 +247,7 @@ fit the screen without scrolling. Set these in its `:root`:
 | `--fit-screen` | `1` turns fitting on |
 | `--fit-width` | How wide the page may get while fitting (default `1200px`; `100vw` uses the full width) |
 | `--fit-max-scale` | How much the page may grow on big screens, from `1` (the default: shrink only) to `4` |
+| `--fit-min-scale` | How far the page may shrink, from `0.55` (the default) to `1`. A page that would need more keeps its normal layout and scrolls. Themes for ordinary screens use about `0.85`, so laptops keep their usual layout while big screens are filled |
 
 While it is on, `<html>` has `data-fit="on"` and `--fit-scale` (the scale in use), and `<main>` is zoomed
 by that scale. It never shrinks below `0.55`, because tiny text is worse than scrolling: a screen that
