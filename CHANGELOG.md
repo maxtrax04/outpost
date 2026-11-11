@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- `--fit-min-scale` theme token: how far fit to screen may shrink the page (from 0.55 to 1). A page that would need more keeps its normal layout.
+
+### Changed
+
+- `retro-crt`, `amber-terminal`, `command-center`, `modern-dark`, and `field-station` now fill wide screens instead of staying a 1200-pixel column in the middle: on a 2560 × 1440 display they grow about 1.5 times, and on a 4K display more than twice. Ultrawide screens get a centered 16:9 area, so the panels are not stretched. Laptops, phones, and portrait screens keep the layout they had.
+
 ## [0.5.0-beta.8] - 2026-11-11
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.

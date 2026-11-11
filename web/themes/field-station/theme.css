@@ -25,6 +25,15 @@
     --title-spacing: 0.14em;
     --title-logo: 1;
 
+    /* Wide screens: fill the screen instead of a column in the middle, growing up to 2.5 times
+       (no wider than 16:9, so an ultrawide screen does not stretch the panels). A screen that would
+       need more than a little shrinking (a laptop, a phone) keeps the usual layout, and so do
+       portrait screens (see below). */
+    --fit-screen: 1;
+    --fit-width: min(100vw, 178vh);
+    --fit-max-scale: 2.5;
+    --fit-min-scale: 0.85;
+
     --bezel: 22px;
     --dial-w: 76px;
 }
@@ -135,3 +144,8 @@ h2 {
 
 /* Reduced effects: the needle stops swinging (Outpost does that), and the busy deck plate goes */
 :root[data-effects="reduced"] body { background: var(--bg); }
+
+/* Portrait screens keep their own scaling (see "Tall screens" in style.css) */
+@media (orientation: portrait) {
+    :root { --fit-screen: 0; }
+}

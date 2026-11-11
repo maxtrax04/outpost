@@ -45,6 +45,21 @@ test("the theme's largest size is read safely", () => {
     assert.equal(fit.maxScale("big"), 1);
 });
 
+test("the theme's shrink limit is read safely", () => {
+    assert.equal(fit.shrinkLimit(""), fit.MIN_SCALE);
+    assert.equal(fit.shrinkLimit(" 0.85"), 0.85);
+    assert.equal(fit.shrinkLimit("0.2"), fit.MIN_SCALE);
+    assert.equal(fit.shrinkLimit("2"), 1);
+    assert.equal(fit.shrinkLimit("small"), fit.MIN_SCALE);
+});
+
+test("a theme's shrink limit leaves a page that needs more at full size", () => {
+    // 1000 tall on an 800 screen needs 0.8: allowed by default, not with a limit of 0.85
+    assert.ok(fit.chooseScale(page(1000, 800), fit.shrinkLimit("")) >= 0.79);
+    assert.equal(fit.chooseScale(page(1000, 800), fit.shrinkLimit("0.85")), null);
+    assert.ok(fit.chooseScale(page(900, 800), fit.shrinkLimit("0.85")) >= 0.88);
+});
+
 test("never shrinks below the minimum", () => {
     const scale = fit.chooseScale(page(800 / fit.MIN_SCALE, 800));
     assert.ok(scale >= fit.MIN_SCALE);

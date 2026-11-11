@@ -9,7 +9,9 @@
 // say), it is left at full size and scrolls as usual, because tiny text is worse than scrolling.
 //
 // A theme can also let it grow on big screens, so the page fills them: `--fit-max-scale: 2`
-// allows up to twice the normal size. The default is 1 (shrink only).
+// allows up to twice the normal size. The default is 1 (shrink only). And it can shrink less:
+// `--fit-min-scale: 0.85` fits only pages that need a little shrinking, and leaves the rest at
+// full size (for a theme made for ordinary screens that should still fill a big one).
 
 (function (root) {
     "use strict";
@@ -32,6 +34,12 @@
     function maxScale(themeValue) {
         const value = parseFloat(String(themeValue || "").trim());
         return Number.isFinite(value) ? Math.min(4, Math.max(1, value)) : 1;
+    }
+
+    // How far the theme lets the page shrink: its --fit-min-scale, from MIN_SCALE (the default) to 1
+    function shrinkLimit(themeValue) {
+        const value = parseFloat(String(themeValue || "").trim());
+        return Number.isFinite(value) ? Math.min(1, Math.max(MIN_SCALE, value)) : MIN_SCALE;
     }
 
     // The largest scale in [minScale, maxScale] at which fits(scale) is true, or null if even
@@ -71,8 +79,10 @@
             setScale(html, scale);
             return main.getBoundingClientRect().height <= available + 0.5;
         };
-        const largest = maxScale(root.getComputedStyle(html).getPropertyValue("--fit-max-scale"));
-        const scale = chooseScale(fits, MIN_SCALE, largest, STEPS + Math.ceil(Math.log2(largest)));
+        const style = root.getComputedStyle(html);
+        const largest = maxScale(style.getPropertyValue("--fit-max-scale"));
+        const smallest = shrinkLimit(style.getPropertyValue("--fit-min-scale"));
+        const scale = chooseScale(fits, smallest, largest, STEPS + Math.ceil(Math.log2(largest)));
 
         if (scale === null) {
             // Too much to fit at a readable size: show it full size and let it scroll
@@ -107,7 +117,7 @@
         schedule();
     }
 
-    const api = { MIN_SCALE, wanted, maxScale, chooseScale, apply, schedule, start };
+    const api = { MIN_SCALE, wanted, maxScale, shrinkLimit, chooseScale, apply, schedule, start };
 
     root.OutpostFit = api;
 
