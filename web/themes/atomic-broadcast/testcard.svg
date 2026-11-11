@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <title>Atomic Broadcast test card: please stand by</title>
+  <g transform="translate(-120 -40)">
+  <circle cx="320" cy="240" r="190" fill="#23282b" stroke="#ecdfc0" stroke-width="3"/>
+  <circle cx="320" cy="240" r="150" fill="none" stroke="#ecdfc0" stroke-opacity="0.35" stroke-width="1.5"/>
+  <circle cx="320" cy="240" r="112" fill="none" stroke="#ecdfc0" stroke-opacity="0.35" stroke-width="1.5"/>
+  <path fill="none" stroke="#ecdfc0" stroke-opacity="0.7" stroke-width="1" d="M209.1 255.63L135.82 265.96M208.62 251.74L135.02 259.49M208.27 247.83L134.46 253.01M208.07 243.92L134.11 246.51M208 240L134 240M208.07 236.08L134.11 233.49M208.27 232.17L134.46 226.99M208.62 228.26L135.02 220.51M209.1 224.37L135.82 214.04M430.9 224.37L504.18 214.04M431.38 228.26L504.98 220.51M431.73 232.17L505.54 226.99M431.93 236.08L505.89 233.49M432 240L506 240M431.93 243.92L505.89 246.51M431.73 247.83L505.54 253.01M431.38 251.74L504.98 259.49M430.9 255.63L504.18 265.96M304.37 129.1L294.04 55.82M308.26 128.62L300.51 55.02M312.17 128.27L306.99 54.46M316.08 128.07L313.49 54.11M320 128L320 54M323.92 128.07L326.51 54.11M327.83 128.27L333.01 54.46M331.74 128.62L339.49 55.02M335.63 129.1L345.96 55.82"/>
+  <path fill="none" stroke="#ecdfc0" stroke-opacity="0.5" stroke-width="1.5" d="M130 240H210M430 240H510M320 50V110"/>
+  <path fill="#efb548" d="M325.97 195.4L366 196L325.97 196.6ZM325.84 197.38L340.33 204.42L325.11 199.15ZM324.65 199.8L352.53 228.53L323.8 200.65ZM323.15 201.11L328.42 216.33L321.38 201.84ZM320.6 201.97L320 242L319.4 201.97ZM318.62 201.84L311.58 216.33L316.85 201.11ZM316.2 200.65L287.47 228.53L315.35 199.8ZM314.89 199.15L299.67 204.42L314.16 197.38ZM314.03 196.6L274 196L314.03 195.4ZM314.16 194.62L299.67 187.58L314.89 192.85ZM315.35 192.2L287.47 163.47L316.2 191.35ZM316.85 190.89L311.58 175.67L318.62 190.16ZM319.4 190.03L320 150L320.6 190.03ZM321.38 190.16L328.42 175.67L323.15 190.89ZM323.8 191.35L352.53 163.47L324.65 192.2ZM325.11 192.85L340.33 187.58L325.84 194.62Z"/>
+  <circle cx="320" cy="196" r="9" fill="#efb548"/>
+  <rect x="180" y="262" width="40" height="52" fill="#ecdfc0"/>
+  <rect x="220" y="262" width="40" height="52" fill="#efb548"/>
+  <rect x="260" y="262" width="40" height="52" fill="#4fb3a5"/>
+  <rect x="300" y="262" width="40" height="52" fill="#6fae5a"/>
+  <rect x="340" y="262" width="40" height="52" fill="#ee6a4c"/>
+  <rect x="380" y="262" width="40" height="52" fill="#c0392b"/>
+  <rect x="420" y="262" width="40" height="52" fill="#3d6fa8"/>
+  <rect x="190" y="334" width="260" height="40" rx="20" fill="#4fb3a5"/>
+  <text x="320" y="361" text-anchor="middle" fill="#1b1f21" font-family="Futura, 'Century Gothic', 'Avenir Next', 'Trebuchet MS', sans-serif" font-size="20" font-weight="bold" letter-spacing="3">PLEASE STAND BY</text>
+  </g>
+</svg>

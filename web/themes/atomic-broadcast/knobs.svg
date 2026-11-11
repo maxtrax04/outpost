@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="48" viewBox="0 0 120 48">
+  <title>Atomic Broadcast knobs</title>
+  <defs>
+    <radialGradient id="rim" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#f6dd96"/><stop offset="0.6" stop-color="#c99a3c"/><stop offset="1" stop-color="#6e5019"/>
+    </radialGradient>
+    <radialGradient id="cap" cx="0.4" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#7fd3c6"/><stop offset="1" stop-color="#2e7f76"/>
+    </radialGradient>
+  </defs>
+  <path fill="none" stroke="#c99a3c" stroke-width="1.2" d="M10.09 39.91L8.32 41.68M3.93 28.39L1.48 28.88M5.21 15.39L2.9 14.43M13.5 5.29L12.11 3.21M26 1.5L26 -1M38.5 5.29L39.89 3.21M46.79 15.39L49.1 14.43M48.07 28.39L50.52 28.88M41.91 39.91L43.68 41.68M78.09 39.91L76.32 41.68M71.93 28.39L69.48 28.88M73.21 15.39L70.9 14.43M81.5 5.29L80.11 3.21M94 1.5L94 -1M106.5 5.29L107.89 3.21M114.79 15.39L117.1 14.43M116.07 28.39L118.52 28.88M109.91 39.91L111.68 41.68"/>
+  <g transform="translate(26 24)">
+    <circle r="21" fill="url(#rim)" stroke="#6e5019" stroke-width="1"/>
+    <circle r="16" fill="url(#cap)"/>
+    <path d="M0-15V-6" stroke="#ecdfc0" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(94 24)">
+    <circle r="21" fill="url(#rim)" stroke="#6e5019" stroke-width="1"/>
+    <circle r="16" fill="url(#cap)"/>
+    <path d="M0-15V-6" stroke="#ecdfc0" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

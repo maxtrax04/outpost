@@ -141,7 +141,7 @@ data/       Generated weather.json and config.json (runtime, not committed)
 
 ## Themes
 
-Five themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, `modern-dark`, and `ink` (black on white, for ePaper; see [ePaper displays](#epaper-displays)). Set `OUTPOST_THEME` to choose the default for everyone, or add `?theme=name` to the address to preview one.
+Seven themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, `modern-dark`, `field-station` (a steel instrument panel with dials), `atomic-broadcast` (a 1950s television set), and `ink` (black on white, for ePaper; see [ePaper displays](#epaper-displays)). Set `OUTPOST_THEME` to choose the default for everyone, or add `?theme=name` to the address to preview one.
 
 Anyone viewing the dashboard can also pick a theme with the small button in the bottom-left corner (it is faint until you hover or tap it). The choice is remembered in that browser only, with a "Use server default" option to undo it. Set `OUTPOST_THEME_SWITCHER=false` to remove the button, for example on a wall display.
 

@@ -1,0 +1,137 @@
+/* Field Station: riveted steel instrument panel with analog dials */
+:root {
+    --bg: #15170f;
+    --bg-glow: rgba(120, 110, 60, 0.10);
+    --panel: rgba(31, 34, 24, 0.97);
+    --cell-bg: rgba(14, 16, 10, 0.75);
+
+    --text: #e9dfb8;
+    --text-dim: #a8a081;
+    --accent: #f0a73a;
+    --warn: #f0a73a;
+    --danger: #ef5b3f;
+    --danger-bg: rgba(70, 20, 10, 0.55);
+
+    --border: #5d6150;
+    --border-width: 1px;
+    --radius: 0;
+
+    --text-glow: none;
+    --icon-glow: none;
+    --scanlines: 0;
+
+    --font-display: "Share Tech Mono", "Courier New", monospace;
+    --font-body: "Share Tech Mono", "Courier New", monospace;
+    --title-spacing: 0.14em;
+    --title-logo: 1;
+
+    --bezel: 22px;
+    --dial-w: 76px;
+}
+
+/* Deck plate under everything, darker toward the edges */
+body {
+    background:
+        radial-gradient(ellipse at center, transparent 35%, rgba(0, 0, 0, 0.6)),
+        url("tread.svg") 0 0 / 24px 24px,
+        var(--bg);
+}
+
+/* Logo painted in hazard yellow */
+.title { color: #e3b02b; }
+
+/* Every panel sits in a riveted steel bezel (nine-slice: corners keep their size) */
+/* (The SVG needs a width and height: without them the browser stretches it to the panel before
+   slicing, and the corners distort.) */
+.panel {
+    border-style: solid;
+    border-width: var(--bezel);
+    border-image: url("bezel.svg") 32 / var(--bezel) stretch;
+    background-clip: padding-box;
+}
+.panel.alert-active { box-shadow: inset 0 0 0 2px var(--danger); }
+
+/* Section titles on a riveted nameplate */
+h2 {
+    display: inline-block;
+    padding: 4px 18px;
+    border: 10px solid transparent;
+    border-image: url("plate.svg") 10 fill / 10px stretch;
+    color: #1d1f17;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* Readings are recessed windows; the ones with a value get a dial */
+.detail-box {
+    border-color: #0b0c08;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+.detail-box[data-gauge]:not([data-missing]) {
+    padding-bottom: calc(var(--dial-w) * 0.633 + 12px);
+}
+
+/* Dial face (::before) and needle (::after), centered under the reading.
+   The pivot is 50% across and 86.8% down the face (see dial.svg). */
+.detail-box[data-gauge]:not([data-missing])::before {
+    content: "";
+    position: absolute;
+    right: calc(50% - var(--dial-w) / 2);
+    bottom: 6px;
+    width: var(--dial-w);
+    aspect-ratio: 120 / 76;
+    background: url("dial.svg") center / contain no-repeat;
+}
+.detail-box[data-metric="uv"]:not([data-missing])::before { background-image: url("dial-uv.svg"); }
+.detail-box[data-metric="visibility"]:not([data-missing])::before { background-image: url("dial-vis.svg"); }
+.detail-box[data-metric="pressure"]:not([data-missing])::before { background-image: url("dial-baro.svg"); }
+
+.detail-box[data-gauge]:not([data-missing])::after {
+    content: "";
+    position: absolute;
+    right: calc(50% - 1px);
+    bottom: calc(6px + var(--dial-w) * 0.633 * 0.132);
+    width: 2px;
+    height: calc(var(--dial-w) * 0.34);
+    background: #b3261e;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.4);
+    transform-origin: 50% 100%;
+    transform: rotate(calc(-90deg + var(--value) * 180deg));
+    transition: transform 1.2s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+/* thermometer.svg (a tube thermometer for the big temperature) is kept for later but not used. */
+
+/* Forecast: chance of rain as an amber level bar along the bottom of each card */
+.forecast-card { border-color: #0b0c08; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7); }
+.forecast-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    width: calc(var(--wx-rain, 0) * 100%);
+    background: var(--accent);
+}
+
+/* Warning banner: hazard stripes along the top and bottom */
+.panel.alert { padding: 30px 16px; }
+.panel.alert::before,
+.panel.alert::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: url("hazard.svg") 0 0 / 24px 24px repeat-x;
+}
+.panel.alert::before { top: 0; }
+.panel.alert::after { bottom: 0; }
+
+/* Phones: thinner bezels and smaller dials */
+@media (max-width: 600px) {
+    :root { --bezel: 14px; --dial-w: 64px; }
+}
+
+/* Reduced effects: the needle stops swinging (Outpost does that), and the busy deck plate goes */
+:root[data-effects="reduced"] body { background: var(--bg); }

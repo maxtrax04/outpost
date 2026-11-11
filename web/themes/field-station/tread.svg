@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Field Station tread plate (tile)</title>
+  <rect width="24" height="24" fill="#171a11"/>
+  <g fill="#262a1d" stroke="#0e100a" stroke-width="0.5">
+    <path d="M3 9L9 3L10.5 4.5L4.5 10.5Z"/>
+    <path d="M15 13.5L16.5 12L22.5 18L21 19.5Z"/>
+  </g>
+  <g fill="none" stroke="#353a29" stroke-width="0.5">
+    <path d="M3 9L9 3"/><path d="M15 13.5L16.5 12"/>
+  </g>
+</svg>

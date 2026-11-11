@@ -1,0 +1,338 @@
+/* Atomic Broadcast: a 1950s television set, cream and teal on charcoal */
+:root {
+    --bg: #15181a;
+    --bg-glow: rgba(79, 179, 165, 0.12);
+    --panel: rgba(36, 41, 44, 0.96);
+    --cell-bg: rgba(21, 25, 27, 0.85);
+
+    --text: #f1e4c3;
+    --text-dim: #a7b0a8;
+    --accent: #5fc4b4;
+    --warn: #efb548;
+    --danger: #ee6a4c;
+    --danger-bg: rgba(110, 34, 20, 0.6);
+
+    --border: #3d6f69;
+    --border-width: 2px;
+    --radius: 22px;
+
+    --text-glow: 0 0 5px rgba(241, 228, 195, 0.3);
+    --icon-glow: drop-shadow(0 0 4px rgba(95, 196, 180, 0.45));
+    --scanlines: 0.7;
+
+    /* No font files: these are system fonts, so each device uses the first one it has */
+    --font-display: "Futura", "Century Gothic", "Avenir Next", "Trebuchet MS", sans-serif;
+    --font-body: "Avenir Next", "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif;
+    --title-spacing: 0.12em;
+    --title-logo: 1;
+
+    /* The cabinet: --crt is the size of its side slices; the visible side band is 0.3 of that,
+       the bottom band 0.8 (it holds the knobs and the speaker) */
+    --crt: 80px;
+    --frame-inset: calc(var(--crt) * 0.3);
+    --frame-inset-bottom: calc(var(--crt) * 0.8);
+
+    /* One screen, like a television: fit the page to the screen, shrinking it on small screens
+       and growing it on big ones, and use the full width */
+    --fit-screen: 1;
+    --fit-width: 100vw;
+    --fit-max-scale: 2.5;
+}
+
+body {
+    background: radial-gradient(ellipse at 50% 30%, rgba(79, 179, 165, 0.10), transparent 60%), var(--bg);
+}
+
+/* ---- The television around the whole screen ---------------------------------------- */
+.frame {
+    border-style: solid;
+    border-color: transparent;
+    border-width: var(--crt) var(--crt) calc(var(--crt) * 1.5) var(--crt);
+    border-image: url("crt.svg") 80 80 120 80 / var(--crt) var(--crt) calc(var(--crt) * 1.5) var(--crt) stretch;
+    /* The curved glass: darker toward the corners of the picture */
+    background: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.45));
+    background-origin: border-box; /* measured from the screen edge, not inside the cabinet */
+}
+/* Speaker grille (bottom left) and knobs (bottom right), on the deep bottom band */
+.frame::before,
+.frame::after {
+    content: "";
+    position: absolute;
+    /* (Placed from the bottom of the frame's inner box, which sits 1.5 --crt above the screen's
+       bottom edge; the room between the pinstripe and the trim ring is 0.2 to 0.67 --crt.) */
+    bottom: calc(var(--crt) * -1.5 + var(--crt) * 0.23);
+    height: calc(var(--crt) * 0.42);
+    aspect-ratio: 120 / 48;
+    background: center / contain no-repeat;
+}
+.frame::before { left: calc(var(--crt) * 0.2); background-image: url("grille.svg"); }
+.frame::after { right: calc(var(--crt) * 0.2); background-image: url("knobs.svg"); }
+
+/* ---- Test card while the page waits for weather, or when there is none ---------------
+   (<html data-signal> is "waiting" until the first data arrives, and "offline" when there is
+   none.) It lingers a moment after the data arrives, then fades, like a set warming up. */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 39; /* over the page, under the scanlines and the cabinet */
+    pointer-events: none;
+    /* --card: the chart's size; the grid is a tenth of it, so the two line up at any size.
+       --corner: how far the gray steps sit from the screen's edges, clear of the cabinet. */
+    --card: min(72vw, 70vh);
+    --corner: calc(var(--crt) * 0.75);
+    --line: rgba(241, 228, 195, 0.13);
+    background:
+        url("testcard.svg") center / var(--card) no-repeat,
+        url("steps.svg") left var(--corner) top var(--corner) / auto calc(var(--card) * 0.055) no-repeat,
+        url("steps-rev.svg") right var(--corner) top var(--corner) / auto calc(var(--card) * 0.055) no-repeat,
+        url("steps-rev.svg") left var(--corner) bottom calc(var(--corner) + var(--crt) * 0.5) / auto calc(var(--card) * 0.055) no-repeat,
+        url("steps.svg") right var(--corner) bottom calc(var(--corner) + var(--crt) * 0.5) / auto calc(var(--card) * 0.055) no-repeat,
+        linear-gradient(to right, var(--line) 1px, transparent 1px) calc(50% + var(--card) / 20) calc(50% + var(--card) / 20) / calc(var(--card) / 10) calc(var(--card) / 10),
+        linear-gradient(to bottom, var(--line) 1px, transparent 1px) calc(50% + var(--card) / 20) calc(50% + var(--card) / 20) / calc(var(--card) / 10) calc(var(--card) / 10),
+        #1b1f21;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.8s ease 0.9s, visibility 0s linear 1.7s;
+}
+:root[data-signal="waiting"] body::after,
+:root[data-signal="offline"] body::after {
+    opacity: 1;
+    visibility: visible;
+    transition: none;
+}
+
+/* ---- Header: the logo between two starbursts --------------------------------------- */
+.title { color: var(--text); }
+.header::before,
+.header::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    aspect-ratio: 1;
+    background: center / contain no-repeat;
+}
+.header::before { left: 6%; width: clamp(36px, 7vw, 76px); translate: 0 -60%; background-image: url("starburst.svg"); }
+.header::after { right: 7%; width: clamp(26px, 5vw, 52px); translate: 0 -30%; background-image: url("starburst-teal.svg"); }
+
+/* Landscape screens have little height to spare: logo and location side by side */
+@media (orientation: landscape) and (min-width: 700px) {
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0 1.2em;
+        flex-wrap: wrap;
+        padding-block: 12px;
+    }
+    .header .title-logo { height: clamp(3rem, 7vw, 5rem); }
+    .header .location { margin: 0; }
+    .header .subtitle { flex-basis: 100%; text-align: center; }
+}
+
+/* ---- Section titles on a teal pill, led by a small starburst ------------------------ */
+h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.2em 0.9em 0.2em 0.5em;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--bg);
+    text-shadow: none;
+    font-family: var(--font-display);
+}
+h2::before {
+    content: "";
+    width: 1.2em;
+    aspect-ratio: 1;
+    background: url("starburst-ink.svg") center / contain no-repeat;
+}
+
+/* ---- The condition as a broadcast lower third: "NOW" tag, then a slanted teal bar --- */
+.condition {
+    display: inline-flex;
+    align-items: stretch;
+    margin-top: 0.3em;
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 2.8vw, 2.2rem);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--bg);
+    text-shadow: none;
+    background: var(--accent);
+    padding: 0.15em 1em 0.15em 0;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.6em) 100%, 0 100%);
+}
+.condition::before {
+    content: "NOW";
+    display: flex;
+    align-items: center;
+    margin-right: 0.6em;
+    padding: 0 0.5em;
+    background: var(--danger);
+    color: var(--bg);
+    font-size: 0.7em;
+    letter-spacing: 0.12em;
+}
+
+/* ---- Readings: a radio tuning scale, with the pointer at the value ------------------ */
+.detail-box[data-gauge]:not([data-missing]) { padding-bottom: 36px; }
+.detail-box[data-gauge]:not([data-missing])::before {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    height: 14px;
+    background: url("tuning.svg") 0 0 / 100% 100% no-repeat;
+}
+.detail-box[data-gauge]:not([data-missing])::after {
+    content: "";
+    position: absolute;
+    bottom: 8px;
+    left: calc(12px + var(--value) * (100% - 24px) - 1.5px);
+    width: 3px;
+    height: 22px;
+    border-radius: 2px;
+    background: var(--danger);
+    box-shadow: 0 0 4px rgba(238, 106, 76, 0.7);
+    transition: left 1s ease-in-out;
+}
+
+/* ---- Forecast: chance of rain as a teal bar along the bottom of each card --------------- */
+.forecast-card { overflow: hidden; }
+.forecast-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 5px;
+    width: calc(var(--wx-rain, 0) * 100%);
+    background: var(--accent);
+}
+
+/* ---- Warning banner as a special bulletin -------------------------------------------- */
+.panel.alert { border-width: 3px; }
+.panel.alert::before {
+    content: "BULLETIN";
+    display: inline-block;
+    margin-right: 0.8em;
+    padding: 0.1em 0.6em;
+    border-radius: 999px;
+    background: var(--danger);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 0.75em;
+    letter-spacing: 0.15em;
+    vertical-align: middle;
+}
+
+/* ---- Alerts as a news crawl along the bottom of the screen ----------------------------
+   The alerts panel is pinned just above the cabinet's bottom band: an "ALERTS" tag on the left,
+   and the alerts sliding right to left at a steady reading speed (--alert-chars is how much
+   text there is, set by Outpost). The page leaves room for it, so it never covers the forecast.
+   Sizes are divided by --fit-scale because the page is scaled (see fit to screen). */
+:root { --crawl-h: 46px; }
+main:has(> #alertsPanel:not([hidden])) {
+    --frame-inset-bottom: calc(var(--crt) * 0.8 + (var(--crawl-h) + 8px) * var(--fit-scale, 1));
+}
+#alertsPanel:not([hidden]) {
+    position: fixed;
+    z-index: 38; /* under the test card */
+    left: calc(var(--crt) * 0.55 / var(--fit-scale, 1));
+    right: calc(var(--crt) * 0.55 / var(--fit-scale, 1));
+    bottom: calc((var(--crt) * 0.8 + 6px) / var(--fit-scale, 1));
+    height: var(--crawl-h);
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-top: 3px solid var(--accent);
+    border-radius: 0;
+    background: rgba(12, 15, 16, 0.94);
+}
+#alertsPanel h2 {
+    position: relative;
+    z-index: 1; /* the text slides under it */
+    flex: none;
+    margin: 0;
+    border-radius: 0;
+    padding: 0 0.9em 0 0.6em;
+    background: var(--danger);
+    color: var(--bg);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.6em) 100%, 0 100%);
+}
+#alertsPanel.alert-active h2 { animation: alert-tag 1.2s ease-in-out infinite alternate; }
+@keyframes alert-tag { to { background: #b8361f; } }
+
+#alerts {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4em;
+    padding-left: 100%;
+    white-space: nowrap;
+    font-size: 1.15rem;
+    animation: crawl calc(10s + var(--alert-chars, 80) * 0.18s) linear infinite;
+}
+@keyframes crawl { to { translate: -100% 0; } }
+
+#alerts .alert-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8em;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+#alerts .alert-item br { display: none; }
+#alerts .alert-item::before {
+    content: "";
+    align-self: center;
+    width: 1em;
+    aspect-ratio: 1;
+    background: url("starburst.svg") center / contain no-repeat;
+}
+#alerts .alert-title { text-transform: uppercase; letter-spacing: 0.06em; }
+#alerts .alert-description { color: var(--text); }
+#alerts .alert-expires { color: var(--text-dim); }
+
+/* Reduced effects: no crawl; the alerts sit still and wrap. The strip's height then depends on the
+   alerts, so it goes back into the page (above the footer) instead of being pinned, and the page
+   makes room for it whatever its height. */
+:root[data-effects="reduced"] main:has(> #alertsPanel:not([hidden])) { --frame-inset-bottom: calc(var(--crt) * 0.8); }
+:root[data-effects="reduced"] #alertsPanel:not([hidden]) {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: auto;
+    min-height: var(--crawl-h);
+    margin-bottom: 14px;
+}
+:root[data-effects="reduced"] #alerts {
+    flex: 1;
+    padding: 6px 12px;
+    white-space: normal;
+    flex-wrap: wrap;
+    gap: 0.4em 2em;
+}
+
+/* ---- Smaller screens: a slimmer cabinet --------------------------------------------- */
+@media (max-width: 850px) {
+    :root { --crt: 64px; }
+}
+@media (max-height: 700px) {
+    :root { --crt: 56px; }
+}
+@media (max-width: 600px) {
+    :root { --crt: 44px; }
+    .header::before { left: 3%; }
+    .header::after { right: 3%; }
+}
+
+/* Reduced effects: Outpost already turns off the scanlines, glow, and the pointers' slide */

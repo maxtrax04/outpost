@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="48" viewBox="0 0 120 48">
+  <title>Atomic Broadcast speaker grille</title>
+  <defs>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6dd96"/><stop offset="0.5" stop-color="#c99a3c"/><stop offset="1" stop-color="#6e5019"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="118" height="46" rx="8" fill="url(#brass)"/>
+  <rect x="4.5" y="4.5" width="111" height="39" rx="5" fill="#3b2e22"/>
+  <path fill="none" stroke="#6b5640" stroke-opacity="0.7" stroke-width="1" d="M6 5V43M9 5V43M12 5V43M15 5V43M18 5V43M21 5V43M24 5V43M27 5V43M30 5V43M33 5V43M36 5V43M39 5V43M42 5V43M45 5V43M48 5V43M51 5V43M54 5V43M57 5V43M60 5V43M63 5V43M66 5V43M69 5V43M72 5V43M75 5V43M78 5V43M81 5V43M84 5V43M87 5V43M90 5V43M93 5V43M96 5V43M99 5V43M102 5V43M105 5V43M108 5V43M111 5V43M114 5V43M5 6H115M5 9H115M5 12H115M5 15H115M5 18H115M5 21H115M5 24H115M5 27H115M5 30H115M5 33H115M5 36H115M5 39H115M5 42H115"/>
+</svg>

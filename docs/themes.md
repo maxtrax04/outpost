@@ -23,6 +23,8 @@ Set `OUTPOST_THEME` in your `.env` (or container settings) to the folder name:
 | `amber-terminal` | Single-color amber monochrome monitor |
 | `command-center` | Cool blue tactical display, thin borders |
 | `modern-dark` | Flat, rounded, no effects; uses system fonts |
+| `field-station` | Riveted steel instrument panel with analog dials and hazard stripes |
+| `atomic-broadcast` | A 1950s television set: cabinet, test card, and a news crawl for alerts; fits the screen |
 | `ink` | Black on white for ePaper displays; no effects, fits the screen |
 
 Restart the container after changing it. The dashboard picks up the change on its next refresh.
@@ -158,7 +160,8 @@ but prefer tokens so your theme keeps working as the layout evolves.
 ### Decorations and gauges
 
 Tokens change colors and sizes. For frames, plates, stripes, and dials, a theme adds normal CSS rules
-that use the hooks below. All of them are optional.
+that use the hooks below. All of them are optional. The built-in `field-station` and `atomic-broadcast`
+themes use most of them and are a good place to start.
 
 **Places to draw.** `::before` and `::after` are free on these elements, and each one is
 `position: relative`, so `position: absolute` places a decoration inside it.
