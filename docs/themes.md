@@ -39,6 +39,10 @@ the button.
 
 If the name is misspelled or the folder has no `theme.css`, Outpost logs a warning and uses `retro-crt`.
 
+More themes, made by other Outpost users, are in the
+[outpost-themes](https://github.com/maxtrax04/outpost-themes) repository; see
+[Community themes](../README.md#community-themes) in the README for how to use them.
+
 ## Adding themes without rebuilding
 
 Mount a folder of your own themes at `/config/themes` in the container. Each theme is a folder in it,
@@ -317,3 +321,12 @@ and list it in `THIRD_PARTY.md`. A font several themes share can go in `assets/f
 
 Weather icons are tinted with `--text` and glow with `--icon-glow`, so a theme changes their
 color without any extra work.
+
+## Sharing your theme
+
+To share a theme with other Outpost users, add it to the
+[community themes](https://github.com/maxtrax04/outpost-themes) repository: a folder named after your
+GitHub username, with the theme, a README, and a screenshot. Its
+[CONTRIBUTING.md](https://github.com/maxtrax04/outpost-themes/blob/main/CONTRIBUTING.md) has the steps and
+rules, and checks run on every pull request. Everyone can then download it with
+`OUTPOST_COMMUNITY_THEMES=<your-username>/<theme>`.
