@@ -117,6 +117,12 @@ class WebServerTests(unittest.TestCase):
     def test_weather_data_is_never_cached(self):
         self.assertRegex(self.conf, r'location /data/ \{\s*add_header Cache-Control "no-store";')
 
+    def test_page_files_are_checked_for_changes_on_every_load(self):
+        # Set for the whole server (before the first location), so a browser never pairs a new
+        # page with old cached scripts after an upgrade
+        server_level = re.split(r"^\s*location\b", self.conf, maxsplit=1, flags=re.MULTILINE)[0]
+        self.assertIn('add_header Cache-Control "no-cache";', server_level)
+
     def test_custom_themes_are_checked_before_built_in_ones(self):
         self.assertRegex(self.conf, r"root /config;\s*try_files \$uri @builtin_theme;")
         self.assertRegex(self.conf, r"location @builtin_theme \{\s*root /usr/share/nginx/html;")

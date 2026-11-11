@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-signal="waiting">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -80,16 +80,20 @@
         <div class="theme-panel-title">THEME</div>
         <div id="themeList"></div>
         <button id="effectsToggle" class="theme-option effects-toggle" type="button" role="menuitemcheckbox" aria-checked="false" hidden>Reduced effects</button>
+        <button id="clockToggle" class="theme-option theme-check" type="button" role="menuitemcheckbox" aria-checked="false" hidden>24-hour clock</button>
         <button id="themeReset" class="theme-reset" type="button" hidden>Use server default</button>
         <div id="themeNote" class="theme-note"></div>
     </div>
 
+    <div class="scan-roll" aria-hidden="true"></div>
     <div class="frame" aria-hidden="true"></div>
 
     <div id="dim-overlay"></div>
 
     <script src="dim.js"></script>
     <script src="effects.js"></script>
+    <script src="fit.js"></script>
+    <script src="clock.js"></script>
     <script src="themes.js"></script>
     <script src="gauges.js"></script>
     <script src="app.js"></script>

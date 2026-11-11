@@ -203,10 +203,17 @@ function buildThemeList() {
     effects.setAttribute("aria-checked", String(OutpostEffects.current() === "reduced"));
     const savedEffects = !effects.hidden && OutpostEffects.savedChoice();
 
+    // 24-hour clock toggle (web/clock.js), unless the server hides it
+    const clock = document.getElementById("clockToggle");
+    clock.hidden = !OutpostClock.toggleAllowed(themeConfig);
+    clock.setAttribute("aria-checked", String(OutpostClock.effective() === "24"));
+    const savedClock = !clock.hidden && OutpostClock.savedChoice();
+
+    const anySaved = saved || savedEffects || savedClock;
     const serverName = (themes.find((theme) => theme.id === server) || {}).name || server;
-    reset.hidden = !(saved || savedEffects);
+    reset.hidden = !anySaved;
     reset.textContent = `Use server default (${serverName})`;
-    note.textContent = saved || savedEffects ? "Saved in this browser." : "Using the server's settings.";
+    note.textContent = anySaved ? "Saved in this browser." : "Using the server's settings.";
 }
 
 async function selectTheme(id) {
@@ -215,6 +222,7 @@ async function selectTheme(id) {
     removeThemeFromAddress();
     await applyTheme(themeConfig);
     buildThemeList();
+    OutpostFit.schedule();
 
     if (!stored) {
         document.getElementById("themeNote").textContent = "This browser blocks saving; the choice lasts until you reload.";
@@ -224,10 +232,12 @@ async function selectTheme(id) {
 async function resetTheme() {
     writeSavedTheme(null);
     OutpostEffects.clear();
+    OutpostClock.clear();
     sessionTheme = null;
     removeThemeFromAddress();
     await applyTheme(themeConfig);
     buildThemeList();
+    await refresh(); // redraws the times in the server's clock
 }
 
 function wireThemeSwitcher() {
@@ -245,6 +255,14 @@ function wireThemeSwitcher() {
     document.getElementById("themeReset").addEventListener("click", resetTheme);
     document.getElementById("effectsToggle").addEventListener("click", () => {
         const stored = OutpostEffects.toggle();
+        buildThemeList();
+        if (!stored) {
+            document.getElementById("themeNote").textContent = "This browser blocks saving; the choice lasts until you reload.";
+        }
+    });
+    document.getElementById("clockToggle").addEventListener("click", async () => {
+        const stored = OutpostClock.toggle();
+        await refresh(); // redraws every time on the page (app.js)
         buildThemeList();
         if (!stored) {
             document.getElementById("themeNote").textContent = "This browser blocks saving; the choice lasts until you reload.";

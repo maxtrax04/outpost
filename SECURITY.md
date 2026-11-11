@@ -50,10 +50,11 @@ other sites from embedding it. To show it in a Home Assistant webpage card, or a
 page's address in `OUTPOST_FRAME_ANCESTORS`, including the port:
 
 ```
-OUTPOST_FRAME_ANCESTORS=http://homeassistant.local:8123 https://ha.example.com
+OUTPOST_FRAME_ANCESTORS=http://homeassistant.local:8123,https://ha.example.com
 ```
 
-Entries are separated by spaces or commas. `self`, `none`, and `https://*.example.com` style wildcards also
+Separate entries with commas. Spaces also work (that is how the header itself lists them), but a value with
+spaces may need quotes depending on where you set it. `self`, `none`, and `https://*.example.com` style wildcards also
 work. Anything else is rejected (Outpost logs a warning and uses the default), because the value goes into a
 header. Restart the container after changing it.
 

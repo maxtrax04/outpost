@@ -1,0 +1,201 @@
+/* Ink: black on white for ePaper and other paper-like screens. No effects or animation. */
+/* Made for 1-bit (black and white only) panels first: everything is solid black or white, with no
+   grays, gradients, or glows that a panel would have to dither. Things are told apart by size,
+   weight, borders, and inverse video, never by color alone. The one color is dark red for severe
+   alerts, which a color ePaper panel shows as red and a black-and-white panel turns into black. */
+:root {
+    --bg: #ffffff;
+    --bg-glow: transparent;
+    --panel: #ffffff;
+    --cell-bg: #ffffff;
+
+    --text: #000000;
+    --text-dim: #000000;
+    --accent: #000000;
+    --warn: #000000;
+    --danger: #b00000;
+    --danger-bg: #ffffff;
+
+    --border: #000000;
+    --border-width: 3px;
+    --radius: 0;
+
+    --text-glow: none;
+    --icon-glow: none;
+    --scanlines: 0;
+    --scan-roll: none;
+
+    /* System fonts, at heavier weights than usual: thin strokes break up on a low-resolution panel */
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --title-spacing: 0.12em;
+    --title-logo: 1;
+
+    /* A wall panel can't scroll: fit the page to the screen, and grow it on big panels */
+    --fit-screen: 1;
+    --fit-width: 100vw;
+    --fit-max-scale: 2;
+
+    color-scheme: light;
+}
+
+body {
+    background: var(--bg);
+    font-weight: 500;
+}
+
+/* Night dimming would only turn the page gray: paper has no light to dim */
+#dim-overlay { display: none; }
+
+/* Compact, so the whole page fits a small panel such as 800 x 480 without shrinking the text */
+main { --pad-base: 14px; }
+
+.panel {
+    padding: 10px 16px;
+    margin-bottom: 10px;
+}
+
+h2 {
+    margin: 0 0 10px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+}
+
+/* ---- Header: logo and location on one line, so the weather gets the space ------------------ */
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 24px;
+    text-align: left;
+}
+.title { align-items: flex-start; }
+.title-logo { height: calc(var(--title-logo) * clamp(2.6rem, 6vw, 4rem)); }
+.subtitle { order: 3; flex-basis: 100%; font-weight: 600; }
+.location {
+    margin-top: 0;
+    font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+    font-weight: 700;
+}
+
+/* ---- Current conditions ---------------------------------------------------------------- */
+.current { gap: 18px; }
+.current-icon { width: clamp(64px, 9vw, 112px); }
+.temperature { font-size: clamp(3.5rem, 8vw, 6.5rem); font-weight: 800; }
+.condition {
+    font-size: clamp(1.5rem, 3.2vw, 2.4rem);
+    font-weight: 700;
+}
+
+/* Readings: a small label over a large value, separated by rules rather than boxes */
+.details { gap: 0 18px; }
+.detail-box {
+    padding: 5px 0;
+    border: 0;
+    border-top: 2px solid var(--border);
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.detail-box span {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* ---- Forecast: columns divided by rules -------------------------------------------------- */
+.forecast { gap: 0; }
+.forecast-card {
+    padding: 4px 10px 8px;
+    border: 0;
+    border-left: 2px solid var(--border);
+    background: none;
+}
+.forecast-card:first-child { border-left: 0; }
+.forecast-day {
+    display: block;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.forecast-icon { width: 44px; margin: 4px auto; }
+.forecast-condition { min-height: 2.5em; font-weight: 600; }
+.forecast-temps { font-size: 1.35rem; font-weight: 800; }
+/* Rain and UV on one line */
+.forecast-extra { display: flex; justify-content: center; gap: 0 12px; flex-wrap: wrap; font-weight: 600; }
+
+/* ---- Alerts: severity by weight and inverse video, with the level spelled out -------------- */
+.alert-item {
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    background: none;
+    color: var(--text);
+}
+.alert-item .alert-title { font-size: 1.15rem; font-weight: 800; }
+.alert-item.severity-minor,
+.alert-item.severity-unknown { border-style: dashed; }
+.alert-item.severity-moderate { border-width: 4px; color: var(--text); border-color: var(--border); }
+.alert-item.severity-severe,
+.alert-item.severity-extreme {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #ffffff;
+}
+.alert-item.severity-minor .alert-title::before { content: "MINOR: "; }
+.alert-item.severity-moderate .alert-title::before { content: "MODERATE: "; }
+.alert-item.severity-severe .alert-title::before { content: "SEVERE: "; }
+.alert-item.severity-extreme .alert-title::before { content: "EXTREME: "; }
+.panel.alert-active { border-color: var(--border); border-width: 5px; }
+
+/* The degraded-data warning: a heavy dashed box (red on a color panel) */
+.alert {
+    border-style: dashed;
+    border-width: 4px;
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.status-line,
+footer { font-size: 0.85rem; font-weight: 600; }
+
+/* ---- Theme switcher: solid, no fade (a fading button makes a panel redraw) ------------------ */
+.theme-button,
+.theme-panel { background: var(--bg); }
+.theme-button { transition: none; }
+.theme-option[aria-checked="true"] { font-weight: 800; }
+
+/* ---- Landscape panels (800 x 600 and up): keep the readings beside the temperature -------- */
+@media (orientation: landscape) {
+    .current { grid-template-columns: auto 1fr; text-align: left; }
+    .current-main { justify-content: flex-start; }
+}
+
+/* ---- Short screens (small landscape panels): each alert on one line, title and end time only --
+   The full text is still in the page for screen readers; it just isn't drawn. */
+@media (max-height: 600px) and (orientation: landscape) {
+    .alert-item { padding: 5px 10px; margin-bottom: 6px; }
+    .alert-item br,
+    .alert-item .alert-description { display: none; }
+    .alert-item .alert-title { font-size: 1rem; }
+    .alert-item .alert-expires::before { content: "  \2014  "; white-space: pre; }
+}
+
+/* ---- Small screens: the base layout, with the forecast rows divided by rules ----------------- */
+@media (max-width: 600px) {
+    .header { justify-content: center; text-align: center; }
+    .title { align-items: center; }
+    .forecast-card {
+        border-left: 0;
+        border-top: 2px solid var(--border);
+        padding: 8px 0;
+    }
+    .forecast-card:first-child { border-top: 0; }
+    .forecast-extra { color: var(--text); }
+}

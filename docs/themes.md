@@ -23,6 +23,7 @@ Set `OUTPOST_THEME` in your `.env` (or container settings) to the folder name:
 | `amber-terminal` | Single-color amber monochrome monitor |
 | `command-center` | Cool blue tactical display, thin borders |
 | `modern-dark` | Flat, rounded, no effects; uses system fonts |
+| `ink` | Black on white for ePaper displays; no effects, fits the screen |
 
 Restart the container after changing it. The dashboard picks up the change on its next refresh.
 
@@ -127,7 +128,8 @@ the first colon in the file's opening comment, so `/* Retro CRT: green phosphor 
 | `--radius` | Corner rounding (`0` is square) |
 | `--text-glow` | Text glow (a `text-shadow` value, or `none`) |
 | `--icon-glow` | Icon glow (a `filter` value such as `drop-shadow(...)`, or `none`) |
-| `--scanlines` | Scanline strength from `0` (off) to `1` |
+| `--scanlines` | Scanline strength from `0` (off) to `1`. It also sets the strength of the rolling band, a soft band in `--text` that drifts down the screen |
+| `--scan-roll` | How long the rolling band takes to cross the screen (default `9s`); `none` stops it |
 | `--font-display` | Title and large temperature |
 | `--font-body` | Everything else |
 | `--title-logo` | `1` shows the Outpost logo as the title, `0` shows the word OUTPOST in `--font-display` |
@@ -166,7 +168,7 @@ that use the hooks below. All of them are optional.
 | `.panel` | Every panel. One panel: `[data-panel="header"]`, `"banner"` (the warning banner), `"current"`, `"forecast"`, or `"alerts"` |
 | `.detail-box` | Each reading in the current-weather panel. One reading: `[data-metric="humidity"]` (names below) |
 | `.forecast-card` | Each forecast day |
-| `.frame` | An empty layer over the whole screen, above the content and scanlines, for a bezel. Set `--frame-inset` (for example `--frame-inset: 32px;` in `:root`) to move the content in from the edges so the bezel does not cover it |
+| `.frame` | An empty layer over the whole screen, above the content and scanlines, for a bezel. Set `--frame-inset` (for example `--frame-inset: 32px;` in `:root`) to move the content in from the edges so the bezel does not cover it, and `--frame-inset-bottom` as well for a bezel with a deeper bottom edge |
 
 Decorations must not cover text, and should not catch taps (`.frame` already ignores them).
 
@@ -211,6 +213,56 @@ For example, a needle in the corner of every reading that has a value:
 Images a theme draws with (a dial face, a bezel, a stripe tile) go in its folder, like any other file.
 For a frame that fits any screen shape, use `border-image` with a nine-slice image: its corners keep
 their size and its edges stretch, so one file works on a phone, a portrait tablet, and a wide screen.
+
+### Fit to screen
+
+A theme styled as a single screen (a television, a wall panel, a device) can have the whole dashboard
+fit the screen without scrolling. Set these in its `:root`:
+
+| Token | What it does |
+|---|---|
+| `--fit-screen` | `1` turns fitting on |
+| `--fit-width` | How wide the page may get while fitting (default `1200px`; `100vw` uses the full width) |
+| `--fit-max-scale` | How much the page may grow on big screens, from `1` (the default: shrink only) to `4` |
+
+While it is on, `<html>` has `data-fit="on"` and `--fit-scale` (the scale in use), and `<main>` is zoomed
+by that scale. It never shrinks below `0.55`, because tiny text is worse than scrolling: a screen that
+would need more (a phone in portrait, say) gets the normal layout and scrolls. Add `?fit=on` or `?fit=off`
+to the address to try it with any theme.
+
+Anything inside `<main>` with `position: fixed` is zoomed too, so divide its offsets by the scale, for
+example `bottom: calc(10px / var(--fit-scale, 1))`. `.frame` is outside `<main>` and is never zoomed.
+
+### Page state
+
+These attributes on `<html>` let a theme react to the page's state with selectors such as
+`:root[data-signal="offline"] .frame::after`.
+
+| Attribute | Values |
+|---|---|
+| `data-theme` | The theme in use |
+| `data-signal` | The weather data: `waiting` (not loaded yet), `ok`, `degraded` (old or partial data, such as the last good data kept after a failed update), or `offline` (the data could not be read) |
+| `data-effects` | `full` or `reduced` (see [Reduced effects](#reduced-effects)) |
+| `data-clock` | `12`, `24`, or `auto` (the browser's language decides) |
+| `data-fit` | `on` while [fitting to the screen](#fit-to-screen) |
+
+### Alerts
+
+Each alert is a `.alert-item` (also a `.detail-box`) with a `.severity-<level>` class: `extreme`, `severe`,
+`moderate`, `minor`, or `unknown`. Inside it are `.alert-title`, `.alert-description`, and `.alert-expires`
+(the end time, when there is one), separated by `<br>`. The alerts panel (`#alertsPanel`) gets `.alert-active`
+when any alert is severe or extreme. `#alerts` gets `--alert-chars`, the amount of alert text, so a theme
+that scrolls alerts like a news crawl can keep the speed readable, for example
+`animation-duration: calc(var(--alert-chars) * 0.12s)`.
+
+With no alerts, the page shows one of two quiet states, depending on `OUTPOST_ALERTS_ALWAYS_SHOW`:
+
+- `true`: the panel stays, with a "no active alerts" line and no `.alert-item`. Select it with
+  `#alertsPanel:not(:has(.alert-item))`.
+- `false`: the panel is hidden, and a one-line note, `#alertsStatus`, says when alerts were last checked.
+
+To see how a theme shows alerts, run the mock provider with `OUTPOST_MOCK_ALERTS=true`. It always includes
+one severe, one moderate, and one minor alert.
 
 ### Reduced effects
 

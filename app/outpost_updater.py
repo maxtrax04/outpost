@@ -199,6 +199,20 @@ def effects_setting() -> str:
     print(f"[Outpost] Unknown OUTPOST_EFFECTS \"{value}\" (use full or reduced); using full", file=sys.stderr, flush=True)
     return "full"
 
+CLOCK_VALUES = ("auto", "12", "24")
+CLOCK_ALIASES = {"12h": "12", "24h": "24"}
+
+def clock_setting() -> str:
+    """OUTPOST_CLOCK: auto (default, each browser's language decides), 12, or 24."""
+    value = os.getenv("OUTPOST_CLOCK", "").strip().lower()
+    if not value:
+        return "auto"
+    value = CLOCK_ALIASES.get(value, value)
+    if value in CLOCK_VALUES:
+        return value
+    print(f"[Outpost] Unknown OUTPOST_CLOCK \"{value}\" (use auto, 12, or 24); using auto", file=sys.stderr, flush=True)
+    return "auto"
+
 def build_ui_config() -> Dict[str, Any]:
     """Dashboard display settings from the environment."""
     subtitle = os.getenv("OUTPOST_SUBTITLE", "").strip()
@@ -212,6 +226,8 @@ def build_ui_config() -> Dict[str, Any]:
         "theme_switcher": env_flag("OUTPOST_THEME_SWITCHER", True),
         "effects": effects_setting(),
         "effects_toggle": env_flag("OUTPOST_EFFECTS_TOGGLE", True),
+        "clock": clock_setting(),
+        "clock_toggle": env_flag("OUTPOST_CLOCK_TOGGLE", True),
     }
 
 THEME_FILE = "theme.css"
@@ -330,6 +346,35 @@ def write_config() -> None:
         flush=True
     )
 
+def mock_sample_alerts(now: datetime) -> List[Dict[str, Any]]:
+    """Sample alerts for the mock provider: one of each severity, most serious first (as NWS sends them)."""
+    def until(hours: int) -> str:
+        return (now + timedelta(hours=hours)).replace(microsecond=0).isoformat()
+
+    return [
+        {
+            "title": "Severe Thunderstorm Warning",
+            "description": "Sample alert: storms with 60 mph wind gusts and quarter-size hail moving east at 30 mph.",
+            "severity": "severe",
+            "expires": until(2),
+            "uri": None,
+        },
+        {
+            "title": "Wind Advisory",
+            "description": "Sample alert: southwest winds 25 to 35 mph with gusts to 50 mph.",
+            "severity": "moderate",
+            "expires": until(6),
+            "uri": None,
+        },
+        {
+            "title": "Air Quality Alert",
+            "description": "Sample alert: smoke may cause unhealthy air for sensitive groups.",
+            "severity": "minor",
+            "expires": until(12),
+            "uri": None,
+        },
+    ]
+
 def build_mock_payload() -> Dict[str, Any]:
     """
     Build predictable-but-changing mock data.
@@ -383,7 +428,12 @@ def build_mock_payload() -> Dict[str, Any]:
             "severity": "test",
             "uri": None
         })
-    
+
+    # OUTPOST_MOCK_ALERTS=true: always include sample alerts of each kind, for trying how a theme
+    # shows them (the mock otherwise has an alert only now and then)
+    if env_flag("OUTPOST_MOCK_ALERTS", False):
+        alerts.extend(mock_sample_alerts(now))
+
     return {
         "status": "ok",
         "app": APP_NAME,

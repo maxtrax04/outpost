@@ -107,8 +107,11 @@ async function checkReducedEffects(browser) {
         scanlines: getComputedStyle(document.body, "::before").opacity,
         glow: getComputedStyle(document.querySelector(".title-logo-glow")).filter,
         textShadow: getComputedStyle(document.body).textShadow,
+        roll: getComputedStyle(document.querySelector(".scan-roll")).opacity,
+        rolling: getComputedStyle(document.querySelector(".scan-roll"), "::before").animationName,
     }));
-    const isReduced = (s) => s.effects === "reduced" && s.scanlines === "0" && s.glow === "none" && s.textShadow === "none";
+    const isReduced = (s) => s.effects === "reduced" && s.scanlines === "0" && s.glow === "none" && s.textShadow === "none"
+        && s.roll === "0" && s.rolling === "none";
     const open = async (page, path) => {
         await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
         await waitFor(page, () => !document.body.classList.contains("theme-loading"), null, 3000);
@@ -127,6 +130,8 @@ async function checkReducedEffects(browser) {
     page = await browser.newPage({ viewport: VIEWPORTS.wide, reducedMotion: "no-preference" });
     state = await open(page, "/");
     if (state.effects !== "full") problems.push(`effects are "${state.effects}" by default, expected full`);
+    // The default theme has scanlines, so the rolling band shows and moves
+    if (state.roll === "0" || state.rolling !== "scan-roll") problems.push(`the rolling band is missing by default: ${JSON.stringify(state)}`);
     state = await open(page, "/?effects=reduced");
     if (!isReduced(state)) problems.push(`?effects=reduced gave ${JSON.stringify(state)}`);
 
@@ -146,6 +151,45 @@ async function checkReducedEffects(browser) {
         problems.push('"Use server default" did not bring the effects back');
     }
     await page.close();
+    return problems;
+}
+
+async function checkClock(browser) {
+    // 12/24-hour clock (web/clock.js): the browser's language, the address, and the viewer's checkbox.
+    // A US English browser uses 12-hour times on its own.
+    const problems = [];
+    const context = await browser.newContext({ viewport: VIEWPORTS.wide, locale: "en-US" });
+    const page = await context.newPage();
+    const updated = () => page.evaluate(() => document.getElementById("lastUpdated").textContent);
+    const open = async (path) => {
+        await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
+        await waitFor(page, () => /\d/.test(document.getElementById("lastUpdated").textContent), null, 3000);
+        return updated();
+    };
+    const is12 = (text) => /\d\s?[AP]M$/i.test(text);
+    const is24 = (text) => /\b\d\d:\d\d$/.test(text);
+
+    let text = await open("/");
+    if (!is12(text)) problems.push(`a US English browser showed "${text}", expected a 12-hour time`);
+    text = await open("/?clock=24");
+    if (!is24(text)) problems.push(`?clock=24 showed "${text}"`);
+
+    // The checkbox switches to 24-hour, is remembered, and "Use server default" undoes it
+    await open("/");
+    await page.click("#themeButton");
+    await page.click("#clockToggle");
+    if (!await waitFor(page, () => /\b\d\d:\d\d$/.test(document.getElementById("lastUpdated").textContent), null, 3000)) {
+        problems.push(`the 24-hour clock checkbox did not change the times ("${await updated()}")`);
+    }
+    if (await page.getAttribute("#clockToggle", "aria-checked") !== "true") problems.push("the clock checkbox is not shown as checked");
+    text = await open("/");
+    if (!is24(text)) problems.push(`the clock choice was not remembered after a reload ("${text}")`);
+    await page.click("#themeButton");
+    await page.click("#themeReset");
+    if (!await waitFor(page, () => /\d\s?[AP]M$/i.test(document.getElementById("lastUpdated").textContent), null, 3000)) {
+        problems.push(`"Use server default" did not bring back 12-hour times ("${await updated()}")`);
+    }
+    await context.close();
     return problems;
 }
 
@@ -182,6 +226,7 @@ async function checkFraming(browser) {
     }
     report("switching themes with the on-screen switcher", await checkSwitching(browser, themes));
     report("reduced effects (device setting, address, and checkbox)", await checkReducedEffects(browser));
+    report("12/24-hour clock (language, address, and checkbox)", await checkClock(browser));
     report("embedding from another site is blocked", await checkFraming(browser));
 
     await browser.close();
