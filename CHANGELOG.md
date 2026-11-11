@@ -6,163 +6,54 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-### Added
+## [0.5.0] - 2026-11-11
 
-- `--fit-min-scale` theme token: how far fit to screen may shrink the page (from 0.55 to 1). A page that would need more keeps its normal layout.
-
-### Changed
-
-- `retro-crt`, `amber-terminal`, `command-center`, `modern-dark`, and `field-station` now fill wide screens instead of staying a 1200-pixel column in the middle: on a 2560 × 1440 display they grow about 1.5 times, and on a 4K display more than twice. Ultrawide screens get a centered 16:9 area, so the panels are not stretched. Laptops, phones, and portrait screens keep the layout they had.
-
-## [0.5.0-beta.8] - 2026-11-11
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+Themes and customization: three new built-in themes, community themes you can download, your own themes without rebuilding, an original logo, reduced effects, a 12- or 24-hour clock, and security headers. If you made your own theme for 0.4.0, see "Upgrading from 0.4.0" below.
 
 ### Added
 
-- Community themes: `OUTPOST_COMMUNITY_THEMES` lists themes from the [outpost-themes](https://github.com/maxtrax04/outpost-themes) repository, named `username/theme`, to download when the container starts. They are downloaded once per start and kept in the data volume, so they keep working offline; a failed download keeps the copies from before and logs one warning. Themes taken off the list are removed. A theme that builds on another theme by the same person brings it along. `OUTPOST_COMMUNITY_THEMES_REF` picks a branch, tag, or commit. See "Community themes" in the README.
-- Theme folders can be grouped in a username folder (`<username>/<theme>/theme.css`), so a clone of the community repository can be mounted at `/config/themes` for use with no internet. The theme switcher shows these themes by name, adding the username only when two themes share a name.
-
-### Upgrading from 0.5.0-beta.7
-
-- Nothing is required. To use community themes, add `OUTPOST_COMMUNITY_THEMES` to your `.env` (see `.env.example`) and restart.
-- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.8`.
-
-## [0.5.0-beta.7] - 2026-11-11
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Added
-
-- Two decorative themes. `field-station`: a riveted steel instrument panel, with analog dials for the readings, a stamped plate for each panel title, and hazard stripes on the warning shown when the weather data is old or missing. `atomic-broadcast`: a 1950s television set, with the dashboard on its screen fitted to the window, a test card while the weather loads or when it is lost, tuning-dial readings, and alerts as a news crawl along the bottom of the screen. With reduced effects, the crawl stands still and wraps.
-
-### Upgrading from 0.5.0-beta.6
-
-- Nothing is required. To try the new themes, pick them with the theme button or add `?theme=field-station` or `?theme=atomic-broadcast` to the address.
-- If you were already using your own copies of these themes from `/config/themes`, remove them: a custom theme with the same folder name replaces the built-in one.
-- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.7`.
-
-## [0.5.0-beta.6] - 2026-11-11
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Added
-
-- Fit to screen, for themes: a theme with `--fit-screen: 1` shrinks the whole dashboard just enough to fit the screen without scrolling, for wall displays and themes styled as a single screen. It never shrinks text below 55%; a screen that would need more scrolls as usual. With `--fit-max-scale` (for example `2`), a theme also lets it grow to fill big screens. Add `?fit=on` or `?fit=off` to the address to try it with any theme.
-- `<html data-signal>` tells themes the state of the weather data: `waiting` until it first loads, then `ok`, `degraded`, or `offline`, so a theme can show its own "no signal" screen.
-- `--frame-inset-bottom`, for a theme frame with a deeper bottom edge.
-- `OUTPOST_MOCK_ALERTS=true` makes the mock provider always include sample alerts (one each of severe, moderate, and minor), for trying how a theme shows alerts.
-- Each alert's title, description, and end time are now separate elements (`.alert-title`, `.alert-description`, `.alert-expires`), and `--alert-chars` gives the amount of alert text, so a theme can show alerts differently, such as a scrolling news crawl.
+- `field-station` theme: a riveted steel instrument panel, with analog dials for the readings, a stamped plate for each panel title, and hazard stripes on the warning shown when the weather data is old or missing.
+- `atomic-broadcast` theme: a 1950s television set, with the dashboard on its screen fitted to the window, a test card while the weather loads or when it is lost, tuning-dial readings, and alerts as a news crawl along the bottom of the screen.
 - `ink` theme for ePaper displays: pure black on white (dark red for severe alerts, which black-and-white panels show as black), heavier text, alert levels shown by their borders and spelled out instead of by color, no effects, animation, or night dimming, and the whole dashboard fits the screen down to 800 × 480. Use `?theme=ink` on just the ePaper screen. See "ePaper displays" in the README.
-- `OUTPOST_CLOCK` setting: `12` or `24` shows every time on the dashboard (sunrise, sunset, last update, alert end times, and `{time}` in the subtitle) in 12- or 24-hour form, on every theme. The default, `auto`, follows the viewing browser's language as before (not the device's clock setting, which browsers do not share). `?clock=12` or `?clock=24` in the address previews one. The page also gets `data-clock` on `<html>` for themes.
-- A "24-hour clock" checkbox in the theme panel lets each screen choose 12- or 24-hour times for itself, saved in its own browser; "Use server default" forgets it. `OUTPOST_CLOCK_TOGGLE=false` removes the checkbox.
-- Every theme with scanlines now has a slow rolling band in its own text color drifting down the screen, like a picture tube. Reduced effects removes it, and a theme can change its speed with `--scan-roll` (`none` stops it).
-
-### Changed
-
-- The docs now show `OUTPOST_FRAME_ANCESTORS` as a comma-separated list (`http://homeassistant.local:8123,https://ha.example.com`), which needs no quotes wherever it is set. Lists separated by spaces still work.
-
-### Fixed
-
-- Scanlines were almost invisible on dark themes. They are now drawn in the theme's text color with darker gaps, and the screen edges darken slightly like a picture tube. `--scanlines` still sets the strength.
-- After an upgrade, a browser could keep running old cached scripts with the new page. The page and its scripts are now checked for changes on every load (an unchanged file costs only a quick "not modified" reply).
-- A theme with a frame around the whole screen (`.frame` with `--frame-inset`) now keeps the content inside the frame on phones and tablets too, not only on wide screens.
-
-### Upgrading from 0.5.0-beta.5
-
-- Nothing is required. New optional settings: `OUTPOST_CLOCK`, `OUTPOST_CLOCK_TOGGLE`, and `OUTPOST_MOCK_ALERTS` (see `.env.example`).
-- For an ePaper display, add `?theme=ink` to that screen's address.
-- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.6`. Reload each screen once afterwards; from this release on, browsers pick up new versions by themselves.
-
-## [0.5.0-beta.5] - 2026-11-07
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Added
-
-- Reduced effects: scanlines, glow, and animation can be turned off in every theme, for readability and for slow wall tablets. `OUTPOST_EFFECTS=reduced` does it for everyone, a device set to reduce motion gets it automatically, and a "Reduced effects" checkbox in the theme panel lets each viewer turn effects off or back on in their browser. `OUTPOST_EFFECTS_TOGGLE=false` removes the checkbox. Add `?effects=reduced` to the address to preview it. See "Reduced effects" in the README, and in `docs/themes.md` for theme authors.
-
-### Upgrading from 0.5.0-beta.4
-
-- Nothing is required. To turn effects off for everyone, add `OUTPOST_EFFECTS=reduced` to your `.env`.
-- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.5`.
-
-## [0.5.0-beta.4] - 2026-11-07
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Added
-
-- Hooks for decorative themes: every reading is named (`data-metric="humidity"` and so on) and given to CSS as a value from 0 to 1 (`--wx-humidity`, and `--value` on its box), so a theme can draw dials and bars with CSS alone. Panels are named with `data-panel`, panels, readings, and forecast cards are free for `::before` and `::after` decorations, and a new full-screen `.frame` layer with `--frame-inset` takes a bezel. No change to how the existing themes look. See "Decorations and gauges" in `docs/themes.md`.
-
-### Fixed
-
-- Scanlines now cover the logo and weather icons too. Elements with a glow used to sit above them.
-
-### Upgrading from 0.5.0-beta.3
-
-- Nothing is required. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.4`.
-
-## [0.5.0-beta.3] - 2026-11-07
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Added
-
-- An original Outpost logo: a riveted stencil plate. The dashboard header shows it in place of the text title, in each theme's colors and glow. The files are in `assets/logo/` (`mark.svg`, `wordmark.svg`, `lockup.svg`), and the README shows it at the top.
-- `--title-logo` theme token: `1` shows the logo as the title, `0` shows the word OUTPOST in the theme's font as before. `modern-dark` uses `0`. A custom theme made before this release shows the logo. A theme can also use its own logo file; see "Logo" in `docs/themes.md`.
-- `scripts/build-app-icons.js` rebuilds the favicon and home-screen icons from the logo.
-
-### Changed
-
-- The favicon and home-screen icons are the Outpost "OP" plate instead of the sun icon. A phone that already has Outpost on its home screen may keep the old icon until it is removed and added again.
-- The header title is now a heading (`<h1>`), so screen readers can jump to it.
-
-### Upgrading from 0.5.0-beta.2
-
-- Nothing is required. A custom theme now shows the logo as its title; to keep the text title, add `--title-logo: 0;` to its `:root` block.
-- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.3`.
-
-## [0.5.0-beta.2] - 2026-11-07
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Added
-
+- Community themes: `OUTPOST_COMMUNITY_THEMES` lists themes from the [outpost-themes](https://github.com/maxtrax04/outpost-themes) repository, named `username/theme`, to download when the container starts. They are downloaded once per start and kept in the data volume, so they keep working offline; a failed download keeps the copies from before and logs one warning. Themes taken off the list are removed, and a theme that builds on another theme by the same person brings it along. `OUTPOST_COMMUNITY_THEMES_REF` picks a branch, tag, or commit. To use them with no internet at all, mount a clone of the repository at `/config/themes`. The theme switcher shows these themes by name, adding the username only when two themes share a name. See "Community themes" in the README.
+- Your own themes without rebuilding: mount a folder of themes at `/config/themes` (one folder per theme, like the built-in ones). They appear in the theme switcher and can be chosen with `OUTPOST_THEME`, and one with the same name as a built-in theme replaces it. Only theme files (CSS, fonts, and images) are served from that folder, and the log lists the themes it found and explains any folder it skipped. An example theme to start from, `sonar`, is in `examples/themes/`. See "Adding themes without rebuilding" in `docs/themes.md`.
+- An original Outpost logo, a riveted stencil plate, shown in the dashboard header in each theme's colors. The files are in `assets/logo/`, and `scripts/build-app-icons.js` rebuilds the favicon and home-screen icons from it.
+- Reduced effects: scanlines, glow, and animation can be turned off in every theme, for readability and for slow wall tablets. `OUTPOST_EFFECTS=reduced` does it for everyone, a device set to reduce motion gets it automatically, and a "Reduced effects" checkbox in the theme panel lets each viewer choose in their own browser (`OUTPOST_EFFECTS_TOGGLE=false` removes it). `?effects=reduced` previews it.
+- `OUTPOST_CLOCK`: `12` or `24` shows every time on the dashboard in 12- or 24-hour form, on every theme. The default, `auto`, follows the viewing browser's language (browsers do not share the device's clock setting). A "24-hour clock" checkbox in the theme panel lets each screen choose for itself (`OUTPOST_CLOCK_TOGGLE=false` removes it), and `?clock=12` or `?clock=24` previews one.
 - Security headers on every response: a Content-Security-Policy that lets the dashboard load scripts, styles, fonts, images, and data only from Outpost itself, plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`. See "Security headers" in `SECURITY.md`.
-- `OUTPOST_FRAME_ANCESTORS` setting: the sites allowed to show Outpost inside a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. By default only Outpost itself may.
-- Custom themes without rebuilding: mount a folder of themes at `/config/themes` (one folder per theme, like the built-in ones). They appear in the on-screen switcher and can be chosen with `OUTPOST_THEME`, and a custom theme with the same name as a built-in one replaces it. Only theme files (CSS, fonts, and images) are served from that folder. At startup the log lists the custom themes it found and explains any folder it skipped. See "Adding themes without rebuilding" in `docs/themes.md`, and the README for the unRAID path mapping.
-- An example theme to start from, `sonar`, in `examples/themes/`. It is not built into the image.
+- `OUTPOST_FRAME_ANCESTORS`: the sites allowed to show Outpost inside a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card, separated by commas. By default only Outpost itself may.
+- Themes with scanlines have a slow rolling band in their own text color drifting down the screen, like a picture tube.
+- `OUTPOST_MOCK_ALERTS=true` makes the mock provider always include sample alerts, one of each severity, for trying how a theme shows alerts.
+- For theme authors (all in `docs/themes.md`):
+  - Gauge values: every reading is named (`data-metric="humidity"` and so on) and given to CSS as a value from 0 to 1 (`--wx-humidity`, and `--value` on its box), so dials and bars need no code.
+  - Places to draw: panels are named with `data-panel`; panels, readings, and forecast cards are free for `::before` and `::after`; and a full-screen `.frame` layer with `--frame-inset` and `--frame-inset-bottom` takes a bezel.
+  - Fit to screen: `--fit-screen: 1` fits the whole dashboard on the screen, with `--fit-width`, `--fit-max-scale` (grow on big screens), and `--fit-min-scale` (how far it may shrink). `?fit=on` or `?fit=off` tries it with any theme.
+  - Page state on `<html>`: `data-signal` (`waiting`, `ok`, `degraded`, or `offline`), `data-effects`, `data-clock`, and `data-fit`.
+  - Alerts: separate `.alert-title`, `.alert-description`, and `.alert-expires` elements, and `--alert-chars`, the amount of alert text, for a theme that scrolls them.
+  - `--title-logo` (`1` shows the logo as the title, `0` the word OUTPOST in the theme's font), and `--scan-roll` for the rolling band's speed.
 
 ### Changed
 
-- The nginx configuration is now a file in the repository (`nginx/default.conf`) instead of being generated in the Dockerfile. Theme files are sent with `Cache-Control: no-cache`, so browsers check for edits on reload.
-- Themes can only use files served by Outpost. A theme's `url()` or `@import` pointing at another site, or a `data:` URL, is now blocked by the browser.
-- CI loads every theme in a real browser under the security headers, on phone and wide screens, and checks that the weather appears and nothing is blocked.
+- **Breaking for custom themes:** each theme is now a folder, `<name>/theme.css`, instead of a single `<name>.css` file, so it can carry its own fonts and images. `url(...)` paths in a theme are relative to its folder. The `OUTPOST_THEME` values are unchanged, and Outpost logs a warning for each old single-file theme it finds.
+- `retro-crt`, `amber-terminal`, `command-center`, `modern-dark`, and `field-station` fill wide screens instead of staying a 1200-pixel column in the middle: about 1.5 times on a 2560 × 1440 display, and more than twice on 4K. Ultrawide screens get a centered 16:9 area. Laptops, phones, and portrait screens keep their layout.
+- Themes can only use files served by Outpost. A theme's `url()` or `@import` pointing at another site, or a `data:` URL, is blocked by the browser.
+- The favicon and home-screen icons are the Outpost "OP" plate instead of the sun icon.
+- The header title is a heading (`<h1>`), so screen readers can jump to it.
+- The nginx configuration is a file in the repository (`nginx/default.conf`). Theme files, the page, and its scripts are checked for changes on every load, so edits and upgrades show up on reload.
 
 ### Fixed
 
-- Choosing any theme other than the one the page starts with (with the on-screen switcher, `?theme=`, or `OUTPOST_THEME`) showed the theme but never loaded the weather, leaving "Waiting for signal..." on screen. This affected 0.4.0 and 0.5.0-beta.1. Themes now load in a new stylesheet that replaces the old one, and loading a theme can no longer hold up the weather.
-
-### Upgrading from 0.5.0-beta.1
-
-- If you show Outpost inside another page, such as a Home Assistant webpage card, add that page's address to `OUTPOST_FRAME_ANCESTORS` (for example `OUTPOST_FRAME_ANCESTORS=http://homeassistant.local:8123`). Without it, the frame stays blank.
-- If a custom theme loads fonts or images from another site, download them into the theme's folder.
-- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.2`.
-
-## [0.5.0-beta.1] - 2026-11-07
-
-This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
-
-### Changed
-
-- **Breaking:** each theme is now a folder, `web/themes/<name>/theme.css`, instead of a single `web/themes/<name>.css` file, so a theme can carry its own fonts and images. `url(...)` paths in a theme are relative to its folder. The `OUTPOST_THEME` values are unchanged.
-- At startup, Outpost logs a warning for each old single-file theme it finds in `web/themes/`, with the path to move it to.
+- Choosing any theme other than the one the page starts with (with the theme switcher, `?theme=`, or `OUTPOST_THEME`) showed the theme but never loaded the weather, leaving "Waiting for signal..." on screen.
+- After an upgrade, a browser could keep running old cached scripts with the new page.
+- Scanlines were almost invisible on dark themes, and did not cover the weather icons. They are now drawn in the theme's text color with darker gaps, over everything, and the screen edges darken slightly like a picture tube.
 
 ### Upgrading from 0.4.0
 
-- If you only use the built-in themes, nothing changes. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.1`.
-- If you made your own theme, move `web/themes/my-theme.css` to `web/themes/my-theme/theme.css` and rebuild. If it uses `url(...)` paths, add `../` to each one, or move those files into the theme's folder. See [docs/themes.md](docs/themes.md).
+- **If you only use the built-in themes,** nothing is required. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0` (or `latest`). Reload each screen once afterwards; from this release on, browsers pick up new versions by themselves.
+- **If you made your own theme,** move `web/themes/my-theme.css` to `my-theme/theme.css`, either in `web/themes/` (then rebuild) or in a folder mounted at `/config/themes` (no rebuild). Add `../` to each `url(...)` path, or move those files into the theme's folder. Download any font or image it loads from another site into its folder. It now shows the logo as its title; to keep the text title, add `--title-logo: 0;` to its `:root` block. See [docs/themes.md](docs/themes.md).
+- **If you show Outpost inside another page,** such as a Home Assistant webpage card, add that page's address to `OUTPOST_FRAME_ANCESTORS` (for example `OUTPOST_FRAME_ANCESTORS=http://homeassistant.local:8123`). Without it, the frame stays blank.
+- A phone with Outpost on its home screen may keep the old icon until it is removed and added again.
+- New optional settings (see `.env.example`): `OUTPOST_EFFECTS`, `OUTPOST_EFFECTS_TOGGLE`, `OUTPOST_CLOCK`, `OUTPOST_CLOCK_TOGGLE`, `OUTPOST_COMMUNITY_THEMES`, `OUTPOST_COMMUNITY_THEMES_REF`, `OUTPOST_FRAME_ANCESTORS`, and `OUTPOST_MOCK_ALERTS`.
 
 ## [0.4.0] - 2026-11-07
 
