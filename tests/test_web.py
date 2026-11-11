@@ -25,6 +25,11 @@ class FrameAncestorsTests(unittest.TestCase):
         self.assertIsNone(warning)
         self.assertEqual(value, "'self' http://homeassistant.local:8123 https://ha.example.com")
 
+    def test_comma_separated_list_without_spaces(self):
+        value, warning = web.parse_frame_ancestors("http://homeassistant.local:8123,https://ha.example.com")
+        self.assertIsNone(warning)
+        self.assertEqual(value, "http://homeassistant.local:8123 https://ha.example.com")
+
     def test_keywords_work_with_or_without_quotes(self):
         self.assertEqual(web.parse_frame_ancestors("none")[0], "'none'")
         self.assertEqual(web.parse_frame_ancestors("'self'")[0], "'self'")

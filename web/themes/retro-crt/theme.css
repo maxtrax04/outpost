@@ -18,7 +18,7 @@
 
     --text-glow: 0 0 6px rgba(156, 255, 87, 0.55);
     --icon-glow: drop-shadow(0 0 5px rgba(156, 255, 87, 0.55));
-    --scanlines: 1;
+    --scanlines: 0.7;
 
     --font-display: "Share Tech Mono", "Courier New", monospace;
     --font-body: "Share Tech Mono", "Courier New", monospace;

@@ -77,8 +77,11 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_DIM_LEVEL` | `0.35` | Night brightness, from `0.05` (very dark) to `1` (no dimming). |
 | `OUTPOST_DIM_MODE` | `sun` | `sun` follows sunset and sunrise; `schedule` uses fixed times. |
 | `OUTPOST_DIM_START` / `OUTPOST_DIM_END` | `22:00` / `06:00` | Night window for `schedule` mode (24-hour `HH:MM`). |
+| `OUTPOST_CLOCK` | `auto` | `12` shows times like 1:05 PM, `24` like 13:05, on every theme. `auto` follows the viewing browser's language, not the device's 12/24-hour clock setting (browsers do not share it), so a browser in US English shows 12-hour times. Each screen can also choose with the "24-hour clock" checkbox in the theme panel (saved in that browser), or `?clock=12` / `?clock=24` in the address. |
+| `OUTPOST_CLOCK_TOGGLE` | `true` | Show the "24-hour clock" checkbox in the theme panel. Set `false` so viewers cannot change `OUTPOST_CLOCK`. |
 | `OUTPOST_SUBTITLE` | *(empty)* | Optional line under the title. Empty hides it; `{date}` and `{time}` show the current date and time. |
 | `OUTPOST_ALERTS_ALWAYS_SHOW` | `false` | `false` hides the Alerts panel when there are none; `true` always shows it. See [Alerts](#alerts). |
+| `OUTPOST_MOCK_ALERTS` | `false` | With the `mock` provider, `true` always includes sample alerts (one of each severity), for trying how alerts look. See [Alerts](#alerts). |
 | `OUTPOST_LOCATION_NAME` | `Goodsprings, NV` | Name shown at the top of the dashboard. |
 | `OUTPOST_LATITUDE` | `35.8319` | Latitude in decimal degrees. |
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
@@ -86,7 +89,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`. It is sent in the User-Agent header. |
 | `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>)`). |
-| `OUTPOST_FRAME_ANCESTORS` | *(empty)* | Sites allowed to show Outpost in a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. Empty allows only Outpost itself. See [SECURITY.md](SECURITY.md#security-headers). |
+| `OUTPOST_FRAME_ANCESTORS` | *(empty)* | Comma-separated list of sites allowed to show Outpost in a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. Empty allows only Outpost itself. See [SECURITY.md](SECURITY.md#security-headers). |
 | `OUTPOST_WEB_PORT` | `8088` | Host port for the web UI (Compose only). |
 
 The defaults point at Goodsprings, NV. Set your own latitude and longitude to see your local weather.
@@ -138,7 +141,7 @@ data/       Generated weather.json and config.json (runtime, not committed)
 
 ## Themes
 
-Four themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, and `modern-dark`. Set `OUTPOST_THEME` to choose the default for everyone, or add `?theme=name` to the address to preview one.
+Five themes are included: `retro-crt` (default), `amber-terminal`, `command-center`, `modern-dark`, and `ink` (black on white, for ePaper; see [ePaper displays](#epaper-displays)). Set `OUTPOST_THEME` to choose the default for everyone, or add `?theme=name` to the address to preview one.
 
 Anyone viewing the dashboard can also pick a theme with the small button in the bottom-left corner (it is faint until you hover or tap it). The choice is remembered in that browser only, with a "Use server default" option to undo it. Set `OUTPOST_THEME_SWITCHER=false` to remove the button, for example on a wall display.
 
@@ -161,6 +164,8 @@ The Alerts panel lists active weather warnings from the National Weather Service
 
 By default the panel is hidden when there is nothing to show, and a one-line note below the forecast says when alerts were last checked, for example `Alerts: none (checked 2:15 PM)`. Set `OUTPOST_ALERTS_ALWAYS_SHOW=true` to keep the panel visible. Severe and extreme alerts turn the panel red.
 
+To see how alerts look without waiting for real weather, use `OUTPOST_PROVIDER=mock` with `OUTPOST_MOCK_ALERTS=true`: the dashboard then always shows three sample alerts, one each of severe, moderate, and minor.
+
 The dashboard also shows today's sunrise and sunset (or "Midnight sun" / "Polar night" near the poles), calculated in the browser from your coordinates (no weather service needed). Times appear in the viewing device's time zone.
 
 ## Phones, tablets, and tall screens
@@ -173,6 +178,18 @@ The dashboard adapts to the screen: phones get a compact layout with the forecas
 - **Android (Chrome):** open the menu, then Add to Home screen (or Install app).
 
 Outpost provides the icon and settings for this. Note that browsers only offer a full "Install app" prompt over HTTPS; on a plain `http://` address on your home network, Add to Home Screen still works but creates a shortcut. The icon is a placeholder until Outpost gets its own logo.
+
+### ePaper displays
+
+ePaper screens use very little power, which suits a dashboard on the wall. Open the `ink` theme on that screen only by adding `?theme=ink` to its address (for example `http://outpost.local:8088/?theme=ink`), so your other screens keep their own theme.
+
+- `ink` is pure black on white, so it suits black-and-white panels. Severe alerts are dark red, which a color panel shows in red and a black-and-white panel shows in black. Alert levels are also spelled out and shown by their borders, so they don't depend on color.
+- It has no scanlines, glow, or animation, and no night dimming, since paper has no light to dim.
+- It fits the whole dashboard on the screen without scrolling, down to 800 × 480 panels. On short screens each alert gets one line (its title and end time).
+- Every change on the screen makes an ePaper panel redraw, which on many panels is a visible flash. To avoid extra redraws, don't put `{time}` in `OUTPOST_SUBTITLE` (it changes every minute). You can also set `OUTPOST_THEME_SWITCHER=false` if nobody will change the theme from that screen.
+- Color ePaper also works with the other themes and [reduced effects](#reduced-effects), but their dark backgrounds and dim colors look muddy on most panels.
+
+This needs a web browser on the device, such as an ePaper tablet. Panels that only download a picture to show (many microcontroller and e-reader setups) aren't supported.
 
 ## Day/night dimming
 

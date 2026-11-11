@@ -6,6 +6,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0-beta.6] - 2026-11-11
+
+This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.
+
+### Added
+
+- Fit to screen, for themes: a theme with `--fit-screen: 1` shrinks the whole dashboard just enough to fit the screen without scrolling, for wall displays and themes styled as a single screen. It never shrinks text below 55%; a screen that would need more scrolls as usual. With `--fit-max-scale` (for example `2`), a theme also lets it grow to fill big screens. Add `?fit=on` or `?fit=off` to the address to try it with any theme.
+- `<html data-signal>` tells themes the state of the weather data: `waiting` until it first loads, then `ok`, `degraded`, or `offline`, so a theme can show its own "no signal" screen.
+- `--frame-inset-bottom`, for a theme frame with a deeper bottom edge.
+- `OUTPOST_MOCK_ALERTS=true` makes the mock provider always include sample alerts (one each of severe, moderate, and minor), for trying how a theme shows alerts.
+- Each alert's title, description, and end time are now separate elements (`.alert-title`, `.alert-description`, `.alert-expires`), and `--alert-chars` gives the amount of alert text, so a theme can show alerts differently, such as a scrolling news crawl.
+- `ink` theme for ePaper displays: pure black on white (dark red for severe alerts, which black-and-white panels show as black), heavier text, alert levels shown by their borders and spelled out instead of by color, no effects, animation, or night dimming, and the whole dashboard fits the screen down to 800 × 480. Use `?theme=ink` on just the ePaper screen. See "ePaper displays" in the README.
+- `OUTPOST_CLOCK` setting: `12` or `24` shows every time on the dashboard (sunrise, sunset, last update, alert end times, and `{time}` in the subtitle) in 12- or 24-hour form, on every theme. The default, `auto`, follows the viewing browser's language as before (not the device's clock setting, which browsers do not share). `?clock=12` or `?clock=24` in the address previews one. The page also gets `data-clock` on `<html>` for themes.
+- A "24-hour clock" checkbox in the theme panel lets each screen choose 12- or 24-hour times for itself, saved in its own browser; "Use server default" forgets it. `OUTPOST_CLOCK_TOGGLE=false` removes the checkbox.
+- Every theme with scanlines now has a slow rolling band in its own text color drifting down the screen, like a picture tube. Reduced effects removes it, and a theme can change its speed with `--scan-roll` (`none` stops it).
+
+### Changed
+
+- The docs now show `OUTPOST_FRAME_ANCESTORS` as a comma-separated list (`http://homeassistant.local:8123,https://ha.example.com`), which needs no quotes wherever it is set. Lists separated by spaces still work.
+
+### Fixed
+
+- Scanlines were almost invisible on dark themes. They are now drawn in the theme's text color with darker gaps, and the screen edges darken slightly like a picture tube. `--scanlines` still sets the strength.
+- After an upgrade, a browser could keep running old cached scripts with the new page. The page and its scripts are now checked for changes on every load (an unchanged file costs only a quick "not modified" reply).
+- A theme with a frame around the whole screen (`.frame` with `--frame-inset`) now keeps the content inside the frame on phones and tablets too, not only on wide screens.
+
+### Upgrading from 0.5.0-beta.5
+
+- Nothing is required. New optional settings: `OUTPOST_CLOCK`, `OUTPOST_CLOCK_TOGGLE`, and `OUTPOST_MOCK_ALERTS` (see `.env.example`).
+- For an ePaper display, add `?theme=ink` to that screen's address.
+- Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.5.0-beta.6`. Reload each screen once afterwards; from this release on, browsers pick up new versions by themselves.
+
 ## [0.5.0-beta.5] - 2026-11-07
 
 This is a test release. It is published as a pre-release, and the `latest` image tag still points to 0.4.0.

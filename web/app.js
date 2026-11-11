@@ -35,23 +35,19 @@ function setText(id, value) {
     }
 }
 
+// Times follow OUTPOST_CLOCK (12- or 24-hour, or the device's region); see clock.js
 function formatDateTime(value) {
     if (!value) return "--";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString([], {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit"
-    });
+    return OutpostClock.dateTime(date);
 }
 
 function formatTime(value) {
     if (!value) return "--";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "--";
-    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return OutpostClock.time(date);
 }
 
 function formatDay(value) {
@@ -60,6 +56,12 @@ function formatDay(value) {
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+}
+
+// The state of the weather data on <html data-signal>, for themes: "waiting" until the first
+// load (set in index.html), then "ok", "degraded" (old or partial data), or "offline" (none).
+function setSignal(state) {
+    document.documentElement.dataset.signal = state;
 }
 
 function setBanner(visible) {
@@ -125,6 +127,7 @@ function renderAlerts(alerts) {
     }
 
     let serious = false;
+    let characters = 0;
 
     alerts.forEach(alert => {
         const severity = String(alert.severity || "unknown").toLowerCase();
@@ -135,19 +138,28 @@ function renderAlerts(alerts) {
         const box = document.createElement("div");
         box.className = `detail-box alert-item severity-${severity}`;
 
-        const title = document.createElement("strong");
-        title.textContent = alert.title || "Alert";
+        // Each part in its own element, so a theme can lay them out differently (on one line, say)
+        const part = (tag, className, text) => {
+            const element = document.createElement(tag);
+            element.className = className;
+            element.textContent = text;
+            characters += text.length;
+            return element;
+        };
 
-        box.append(title, document.createElement("br"), document.createTextNode(alert.description || ""));
+        box.append(part("strong", "alert-title", alert.title || "Alert"));
+        box.append(document.createElement("br"), part("span", "alert-description", alert.description || ""));
 
         if (alert.expires) {
-            box.append(document.createElement("br"), document.createTextNode(`Until ${formatDateTime(alert.expires)}`));
+            box.append(document.createElement("br"), part("span", "alert-expires", `Until ${formatDateTime(alert.expires)}`));
         }
 
         container.appendChild(box);
     });
 
     container.parentElement.classList.toggle("alert-active", serious);
+    // How much alert text there is, for a theme that scrolls it (to keep the speed readable)
+    container.style.setProperty("--alert-chars", String(characters));
 }
 
 // Decides what to show for alerts: the list, a "none" panel, or a one-line note.
@@ -226,7 +238,7 @@ function renderSubtitle(config) {
 
     const text = template
         .replaceAll("{date}", now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }))
-        .replaceAll("{time}", now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+        .replaceAll("{time}", OutpostClock.time(now));
 
     element.textContent = text;
     element.hidden = text.trim() === "";
@@ -265,6 +277,7 @@ async function loadWeather(config) {
         const isOk = weather.status === "ok" && !isStale;
 
         setText("status", isOk ? "ONLINE" : "DEGRADED");
+        setSignal(isOk ? "ok" : "degraded");
         setBanner(!isOk);
 
         renderForecast(weather.forecast);
@@ -273,6 +286,7 @@ async function loadWeather(config) {
         console.error("Unable to load Outpost data:", error);
         setText("condition", "Local data unavailable");
         setText("status", "OFFLINE");
+        setSignal("offline");
         setBanner(true);
 
         const note = document.getElementById("alertsStatus");
@@ -345,11 +359,13 @@ async function refresh() {
     const config = await loadConfig();
     applyDim(config);
     OutpostEffects.apply(config);
+    OutpostClock.apply(config);
     await applyTheme(config);
     renderThemeSwitcher(config);
     renderSubtitle(config);
     renderSun(config);
     await loadWeather(config);
+    OutpostFit.start();
 }
 
 refresh();

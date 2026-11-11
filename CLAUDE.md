@@ -10,7 +10,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 
 ## Layout
 - `app/`: updater, health check, `start.sh`, `providers/{openmeteo,nws,gapfill}.py`
-- `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `themes.js`, `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
+- `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `effects.js`, `fit.js`, `clock.js`, `themes.js`, `gauges.js`, `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
 - `assets/`: `icons/` (13 original SVGs), `logo/` (original logo: mark, wordmark, lockup), `app/` (favicon and PWA icons, built from the logo by `scripts/build-app-icons.js`), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations; `tests/browser/check-themes.js` (Playwright, run by CI against the container)
 - `docs/`: `themes.md`, `releasing.md`, `github-workflow.md`
@@ -32,6 +32,6 @@ Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (rel
 
 ## Current state
 - v0.4.0 released. v0.5.0 is being shipped as betas (`0.5.0-beta.N`, see "Beta releases" in `docs/releasing.md`); at 0.5.0, fold the beta CHANGELOG sections into one.
-- v0.5.0-beta.1: folder-per-theme (#17, breaking). v0.5.0-beta.2: external themes (#18), security headers and CSP (#19), theme-loading fix. v0.5.0-beta.3: logo (#20). v0.5.0-beta.4: theme hooks for decorations and gauges (#57, part of #21). v0.5.0-beta.5: reduced effects (#58). Still to do for v0.5.0: the decorative themes Field Station (#59) and an Atomic Age broadcast theme (#60), and the community themes repo (#22).
+- v0.5.0-beta.1: folder-per-theme (#17, breaking). v0.5.0-beta.2: external themes (#18), security headers and CSP (#19), theme-loading fix. v0.5.0-beta.3: logo (#20). v0.5.0-beta.4: theme hooks for decorations and gauges (#57, part of #21). v0.5.0-beta.5: reduced effects (#58). v0.5.0-beta.6: 12/24-hour clock, the `ink` ePaper theme, theme hooks (fit to screen, `data-signal`, alert classes), the rolling scan band, and a page-caching fix. Still to do for v0.5.0: the decorative themes Field Station (#59) and an Atomic Age broadcast theme (#60) (prototypes, with Weather Desk, Live variants, and Wristcomp, are in the git-ignored `themes/` folder), and the community themes repo (#22).
 - The CSP has no `unsafe-inline` or `unsafe-eval`: no inline scripts, styles, or `style=` attributes (CSSOM `style.setProperty` is fine). Playwright's `page.waitForFunction` is blocked by it too; `tests/browser/check-themes.js` polls with `page.evaluate` instead.
-- Not verified on real iOS/Android or with the real Share Tech Mono file.
+- Not verified on real iOS/Android, on real ePaper, or with the real Share Tech Mono file.

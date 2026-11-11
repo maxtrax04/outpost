@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -153,6 +154,22 @@ class MockProviderTests(UpdaterTestCase):
     def test_mock_data_supports_alerts(self):
         u.update_once()
         self.assertTrue(self.output()["alerts_supported"])
+
+    def test_mock_sample_alerts_are_off_by_default(self):
+        with mock.patch.dict(os.environ, {"OUTPOST_MOCK_ALERTS": ""}):
+            for _ in range(20):
+                titles = [alert["title"] for alert in u.build_mock_payload()["alerts"]]
+                self.assertNotIn("Severe Thunderstorm Warning", titles)
+
+    def test_mock_sample_alerts_can_be_turned_on(self):
+        with mock.patch.dict(os.environ, {"OUTPOST_MOCK_ALERTS": "true"}):
+            alerts = u.build_mock_payload()["alerts"]
+        samples = [alert for alert in alerts if alert["severity"] != "test"]
+        self.assertEqual([alert["severity"] for alert in samples], ["severe", "moderate", "minor"])
+        for alert in samples:
+            with self.subTest(alert=alert["title"]):
+                self.assertTrue(alert["description"].startswith("Sample alert"))
+                datetime.fromisoformat(alert["expires"])  # a valid time the page can show
 
     def test_feels_like_is_close_to_the_temperature(self):
         for _ in range(50):
@@ -317,12 +334,23 @@ class ConfigTests(UpdaterTestCase):
     def test_ui_defaults(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "", "OUTPOST_ALERTS_ALWAYS_SHOW": ""})
         self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False, "theme_switcher": True,
-                                        "effects": "full", "effects_toggle": True})
+                                        "effects": "full", "effects_toggle": True, "clock": "auto",
+                                        "clock_toggle": True})
 
     def test_ui_settings(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "  {date}  ", "OUTPOST_ALERTS_ALWAYS_SHOW": "True"})
         self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True, "theme_switcher": True,
-                                        "effects": "full", "effects_toggle": True})
+                                        "effects": "full", "effects_toggle": True, "clock": "auto",
+                                        "clock_toggle": True})
+
+    def test_clock_can_be_12_or_24_hour(self):
+        for value, expected in (("12", "12"), ("24", "24"), (" 24H ", "24"), ("12h", "12"), ("AUTO", "auto"), ("", "auto")):
+            with self.subTest(value=value):
+                self.assertEqual(self.write_with_env({"OUTPOST_CLOCK": value})["ui"]["clock"], expected)
+
+    def test_unknown_clock_value_warns_and_uses_auto(self):
+        self.assertEqual(self.write_with_env({"OUTPOST_CLOCK": "military"})["ui"]["clock"], "auto")
+        self.assertTrue(any("OUTPOST_CLOCK" in str(call) for call in self.print.call_args_list))
 
     def test_alerts_flag_accepts_common_spellings(self):
         for value, expected in (("1", True), ("yes", True), ("ON", True), ("false", False), ("0", False), ("nonsense", False)):
@@ -351,6 +379,12 @@ class ConfigTests(UpdaterTestCase):
             with self.subTest(value=value):
                 self.assertFalse(self.write_with_env({"OUTPOST_EFFECTS_TOGGLE": value})["ui"]["effects_toggle"])
         self.assertTrue(self.write_with_env({"OUTPOST_EFFECTS_TOGGLE": "true"})["ui"]["effects_toggle"])
+
+    def test_clock_toggle_can_be_hidden(self):
+        for value in ("false", "0", "no", "off"):
+            with self.subTest(value=value):
+                self.assertFalse(self.write_with_env({"OUTPOST_CLOCK_TOGGLE": value})["ui"]["clock_toggle"])
+        self.assertTrue(self.write_with_env({"OUTPOST_CLOCK_TOGGLE": "true"})["ui"]["clock_toggle"])
 
     def test_no_theme_list_without_a_themes_folder(self):
         self.assertEqual(self.write_with_env()["themes"], [])

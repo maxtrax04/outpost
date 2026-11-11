@@ -34,7 +34,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
 
     def test_scripts_are_loaded_in_the_right_order(self):
         scripts = re.findall(r'<script src="([^"]+)"', self.html)
-        self.assertEqual(scripts, ["dim.js", "effects.js", "themes.js", "gauges.js", "app.js"])
+        self.assertEqual(scripts, ["dim.js", "effects.js", "fit.js", "clock.js", "themes.js", "gauges.js", "app.js"])
 
     def test_every_script_file_exists(self):
         for name in re.findall(r'<script src="([^"]+)"', self.html):
@@ -47,7 +47,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
     def test_settings_the_script_reads_are_written_by_the_updater(self):
         updater = read("app/outpost_updater.py")
         for key in ("latitude", "longitude", "theme", "themes", "dim", "ui", "subtitle", "alerts_always_show", "theme_switcher",
-                    "effects", "effects_toggle"):
+                    "effects", "effects_toggle", "clock", "clock_toggle"):
             with self.subTest(key=key):
                 self.assertIn(f'"{key}"', updater)
 
@@ -114,6 +114,18 @@ class HomeScreenTests(unittest.TestCase):
 
     def test_apple_touch_icon_is_180_pixels(self):
         self.assertEqual(png_size(ROOT / "assets" / "app" / "apple-touch-icon.png"), (180, 180))
+
+    def test_ink_theme_is_pure_black_and_white(self):
+        # Ink is for 1-bit ePaper: grays, gradients, and translucent colors would be dithered into speckle.
+        # Dark red (severe alerts) is the one exception; a black-and-white panel shows it as black.
+        css = read("web/themes/ink/theme.css")
+        colors = {color.lower() for color in re.findall(r"#[0-9a-fA-F]{3,8}\b", css)}
+        self.assertLessEqual(colors, {"#000000", "#ffffff", "#b00000"})
+        self.assertNotRegex(css, r"rgba?\(|hsla?\(|gradient\(")
+        # No effects or animation, and no night dimming (it would only turn the page gray)
+        self.assertRegex(css, r"--scanlines:\s*0;")
+        self.assertRegex(css, r"--scan-roll:\s*none;")
+        self.assertRegex(css, r"#dim-overlay\s*\{\s*display:\s*none;")
 
     def test_manifest_colors_match_the_default_theme(self):
         css = read("web/themes/retro-crt/theme.css")

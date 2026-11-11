@@ -150,7 +150,7 @@ jobs:
           for file in style.css app.js dim.js themes.js manifest.webmanifest; do
             curl -fsS -o /dev/null "http://localhost:8088/$file"
           done
-          for theme in retro-crt amber-terminal command-center modern-dark sonar; do
+          for theme in retro-crt amber-terminal command-center modern-dark ink sonar; do
             curl -fsS -o /dev/null "http://localhost:8088/themes/$theme/theme.css"
           done
           curl -fsS -o /dev/null http://localhost:8088/themes/sonar/grid.svg
