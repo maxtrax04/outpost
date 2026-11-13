@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/maxtrax04/outpost/main/docs/schema/weather-v1.json",
+  "title": "Outpost weather.json",
+  "description": "The weather data Outpost writes to /data/weather.json, format version 1. See docs/data-format.md.",
+  "type": "object",
+  "required": [
+    "$schema", "schema_version", "status", "app", "version", "provider", "sources", "location", "coordinates",
+    "generated_at", "update_interval_seconds", "units", "current", "forecast", "alerts", "last_error"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "description": "This schema's address, for editors that check the file." },
+    "schema_version": { "const": 1, "description": "Raised only for a change that breaks readers." },
+    "status": { "enum": ["ok", "degraded", "error"] },
+    "app": { "type": "string" },
+    "version": { "type": "string", "description": "The Outpost version that wrote the file." },
+    "provider": { "type": "string", "description": "The OUTPOST_PROVIDER setting, such as auto." },
+    "sources": {
+      "type": "object",
+      "required": ["weather", "alerts", "fill"],
+      "properties": {
+        "weather": { "$ref": "#/$defs/source", "description": "Where the readings and forecast came from. null in an error file." },
+        "alerts": { "$ref": "#/$defs/source", "description": "Where the alerts came from. null when the source has no official alerts." },
+        "fill": {
+          "description": "A second source used for readings the first one left empty. null when none was used.",
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["id", "name", "fields"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "fields": { "type": "array", "items": { "type": "string" }, "description": "Such as current.uv_index or forecast.high." }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "location": { "type": "string" },
+    "coordinates": {
+      "type": "object",
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      }
+    },
+    "generated_at": { "type": "string", "format": "date-time", "description": "When the data was last fetched successfully (left unchanged while degraded)." },
+    "update_interval_seconds": { "type": "integer", "minimum": 1 },
+    "units": {
+      "type": "object",
+      "required": ["system", "temperature", "speed", "pressure", "distance"],
+      "properties": {
+        "system": { "enum": ["imperial", "metric"] },
+        "temperature": { "type": "string", "description": "Label for temperature, feels_like, high, and low, such as °F." },
+        "speed": { "type": "string", "description": "Label for wind_speed, such as mph." },
+        "pressure": { "type": "string", "description": "Label for pressure, such as inHg." },
+        "distance": { "type": "string", "description": "Label for visibility, such as mi." }
+      }
+    },
+    "current": {
+      "type": "object",
+      "required": ["temperature", "feels_like", "condition", "icon", "humidity", "wind_speed", "pressure", "uv_index", "visibility"],
+      "properties": {
+        "temperature": { "$ref": "#/$defs/reading" },
+        "feels_like": { "$ref": "#/$defs/reading" },
+        "condition": { "type": "string" },
+        "icon": { "$ref": "#/$defs/icon" },
+        "humidity": { "$ref": "#/$defs/percent" },
+        "wind_speed": { "$ref": "#/$defs/reading" },
+        "pressure": { "$ref": "#/$defs/reading" },
+        "uv_index": { "$ref": "#/$defs/reading" },
+        "visibility": { "$ref": "#/$defs/reading" }
+      }
+    },
+    "forecast": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["day", "high", "low", "condition", "icon", "precipitation_chance", "uv_index"],
+        "properties": {
+          "day": { "type": "string", "format": "date" },
+          "high": { "$ref": "#/$defs/reading" },
+          "low": { "$ref": "#/$defs/reading" },
+          "condition": { "type": "string" },
+          "icon": { "$ref": "#/$defs/icon" },
+          "precipitation_chance": { "$ref": "#/$defs/percent" },
+          "uv_index": { "$ref": "#/$defs/reading" }
+        }
+      }
+    },
+    "alerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "description", "severity", "expires", "uri"],
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "severity": { "type": "string", "description": "extreme, severe, moderate, minor, or unknown (test in mock data)." },
+          "expires": { "type": ["string", "null"], "format": "date-time" },
+          "uri": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "last_error": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "source": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["id", "name"],
+          "properties": {
+            "id": { "type": "string", "description": "The provider, as in OUTPOST_PROVIDER." },
+            "name": { "type": "string", "description": "The name to credit on the dashboard." }
+          }
+        }
+      ]
+    },
+    "reading": { "type": ["number", "null"], "description": "null when not available." },
+    "percent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "icon": {
+      "enum": [
+        "sunny", "clear-night", "partly-cloudy", "partly-cloudy-night", "cloudy", "fog", "drizzle",
+        "rain", "sleet", "snow", "storm", "wind", "unknown"
+      ]
+    }
+  }
+}

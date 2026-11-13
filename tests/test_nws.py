@@ -65,17 +65,17 @@ class ForecastTests(unittest.TestCase):
 
     def test_today_has_no_high_after_the_day_period_ends(self):
         today = self.forecast[0]
-        self.assertIsNone(today["high_f"])
-        self.assertEqual(today["low_f"], 62)
+        self.assertIsNone(today["high"])
+        self.assertEqual(today["low"], 62)
         self.assertEqual(today["icon"], "clear-night")
 
     def test_day_and_night_periods_are_merged(self):
         day = self.forecast[1]
-        self.assertEqual((day["high_f"], day["low_f"]), (85, 60))
+        self.assertEqual((day["high"], day["low"]), (85, 60))
         self.assertEqual(day["condition"], "Sunny")
 
     def test_precipitation_uses_the_highest_chance_and_defaults_to_zero(self):
-        self.assertEqual([d["precipitation_percent"] for d in self.forecast], [0, 10, 30, 0, 0])
+        self.assertEqual([d["precipitation_chance"] for d in self.forecast], [0, 10, 30, 0, 0])
 
     def test_icons(self):
         self.assertEqual([d["icon"] for d in self.forecast],
@@ -88,11 +88,11 @@ class ForecastTests(unittest.TestCase):
 class CurrentTests(unittest.TestCase):
     def test_from_observation(self):
         current = nws.build_current(periods(), observation()["properties"])
-        self.assertEqual(current["temperature_f"], 84)
-        self.assertEqual(current["wind_mph"], 9)
-        self.assertEqual(current["pressure_inhg"], 30.05)
-        self.assertEqual(current["visibility_miles"], 10.0)
-        self.assertEqual(current["humidity_percent"], 22)
+        self.assertEqual(current["temperature"], 84)
+        self.assertEqual(current["wind_speed"], 9)
+        self.assertEqual(current["pressure"], 30.05)
+        self.assertEqual(current["visibility"], 10.0)
+        self.assertEqual(current["humidity"], 22)
         self.assertIsNone(current["uv_index"])
         self.assertEqual(current["condition"], "Fair")
 
@@ -106,18 +106,18 @@ class CurrentTests(unittest.TestCase):
     def test_heat_index_is_used_for_feels_like(self):
         obs = observation()["properties"]
         obs["heatIndex"]["value"] = 35.0
-        self.assertEqual(nws.build_current(periods(), obs)["feels_like_f"], 95)
+        self.assertEqual(nws.build_current(periods(), obs)["feels_like"], 95)
 
     def test_feels_like_defaults_to_temperature(self):
-        self.assertEqual(nws.build_current(periods(), observation()["properties"])["feels_like_f"], 84)
+        self.assertEqual(nws.build_current(periods(), observation()["properties"])["feels_like"], 84)
 
     def test_falls_back_to_the_forecast_without_an_observation(self):
         current = nws.build_current(periods(), None)
-        self.assertEqual(current["temperature_f"], 62)
-        self.assertEqual(current["wind_mph"], 10)
+        self.assertEqual(current["temperature"], 62)
+        self.assertEqual(current["wind_speed"], 10)
         self.assertEqual(current["condition"], "Mostly Clear")
-        self.assertIsNone(current["pressure_inhg"])
-        self.assertIsNone(current["visibility_miles"])
+        self.assertIsNone(current["pressure"])
+        self.assertIsNone(current["visibility"])
 
 
 class AlertTests(unittest.TestCase):
@@ -201,7 +201,7 @@ class FetchTests(unittest.TestCase):
 
     def test_skips_a_station_without_a_temperature(self):
         data = nws.fetch(10.0, 20.0, "Outpost-Test")
-        self.assertEqual(data["current"]["temperature_f"], 84)  # from KBBB, not the forecast's 62
+        self.assertEqual(data["current"]["temperature"], 84)  # from KBBB, not the forecast's 62
 
     def test_user_agent_is_sent_on_every_request(self):
         nws.fetch(10.0, 20.0, "Outpost-Test")
@@ -217,8 +217,8 @@ class FetchTests(unittest.TestCase):
         old = timedelta(hours=6)
         self.observations = {k: observation(age=old) for k in self.observations}
         data = nws.fetch(10.0, 20.0, "Outpost-Test")
-        self.assertEqual(data["current"]["temperature_f"], 62)
-        self.assertIsNone(data["current"]["pressure_inhg"])
+        self.assertEqual(data["current"]["temperature"], 62)
+        self.assertIsNone(data["current"]["pressure"])
 
     def test_failed_alert_lookup_fails_the_update(self):
         self.alerts_error = RuntimeError("NWS HTTP 503")

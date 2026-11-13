@@ -121,7 +121,7 @@ You can read the same file from other tools:
 curl http://localhost:8088/data/weather.json
 ```
 
-See [docs/data-format.md](docs/data-format.md) for the field reference. <!-- TODO: write this once the schema settles -->
+Every field is described in [docs/data-format.md](docs/data-format.md), with a [JSON Schema](docs/schema/weather-v1.json). The file has a `schema_version`, which goes up only when a change would break a tool that reads it.
 
 ## Running on unRAID
 

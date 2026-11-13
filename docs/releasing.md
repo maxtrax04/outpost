@@ -39,12 +39,15 @@ the GitHub Release from the changelog.
 A beta lets people try a version, especially one with breaking changes, before it is final. It uses the
 same checklist with a suffix on the version: `0.5.0-beta.1`, then `0.5.0-beta.2`, and so on.
 
-1. While you work, changes go under `[Unreleased]` as usual.
-2. To publish a beta, set `VERSION` to `0.5.0-beta.1` and rename `[Unreleased]` to
-   `[0.5.0-beta.1] - <date>` with a fresh empty `[Unreleased]` above it. That section lists only what is
-   new since the previous beta, and becomes that beta's release notes. Include upgrade steps for breaking
-   changes, since beta testers need them first.
-3. Open the pull request, merge it, and tag the merge commit `v0.5.0-beta.1`, as in steps 3 to 5 above.
+1. Once a version has been released, every pull request toward the next one raises the beta number:
+   the first sets `VERSION` to `0.5.0-beta.1`, the next to `0.5.0-beta.2`, and so on. A local build then
+   shows a beta version in the dashboard footer, so it is never mistaken for the released version.
+2. In the same pull request, put its changes in a `[0.5.0-beta.N] - <date>` section of `CHANGELOG.md`,
+   below an empty `[Unreleased]` (a test checks that `VERSION` has a section). That section lists only what
+   is new in that beta, and becomes its release notes if it is published. Include upgrade steps for
+   breaking changes, since beta testers need them first.
+3. Merge the pull request. To publish that beta, tag the merge commit `v0.5.0-beta.N`, as in steps 3 to 5
+   above. Not every beta has to be published; an untagged one is only seen in local builds and `edge`.
 4. The release is marked as a pre-release, and the image is published only as `0.5.0-beta.1` (and `edge`).
    `latest` and `0.5` do not move, and the repository sidebar keeps showing the last full release, so
    people who are not testing are not affected.

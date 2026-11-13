@@ -15,19 +15,19 @@
 
     // name: [field in weather.json, value shown as 0, value shown as 1]. Values outside are clamped.
     const CURRENT = {
-        "temperature": ["temperature_f", -20, 120],
-        "feels-like": ["feels_like_f", -20, 120],
-        "humidity": ["humidity_percent", 0, 100],
-        "wind": ["wind_mph", 0, 60],
-        "pressure": ["pressure_inhg", 28.5, 31],
+        "temperature": ["temperature", -20, 120],
+        "feels-like": ["feels_like", -20, 120],
+        "humidity": ["humidity", 0, 100],
+        "wind": ["wind_speed", 0, 60],
+        "pressure": ["pressure", 28.5, 31],
         "uv": ["uv_index", 0, 11],
-        "visibility": ["visibility_miles", 0, 10],
+        "visibility": ["visibility", 0, 10],
     };
 
     const FORECAST = {
-        "high": ["high_f", -20, 120],
-        "low": ["low_f", -20, 120],
-        "rain": ["precipitation_percent", 0, 100],
+        "high": ["high", -20, 120],
+        "low": ["low", -20, 120],
+        "rain": ["precipitation_chance", 0, 100],
         "uv": ["uv_index", 0, 11],
     };
 

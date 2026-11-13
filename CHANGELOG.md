@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.1] - 2026-11-12
+
+### Added
+
+- `docs/data-format.md` describes every field of `weather.json`, for anyone reading it from another tool such as Home Assistant, and `docs/schema/weather-v1.json` is the same as a JSON Schema. `weather.json` links to it in a `$schema` field, so editors such as VS Code check the file and describe each field when you open it.
+
+### Changed
+
+- **Breaking for anything that reads `weather.json`:** the file has a versioned format (`"schema_version": 1`), and no field name includes a unit. `temperature_f` is now `temperature`, `feels_like_f` is `feels_like`, `wind_mph` is `wind_speed`, `pressure_inhg` is `pressure`, `visibility_miles` is `visibility`, `humidity_percent` is `humidity`, and in the forecast `high_f`, `low_f`, and `precipitation_percent` are `high`, `low`, and `precipitation_chance`. The units are listed once in a `units` block (for example `"temperature": "°F"`), and the dashboard shows them from there. The dashboard itself looks the same.
+- **Breaking for anything that reads `weather.json`:** where the data came from is in a `sources` block, with `weather`, `alerts` (`null` when the source has no official alerts), and `fill` (the second source used for missing readings, and which ones). It replaces `source`, `provider_setting`, `filled_fields`, and `alerts_supported`. `provider` is now always the `OUTPOST_PROVIDER` setting (such as `auto`); the provider actually used is `sources.weather.id`.
+- Right after an upgrade, if the first update fails, Outpost no longer shows the weather saved by the old version as "degraded" data, because that file is in the old format. The screen shows that there is no data until an update succeeds.
+- The health check also requires `schema_version` to match.
+
+### Upgrading from 0.5.0
+
+- **If you only use the dashboard,** nothing is required. Rebuild or pull, and reload each screen once.
+- **If another tool reads `weather.json`** (a Home Assistant REST sensor, a script), rename the fields it uses as listed above. For example, a Home Assistant template `{{ value_json.current.temperature_f }}` becomes `{{ value_json.current.temperature }}`, and `{{ value_json.source }}` becomes `{{ value_json.sources.weather.name }}`. Check `schema_version` to notice future breaking changes. See [docs/data-format.md](docs/data-format.md).
+
 ## [0.5.0] - 2026-11-11
 
 Themes and customization: three new built-in themes, community themes you can download, your own themes without rebuilding, an original logo, reduced effects, a 12- or 24-hour clock, and security headers. If you made your own theme for 0.4.0, see "Upgrading from 0.4.0" below.

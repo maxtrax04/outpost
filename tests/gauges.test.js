@@ -47,7 +47,7 @@ test("missing or unusable readings give null", () => {
 
 test("current readings go on the page root and on their element", () => {
     const doc = fakeDocument(["humidity", "uv", "wind"]);
-    const result = gauges.applyCurrent({ humidity_percent: 38, uv_index: 5.5, wind_mph: null }, doc);
+    const result = gauges.applyCurrent({ humidity: 38, uv_index: 5.5, wind_speed: null }, doc);
 
     assert.equal(result.humidity, 0.38);
     assert.equal(doc.documentElement.props.get("--wx-humidity"), "0.380");
@@ -65,7 +65,7 @@ test("current readings go on the page root and on their element", () => {
 
 test("a reading that disappears is cleared on the next update", () => {
     const doc = fakeDocument(["humidity"]);
-    gauges.applyCurrent({ humidity_percent: 80 }, doc);
+    gauges.applyCurrent({ humidity: 80 }, doc);
     gauges.applyCurrent({}, doc);
     assert.ok(!doc.documentElement.props.has("--wx-humidity"));
     assert.ok(!doc.elements.humidity.props.has("--value"));
@@ -74,14 +74,14 @@ test("a reading that disappears is cleared on the next update", () => {
 
 test("no weather data at all clears everything", () => {
     const doc = fakeDocument(Object.keys(gauges.CURRENT));
-    gauges.applyCurrent({ temperature_f: 70, humidity_percent: 50 }, doc);
+    gauges.applyCurrent({ temperature: 70, humidity: 50 }, doc);
     gauges.applyCurrent(undefined, doc);
     assert.equal(doc.documentElement.props.size, 0);
 });
 
 test("forecast values go on the card", () => {
     const card = fakeElement();
-    gauges.applyForecast(card, { high_f: 50, low_f: -20, precipitation_percent: 100, uv_index: null });
+    gauges.applyForecast(card, { high: 50, low: -20, precipitation_chance: 100, uv_index: null });
     assert.equal(card.props.get("--wx-high"), "0.500");
     assert.equal(card.props.get("--wx-low"), "0.000");
     assert.equal(card.props.get("--wx-rain"), "1.000");

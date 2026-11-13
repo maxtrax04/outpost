@@ -62,10 +62,17 @@ async function checkTheme(browser, theme, name, viewport) {
         titleTextSize: parseFloat(getComputedStyle(document.querySelector(".title-text")).fontSize),
         gauges: document.querySelectorAll(".detail-box[data-gauge]").length,
         humidity: getComputedStyle(document.documentElement).getPropertyValue("--wx-humidity"),
+        temperature: document.getElementById("temperature").textContent,
+        wind: document.getElementById("wind").textContent,
+        source: document.getElementById("source").textContent,
     }));
     // Values for theme gauges (web/gauges.js) reach the page
     if (state.gauges !== 6) problems.push(`${state.gauges} readings are marked as gauges, expected 6`);
     if (!/^0?\.\d+$|^[01](\.0+)?$/.test(state.humidity.trim())) problems.push(`--wx-humidity is "${state.humidity}", expected 0..1`);
+    // Unit labels and the source line come from weather.json (its "units" and "sources" blocks)
+    if (!/\d°F$/.test(state.temperature)) problems.push(`the temperature reads "${state.temperature}", expected a number and °F`);
+    if (!/\d mph$/.test(state.wind)) problems.push(`the wind reads "${state.wind}", expected a number and mph`);
+    if (!state.source || state.source === "--") problems.push("the footer names no data source");
     // The header shows the logo or the text title (the theme's --title-logo), never both or neither
     if ((state.logoHeight > 0) === (state.titleTextSize > 0)) {
         problems.push(`the title shows ${state.logoHeight > 0 ? "both the logo and the text" : "neither the logo nor the text"}`);

@@ -1,5 +1,6 @@
 // Outpost front end. Reads /data/weather.json (written by the updater)
-// and renders the HUD. Key names must match outpost_updater.py.
+// and renders the HUD. Key names must match outpost_updater.py
+// and docs/data-format.md.
 
 const REFRESH_MS = 60 * 1000;          // how often the page re-reads the JSON
 const MIN_STALE_MS = 5 * 60 * 1000;    // never warn sooner than this
@@ -102,12 +103,12 @@ function renderForecast(periods) {
         iconWrap.appendChild(icon);
 
         const condition = text("forecast-condition", period.condition || "Unknown");
-        const temps = text("forecast-temps", `${valueOrDash(period.high_f, "°")} / ${valueOrDash(period.low_f, "°")}`);
+        const temps = text("forecast-temps", `${valueOrDash(period.high, "°")} / ${valueOrDash(period.low, "°")}`);
 
         const extra = document.createElement("div");
         extra.className = "forecast-extra";
         extra.append(
-            text("forecast-rain", `Rain: ${valueOrDash(period.precipitation_percent, "%")}`),
+            text("forecast-rain", `Rain: ${valueOrDash(period.precipitation_chance, "%")}`),
             text("forecast-uv", `UV: ${valueOrDash(period.uv_index)}`)
         );
 
@@ -171,7 +172,7 @@ function renderAlertsSection(weather, config) {
     const container = document.getElementById("alerts");
 
     const alerts = Array.isArray(weather.alerts) ? weather.alerts : [];
-    const supported = weather.alerts_supported !== false;
+    const supported = OutpostData.alertsSupported(weather);
     const alwaysShow = Boolean(config.ui && config.ui.alerts_always_show);
     const outdated = weather.status !== "ok";
     const checked = formatTime(weather.generated_at);
@@ -253,17 +254,18 @@ async function loadWeather(config) {
 
         const weather = await response.json();
         const current = weather.current || {};
+        const units = OutpostData.units(weather);
 
         setText("location", weather.location || "Unknown Location");
-        setText("temperature", valueOrDash(current.temperature_f, "°F"));
+        setText("temperature", valueOrDash(current.temperature, units.temperature));
         setText("condition", current.condition || "Unknown");
-        setText("feelsLike", valueOrDash(current.feels_like_f, "°F"));
-        setText("humidity", valueOrDash(current.humidity_percent, "%"));
-        setText("wind", valueOrDash(current.wind_mph, " mph"));
-        setText("pressure", valueOrDash(current.pressure_inhg, " inHg"));
+        setText("feelsLike", valueOrDash(current.feels_like, units.temperature));
+        setText("humidity", valueOrDash(current.humidity, "%"));
+        setText("wind", valueOrDash(current.wind_speed, ` ${units.speed}`));
+        setText("pressure", valueOrDash(current.pressure, ` ${units.pressure}`));
         setText("uv", valueOrDash(current.uv_index));
-        setText("visibility", valueOrDash(current.visibility_miles, " mi"));
-        setText("source", weather.source || "--");
+        setText("visibility", valueOrDash(current.visibility, ` ${units.distance}`));
+        setText("source", OutpostData.sourceText(weather));
         setText("version", weather.version || "--");
         setText("lastUpdated", formatDateTime(weather.generated_at));
 

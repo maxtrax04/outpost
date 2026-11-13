@@ -10,10 +10,10 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 
 ## Layout
 - `app/`: updater, health check, community theme download (`outpost_community.py`, run once by `start.sh`), `start.sh`, `providers/{openmeteo,nws,gapfill}.py`
-- `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `effects.js`, `fit.js`, `clock.js`, `themes.js`, `gauges.js`, `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
+- `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `effects.js`, `fit.js`, `clock.js`, `themes.js`, `gauges.js`, `data.js` (reads weather.json), `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
 - `assets/`: `icons/` (13 original SVGs), `logo/` (original logo: mark, wordmark, lockup), `app/` (favicon and PWA icons, built from the logo by `scripts/build-app-icons.js`), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations; `tests/browser/check-themes.js` (Playwright, run by CI against the container)
-- `docs/`: `themes.md`, `releasing.md`, `github-workflow.md`
+- `docs/`: `data-format.md` and `schema/weather-v<N>.json` (the weather.json format; a new file per schema_version), `themes.md`, `releasing.md`, `github-workflow.md`
 - `design/`: design working files (logo concepts, Illustrator masters); git-ignored
 - `nginx/default.conf`: web server config; custom themes are mounted at `/config/themes` and win over `web/themes/`
 - `examples/themes/`: example themes to mount (not built into the image)
@@ -32,6 +32,7 @@ Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (rel
 
 ## Current state
 - v0.5.0 released (themes and customization; betas 1 to 8 folded into one CHANGELOG section). Built-in themes: retro-crt, amber-terminal, command-center, modern-dark, field-station, atomic-broadcast, ink. Community themes live in maxtrax04/outpost-themes (`username/theme`, downloaded by `OUTPOST_COMMUNITY_THEMES`; its own checks in `.github/scripts/check_themes.py` and Outpost edge in a browser).
+- Every PR after a release bumps VERSION to the next beta (see docs/releasing.md "Beta releases").
 - Next: v0.6.0, data model and providers, starting with the unit-neutral weather.json schema (#23) and metric units (#24). Ideas, not planned: an ePaper image renderer (#64).
 - The CSP has no `unsafe-inline` or `unsafe-eval`: no inline scripts, styles, or `style=` attributes (CSSOM `style.setProperty` is fine). Playwright's `page.waitForFunction` is blocked by it too; `tests/browser/check-themes.js` polls with `page.evaluate` instead.
 - Not verified on real iOS/Android, on real ePaper, or with the real Share Tech Mono file.
