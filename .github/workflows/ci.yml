@@ -130,7 +130,10 @@ jobs:
           data = json.load(open("weather.json"))
           assert data["status"] == "ok", data
           assert data["version"] == open("VERSION").read().strip(), "weather.json version does not match VERSION"
-          assert data["current"]["temperature_f"] is not None
+          assert data["schema_version"] == 1, data.get("schema_version")
+          assert data["units"]["system"] == "imperial", data["units"]
+          assert data["sources"]["weather"]["id"] == "mock", data["sources"]
+          assert data["current"]["temperature"] is not None
           print("weather.json looks good")
           PY
           curl -fsS http://localhost:8088/data/config.json | python3 -c "

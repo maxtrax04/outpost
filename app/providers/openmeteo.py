@@ -3,7 +3,7 @@ Open-Meteo provider.
 
 Docs:  https://open-meteo.com/en/docs
 Terms: free for non-commercial use, no API key. Attribution is required
-       (the dashboard shows it via the "source" field).
+       (the dashboard credits it from the "sources" block of weather.json).
 
 Uses only the Python standard library.
 """
@@ -160,15 +160,15 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
     visibility_m = _hourly_value(raw, "visibility")
 
     normalized_current = {
-        "temperature_f": _round(current.get("temperature_2m")),
-        "feels_like_f": _round(current.get("apparent_temperature")),
+        "temperature": _round(current.get("temperature_2m")),
+        "feels_like": _round(current.get("apparent_temperature")),
         "condition": condition,
         "icon": icon,
-        "humidity_percent": _round(current.get("relative_humidity_2m")),
-        "wind_mph": _round(current.get("wind_speed_10m")),
-        "pressure_inhg": _round(pressure_hpa * HPA_TO_INHG, 2) if pressure_hpa is not None else None,
+        "humidity": _round(current.get("relative_humidity_2m")),
+        "wind_speed": _round(current.get("wind_speed_10m")),
+        "pressure": _round(pressure_hpa * HPA_TO_INHG, 2) if pressure_hpa is not None else None,
         "uv_index": _round(_hourly_value(raw, "uv_index")),
-        "visibility_miles": _round(visibility_m / METERS_PER_MILE, 1) if visibility_m is not None else None,
+        "visibility": _round(visibility_m / METERS_PER_MILE, 1) if visibility_m is not None else None,
     }
 
     forecast: List[Dict[str, Any]] = []
@@ -177,11 +177,11 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         day_condition, day_icon = describe((daily.get("weather_code") or [None] * len(days))[i])
         forecast.append({
             "day": day,
-            "high_f": _round((daily.get("temperature_2m_max") or [None] * len(days))[i]),
-            "low_f": _round((daily.get("temperature_2m_min") or [None] * len(days))[i]),
+            "high": _round((daily.get("temperature_2m_max") or [None] * len(days))[i]),
+            "low": _round((daily.get("temperature_2m_min") or [None] * len(days))[i]),
             "condition": day_condition,
             "icon": day_icon,
-            "precipitation_percent": (daily.get("precipitation_probability_max") or [None] * len(days))[i],
+            "precipitation_chance": (daily.get("precipitation_probability_max") or [None] * len(days))[i],
             "uv_index": _round((daily.get("uv_index_max") or [None] * len(days))[i]),
         })
 

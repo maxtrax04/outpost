@@ -11,7 +11,7 @@ import outpost_health as health
 
 def good_payload(age_seconds=0):
     generated = datetime.now(timezone.utc) - timedelta(seconds=age_seconds)
-    return {"status": "ok", "provider": "mock", "location": "Test Site",
+    return {"schema_version": 1, "status": "ok", "provider": "mock", "location": "Test Site",
             "generated_at": generated.isoformat(), "current": {}, "forecast": []}
 
 
@@ -47,6 +47,17 @@ class HealthTests(unittest.TestCase):
         payload = good_payload()
         del payload["location"]
         self.assertEqual(self.run_check(payload), 1)
+
+    def test_old_format_is_unhealthy(self):
+        payload = good_payload()
+        del payload["schema_version"]
+        self.assertEqual(self.run_check(payload), 1)
+        payload["schema_version"] = 2
+        self.assertEqual(self.run_check(payload), 1)
+
+    def test_health_check_knows_the_updater_format(self):
+        import outpost_updater
+        self.assertEqual(health.SCHEMA_VERSION, outpost_updater.SCHEMA_VERSION)
 
     def test_current_must_be_an_object(self):
         payload = good_payload()

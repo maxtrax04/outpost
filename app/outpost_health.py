@@ -18,7 +18,11 @@ DATA_PATH = Path("/data/weather.json")
 UPDATE_INTERVAL = int(os.getenv("OUTPOST_UPDATE_INTERVAL", "60"))
 MAX_AGE_SECONDS = max(300, UPDATE_INTERVAL * 5)
 
+# The weather.json format this health check understands (SCHEMA_VERSION in outpost_updater.py)
+SCHEMA_VERSION = 1
+
 REQUIRED_TOP_LEVEL = [
+    "schema_version",
     "status",
     "provider",
     "location",
@@ -43,6 +47,10 @@ def main() -> int:
     missing = [key for key in REQUIRED_TOP_LEVEL if key not in payload]
     if missing:
         print(f"weather.json is missing fields: {', '.join(missing)}")
+        return 1
+
+    if payload["schema_version"] != SCHEMA_VERSION:
+        print(f"weather.json is format {payload['schema_version']!r}, expected {SCHEMA_VERSION}")
         return 1
 
     if not isinstance(payload["current"], dict):

@@ -12,15 +12,15 @@ import copy
 from typing import Any, Dict, List, Tuple
 
 CURRENT_FIELDS = [
-    "humidity_percent",
-    "wind_mph",
-    "pressure_inhg",
+    "humidity",
+    "wind_speed",
+    "pressure",
     "uv_index",
-    "visibility_miles",
+    "visibility",
 ]
 
-# high_f/low_f can be empty for "today" once NWS has dropped the daytime period
-FORECAST_FIELDS = ["uv_index", "high_f", "low_f"]
+# high/low can be empty for "today" once NWS has dropped the daytime period
+FORECAST_FIELDS = ["uv_index", "high", "low"]
 
 
 def has_gaps(data: Dict[str, Any]) -> bool:
@@ -38,7 +38,7 @@ def has_gaps(data: Dict[str, Any]) -> bool:
 def fill(primary: Dict[str, Any], secondary: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     """
     Return (merged copy of primary, sorted list of filled field names such as
-    'current.uv_index' or 'forecast.high_f').
+    'current.uv_index' or 'forecast.high').
     """
     merged = copy.deepcopy(primary)
     filled = set()

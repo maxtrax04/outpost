@@ -144,17 +144,18 @@ class MockProviderTests(UpdaterTestCase):
         self.assertEqual(data["status"], "ok")
         self.assertEqual(data["version"], u.APP_VERSION)
         self.assertEqual(data["update_interval_seconds"], u.UPDATE_INTERVAL)
-        for key in ("status", "provider", "location", "generated_at", "current", "forecast", "alerts", "alerts_supported", "coordinates"):
+        for key in ("schema_version", "status", "provider", "sources", "location", "coordinates", "generated_at",
+                    "update_interval_seconds", "units", "current", "forecast", "alerts", "last_error"):
             self.assertIn(key, data)
-        for key in ("temperature_f", "feels_like_f", "condition", "icon", "humidity_percent",
-                    "wind_mph", "pressure_inhg", "uv_index", "visibility_miles"):
+        for key in ("temperature", "feels_like", "condition", "icon", "humidity",
+                    "wind_speed", "pressure", "uv_index", "visibility"):
             self.assertIn(key, data["current"])
-        for key in ("day", "high_f", "low_f", "condition", "icon", "precipitation_percent", "uv_index"):
+        for key in ("day", "high", "low", "condition", "icon", "precipitation_chance", "uv_index"):
             self.assertIn(key, data["forecast"][0])
 
     def test_mock_data_supports_alerts(self):
         u.update_once()
-        self.assertTrue(self.output()["alerts_supported"])
+        self.assertEqual(self.output()["sources"]["alerts"], {"id": "mock", "name": "Outpost Mock Provider"})
 
     def test_mock_sample_alerts_are_off_by_default(self):
         with mock.patch.dict(os.environ, {"OUTPOST_MOCK_ALERTS": ""}):
@@ -175,7 +176,7 @@ class MockProviderTests(UpdaterTestCase):
     def test_feels_like_is_close_to_the_temperature(self):
         for _ in range(50):
             current = u.build_mock_payload()["current"]
-            self.assertLessEqual(abs(current["feels_like_f"] - current["temperature_f"]), 6)
+            self.assertLessEqual(abs(current["feels_like"] - current["temperature"]), 6)
 
     def test_unknown_provider_writes_an_error_payload(self):
         with mock.patch.object(u, "PROVIDER", "nonsense"):
@@ -191,10 +192,9 @@ class LiveProviderTests(UpdaterTestCase):
                 mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
             u.update_once()
         data = self.output()
-        self.assertEqual((data["status"], data["provider"], data["provider_setting"]), ("ok", "openmeteo", "openmeteo"))
-        self.assertEqual(data["source"], "Open-Meteo.com")
-        self.assertEqual(data["filled_fields"], [])
-        self.assertFalse(data["alerts_supported"])
+        self.assertEqual((data["status"], data["provider"]), ("ok", "openmeteo"))
+        self.assertEqual(data["sources"], {"weather": {"id": "openmeteo", "name": "Open-Meteo.com"}, "alerts": None, "fill": None})
+        self.assertEqual(data["alerts"], [])
 
     def test_nws_does_not_gap_fill(self):
         with mock.patch.object(u, "PROVIDER", "nws"), \
@@ -215,7 +215,7 @@ class LiveProviderTests(UpdaterTestCase):
         self.assertEqual(data["status"], "degraded")
         self.assertEqual(data["last_error"], "Open-Meteo unreachable")
         self.assertEqual(data["generated_at"], first["generated_at"])
-        self.assertEqual(data["current"]["temperature_f"], first["current"]["temperature_f"])
+        self.assertEqual(data["current"]["temperature"], first["current"]["temperature"])
 
     def test_failure_with_no_previous_data_writes_an_error(self):
         with mock.patch.object(u, "PROVIDER", "openmeteo"), \
@@ -224,7 +224,8 @@ class LiveProviderTests(UpdaterTestCase):
         data = self.output()
         self.assertEqual(data["status"], "error")
         self.assertEqual(data["current"]["condition"], "DATA LINK LOST")
-        self.assertFalse(data["alerts_supported"])
+        self.assertEqual(data["sources"], {"weather": None, "alerts": None, "fill": None})
+        self.assertEqual(data["schema_version"], u.SCHEMA_VERSION)
 
     def test_old_data_for_another_location_is_not_reused(self):
         with mock.patch.object(u, "PROVIDER", "openmeteo"):
@@ -234,6 +235,75 @@ class LiveProviderTests(UpdaterTestCase):
                     mock.patch.object(u.openmeteo, "fetch", side_effect=RuntimeError("boom")):
                 u.update_once()
         self.assertEqual(self.output()["status"], "error")
+
+    def fail_after(self, previous):
+        """Write `previous` as the last weather.json, then run a failing Open-Meteo update."""
+        u.write_json(previous)
+        with mock.patch.object(u, "PROVIDER", "openmeteo"), \
+                mock.patch.object(u.openmeteo, "fetch", side_effect=RuntimeError("boom")):
+            u.update_once()
+        return self.output()
+
+    def good_previous(self):
+        with mock.patch.object(u, "PROVIDER", "openmeteo"), \
+                mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
+            u.update_once()
+        return self.output()
+
+    def test_data_in_an_older_format_is_not_reused(self):
+        # A weather.json from before the upgrade (0.5.0 had no schema_version and used temperature_f)
+        old = {"status": "ok", "provider": "openmeteo", "location": u.LOCATION_NAME, "units": "imperial",
+               "current": {"temperature_f": 70}, "forecast": []}
+        self.assertEqual(self.fail_after(old)["status"], "error")
+
+        previous = self.good_previous()
+        previous["schema_version"] = u.SCHEMA_VERSION + 1
+        self.assertEqual(self.fail_after(previous)["status"], "error")
+
+    def test_data_in_other_units_is_not_reused(self):
+        previous = self.good_previous()
+        previous["units"] = {**previous["units"], "system": "metric", "temperature": "°C"}
+        self.assertEqual(self.fail_after(previous)["status"], "error")
+
+    def test_data_for_another_provider_setting_is_not_reused(self):
+        previous = self.good_previous()
+        previous["provider"] = "auto"
+        self.assertEqual(self.fail_after(previous)["status"], "error")
+
+
+class FormatTests(UpdaterTestCase):
+    """The weather.json format (docs/data-format.md)."""
+
+    def test_every_payload_has_the_format_version_and_units(self):
+        payloads = {
+            "mock": u.build_mock_payload(),
+            "error": u.build_error_payload("boom"),
+            "live": u.build_live_payload("openmeteo", openmeteo_data()),
+        }
+        for name, payload in payloads.items():
+            with self.subTest(payload=name):
+                self.assertEqual(payload["schema_version"], 1)
+                self.assertEqual(payload["units"], {"system": "imperial", "temperature": "°F", "speed": "mph",
+                                                    "pressure": "inHg", "distance": "mi"})
+                self.assertEqual(set(payload["sources"]), {"weather", "alerts", "fill"})
+
+    def test_no_field_names_a_unit(self):
+        payload = u.build_live_payload("nws", nws_data())
+        names = list(payload) + list(payload["current"]) + [key for day in payload["forecast"] for key in day]
+        for name in names:
+            with self.subTest(name=name):
+                self.assertNotRegex(name, r"_(f|c|mph|kmh|inhg|hpa|miles|km|percent)$")
+
+    def test_a_provider_without_alerts_never_lists_any(self):
+        data = {**openmeteo_data(), "alerts": [{"title": "Stray"}], "alerts_supported": False}
+        payload = u.build_live_payload("openmeteo", data)
+        self.assertEqual(payload["alerts"], [])
+        self.assertIsNone(payload["sources"]["alerts"])
+
+    def test_the_metric_setting_still_writes_imperial_labels_until_it_is_supported(self):
+        # The labels must describe the numbers, which are imperial until metric is added
+        with mock.patch.object(u, "UNITS", "metric"):
+            self.assertEqual(u.build_mock_payload()["units"]["system"], "imperial")
 
 
 class AutoProviderTests(UpdaterTestCase):
@@ -246,22 +316,23 @@ class AutoProviderTests(UpdaterTestCase):
                 mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
             u.update_once()
         data = self.output()
-        self.assertEqual((data["status"], data["provider"], data["provider_setting"]), ("ok", "openmeteo", "auto"))
-        self.assertFalse(data["alerts_supported"])
+        self.assertEqual((data["status"], data["provider"], data["sources"]["weather"]["id"]), ("ok", "auto", "openmeteo"))
+        self.assertIsNone(data["sources"]["alerts"])
 
     def test_us_uses_nws_and_fills_gaps_from_open_meteo(self):
         with mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
                 mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
             u.update_once()
         data = self.output()
-        self.assertEqual(data["provider"], "nws")
-        self.assertIn("current.uv_index", data["filled_fields"])
+        self.assertEqual((data["provider"], data["sources"]["weather"]["id"]), ("auto", "nws"))
+        self.assertIn("current.uv_index", data["sources"]["fill"]["fields"])
+        self.assertEqual(data["sources"]["fill"]["id"], "openmeteo")
+        self.assertEqual(data["sources"]["fill"]["name"], "Open-Meteo.com")
         self.assertIsNotNone(data["current"]["uv_index"])
-        self.assertIn("National Weather Service", data["source"])
-        self.assertIn("Open-Meteo.com", data["source"])
+        self.assertIn("National Weather Service", data["sources"]["weather"]["name"])
         self.assertEqual(data["current"]["condition"], "Fair")  # NWS wording is kept
         self.assertEqual(len(data["alerts"]), 2)
-        self.assertTrue(data["alerts_supported"])  # still true after gap filling
+        self.assertEqual(data["sources"]["alerts"]["id"], "nws")  # alerts stay with NWS after gap filling
 
     def test_open_meteo_failure_does_not_fail_the_update(self):
         with mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
@@ -269,7 +340,7 @@ class AutoProviderTests(UpdaterTestCase):
             u.update_once()
         data = self.output()
         self.assertEqual(data["status"], "ok")
-        self.assertEqual(data["filled_fields"], [])
+        self.assertIsNone(data["sources"]["fill"])
         self.assertIsNone(data["current"]["uv_index"])
 
     def test_nws_failure_is_not_hidden_by_switching_providers(self):
@@ -287,7 +358,7 @@ class AutoProviderTests(UpdaterTestCase):
             u.update_once()
         data = self.output()
         self.assertEqual(data["status"], "degraded")
-        self.assertEqual(data["provider"], "nws")
+        self.assertEqual(data["sources"]["weather"]["id"], "nws")
 
 
 class ConfigTests(UpdaterTestCase):

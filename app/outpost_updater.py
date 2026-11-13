@@ -34,6 +34,19 @@ from providers import gapfill, nws, openmeteo
 
 DATA_PATH = Path("/data/weather.json")
 
+# The weather.json format (docs/data-format.md). Raise it only for a change that breaks readers:
+# a renamed or removed field, or a changed meaning. New fields do not change it.
+SCHEMA_VERSION = 1
+
+# Where editors find the JSON Schema for this format (written to weather.json as "$schema")
+SCHEMA_URL = f"https://raw.githubusercontent.com/maxtrax04/outpost/main/docs/schema/weather-v{SCHEMA_VERSION}.json"
+
+# The unit each kind of reading is in, written to weather.json as "units". Providers return
+# imperial values for now; metric is added later (OUTPOST_UNITS).
+UNIT_LABELS = {
+    "imperial": {"temperature": "°F", "speed": "mph", "pressure": "inHg", "distance": "mi"},
+}
+
 def get_env(name: str, default: Optional[str] = None) -> Optional[str]:
     """Get environment variable or return default."""
     value = os.getenv(name, default)
@@ -87,6 +100,10 @@ LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
 LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
 LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -115.4328)
 UNITS = get_env("OUTPOST_UNITS", "imperial").lower()
+
+def units_block() -> Dict[str, str]:
+    """The "units" block of weather.json: the unit system and the label for each kind of reading."""
+    return {"system": "imperial", **UNIT_LABELS["imperial"]}
 
 def clean_header_text(name: str, value: str) -> str:
     """
@@ -449,11 +466,11 @@ def build_mock_payload() -> Dict[str, Any]:
 
         forecast.append({
             "day": day.date().isoformat(),
-            "high_f": high,
-            "low_f": low,
+            "high": high,
+            "low": low,
             "condition": condition,
             "icon": icon,
-            "precipitation_percent": random.randint(0, 60),
+            "precipitation_chance": random.randint(0, 60),
             "uv_index": random.randint(0,8)
         })
     
@@ -464,6 +481,7 @@ def build_mock_payload() -> Dict[str, Any]:
             "title": "Outpost Test Alert",
             "description": "Mock alert generated for dashboard validation.",
             "severity": "test",
+            "expires": None,
             "uri": None
         })
 
@@ -472,111 +490,123 @@ def build_mock_payload() -> Dict[str, Any]:
     if env_flag("OUTPOST_MOCK_ALERTS", False):
         alerts.extend(mock_sample_alerts(now))
 
-    return {
-        "status": "ok",
-        "app": APP_NAME,
-        "version": APP_VERSION,
-        "provider": "mock",
-        "source": "Outpost Mock Provider",
-        "location": LOCATION_NAME,
-        "generated_at": utc_now(),
-        "coordinates": {
-            "latitude": LATITUDE,
-            "longitude": LONGITUDE
-        },
-        "units": UNITS,
-        "update_interval_seconds": UPDATE_INTERVAL,
-        "current": {
-            "temperature_f": base_temp,
-            "feels_like_f": feels_like,
+    mock_source = source_entry("mock", "Outpost Mock Provider")
+    return build_payload(
+        status="ok",
+        sources={"weather": mock_source, "alerts": mock_source, "fill": None},
+        current={
+            "temperature": base_temp,
+            "feels_like": feels_like,
             "condition": current_condition,
             "icon": current_icon,
-            "humidity_percent": random.randint(35, 85),
-            "wind_mph": random.randint(0, 25),
-            "pressure_inhg": round(random.uniform(29.70, 30.35), 2),
+            "humidity": random.randint(35, 85),
+            "wind_speed": random.randint(0, 25),
+            "pressure": round(random.uniform(29.70, 30.35), 2),
             "uv_index": random.randint(0, 8),
-            "visibility_miles": random.randint(5, 10)
+            "visibility": random.randint(5, 10)
         },
-        "forecast": forecast,
-        "alerts": alerts,
-        "alerts_supported": True,
-        "last_error": None
-    }
+        forecast=forecast,
+        alerts=alerts,
+    )
 
-def build_error_payload(error_message: str) -> Dict[str, Any]:
+def source_entry(source_id: str, name: str, **extra: Any) -> Dict[str, Any]:
+    """One entry of the "sources" block: the provider's id (as in OUTPOST_PROVIDER) and the name to credit."""
+    return {"id": source_id, "name": name, **extra}
+
+def build_payload(
+    status: str,
+    sources: Dict[str, Any],
+    current: Dict[str, Any],
+    forecast: List[Dict[str, Any]],
+    alerts: List[Dict[str, Any]],
+    last_error: Optional[str] = None,
+) -> Dict[str, Any]:
+    """weather.json, in the format described in docs/data-format.md."""
     return {
-        "status": "error",
+        "$schema": SCHEMA_URL,
+        "schema_version": SCHEMA_VERSION,
+        "status": status,
         "app": APP_NAME,
         "version": APP_VERSION,
         "provider": PROVIDER,
-        "source": None,
+        "sources": sources,
         "location": LOCATION_NAME,
-        "generated_at": utc_now(),
         "coordinates": {
             "latitude": LATITUDE,
             "longitude": LONGITUDE
         },
-        "units": UNITS,
+        "generated_at": utc_now(),
         "update_interval_seconds": UPDATE_INTERVAL,
-        "current": {
-            "temperature_f": None,
-            "feels_like_f": None,
+        "units": units_block(),
+        "current": current,
+        "forecast": forecast,
+        "alerts": alerts,
+        "last_error": last_error
+    }
+
+def build_error_payload(error_message: str) -> Dict[str, Any]:
+    return build_payload(
+        status="error",
+        sources={"weather": None, "alerts": None, "fill": None},
+        current={
+            "temperature": None,
+            "feels_like": None,
             "condition": "DATA LINK LOST",
             "icon": "unknown",
-            "humidity_percent": None,
-            "wind_mph": None,
-            "pressure_inhg": None,
+            "humidity": None,
+            "wind_speed": None,
+            "pressure": None,
             "uv_index": None,
-            "visibility_miles": None
+            "visibility": None
         },
-        "forecast": [],
-        "alerts": [],
-        "alerts_supported": False,
-        "last_error": error_message
-    }
+        forecast=[],
+        alerts=[],
+        last_error=error_message,
+    )
 
 def build_live_payload(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Wrap normalized provider data with Outpost metadata."""
-    return {
-        "status": "ok",
-        "app": APP_NAME,
-        "version": APP_VERSION,
-        "provider": provider_name,
-        "provider_setting": PROVIDER,
-        "source": data.get("source"),
-        "location": LOCATION_NAME,
-        "generated_at": utc_now(),
-        "coordinates": {
-            "latitude": LATITUDE,
-            "longitude": LONGITUDE
+    weather = source_entry(provider_name, data.get("source") or provider_name)
+    return build_payload(
+        status="ok",
+        sources={
+            "weather": weather,
+            # null when the provider has no official alerts (the dashboard then says so)
+            "alerts": weather if data.get("alerts_supported") else None,
+            "fill": data.get("fill"),
         },
-        "units": UNITS,
-        "update_interval_seconds": UPDATE_INTERVAL,
-        "filled_fields": data.get("filled_fields", []),
-        "current": data["current"],
-        "forecast": data["forecast"],
-        "alerts": data.get("alerts", []),
-        "alerts_supported": bool(data.get("alerts_supported", False)),
-        "last_error": None
-    }
+        current=data["current"],
+        forecast=data["forecast"],
+        alerts=data.get("alerts", []) if data.get("alerts_supported") else [],
+    )
+
+def can_keep_previous(previous: Dict[str, Any]) -> bool:
+    """
+    True if the last weather.json can be shown again as degraded data: it has a reading, is in the
+    current format and units, and is for the same provider setting and location. Data from before
+    an upgrade or a settings change is not shown, because it would be read or labeled wrongly.
+    """
+    units = previous.get("units")
+    return (
+        previous.get("schema_version") == SCHEMA_VERSION
+        and isinstance(units, dict)
+        and units == units_block()
+        and (previous.get("current") or {}).get("temperature") is not None
+        and previous.get("provider") == PROVIDER
+        and previous.get("location") == LOCATION_NAME
+    )
 
 def write_degraded_or_error(error_message: str) -> None:
     """
     On a failed update, keep showing the last good data (marked degraded)
-    when it is for the same provider and location. Otherwise write an
-    error payload. generated_at is left alone so the data visibly ages.
+    when can_keep_previous allows it. Otherwise write an error payload.
+    generated_at is left alone so the data visibly ages.
     """
     try:
         with DATA_PATH.open("r", encoding="utf-8") as file:
             previous = json.load(file)
 
-        has_data = previous.get("current", {}).get("temperature_f") is not None
-        same_setup = (
-            (previous.get("provider_setting") or previous.get("provider")) == PROVIDER
-            and previous.get("location") == LOCATION_NAME
-        )
-
-        if has_data and same_setup:
+        if isinstance(previous, dict) and can_keep_previous(previous):
             previous["status"] = "degraded"
             previous["last_error"] = error_message
             previous["update_interval_seconds"] = UPDATE_INTERVAL
@@ -599,8 +629,7 @@ def fetch_nws_with_gap_fill() -> Dict[str, Any]:
             backup = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
             data, filled = gapfill.fill(data, backup)
             if filled:
-                data["source"] = f"{data['source']}; {openmeteo.SOURCE}"
-                data["filled_fields"] = filled
+                data["fill"] = source_entry("openmeteo", openmeteo.SOURCE, fields=filled)
                 print(f"[Outpost] Filled from Open-Meteo: {', '.join(filled)}", flush=True)
         except Exception as error:
             print(f"[Outpost] Gap fill skipped (Open-Meteo failed): {error}", file=sys.stderr, flush=True)
