@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.8] - 2026-11-13
+
+### Added
+
+- MET Norway's warnings (MetAlerts), the official weather warnings for Norway: `OUTPOST_ALERTS_PROVIDER=metno`, and with `auto` for any location in Norway (including Svalbard and Jan Mayen), before Pirate Weather. Only warnings for land are used, not the gale warnings for sea areas. Warning levels follow MET Norway's colours (yellow is moderate, orange severe, red extreme), and each warning shows its area and description in English, its end time, and a link to MET Norway's page about it. Outpost works out from your coordinates, without asking any service, whether you are in Norway, since MET Norway has no warnings elsewhere. The warnings are downloaded again only when MET Norway says they may have changed.
+
 ## [0.6.0-beta.7] - 2026-11-13
 
 ### Changed

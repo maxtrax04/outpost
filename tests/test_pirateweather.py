@@ -366,10 +366,16 @@ class AlertOrderTests(UpdaterTestCase):
         self.pirate_alerts.assert_not_called()
         self.assertEqual(data["sources"]["alerts"]["id"], "nws")
 
-    def test_nordic_locations_get_pirate_weather_alerts_without_asking_nws(self):
-        data = self.run_update(provider="metno", latitude=59.91, longitude=10.75)
+    def test_nordic_locations_outside_norway_get_pirate_weather_alerts_without_asking_nws(self):
+        data = self.run_update(provider="metno", latitude=59.33, longitude=18.07)  # Stockholm
         self.nws_alerts.assert_not_called()
         self.assertEqual(data["sources"]["alerts"]["id"], "pirateweather")
+
+    def test_norway_gets_met_norway_warnings_before_pirate_weather(self):
+        data = self.run_update(provider="metno", latitude=59.91, longitude=10.75)  # Oslo
+        self.nws_alerts.assert_not_called()
+        self.pirate_alerts.assert_not_called()
+        self.assertEqual(data["sources"]["alerts"]["id"], "metno")
 
     def test_pirateweather_can_be_chosen_anywhere(self):
         self.in_the_us()

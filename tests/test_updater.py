@@ -52,6 +52,8 @@ class UpdaterTestCase(unittest.TestCase):
         self.nws_alerts = mock.patch.object(u.nws, "fetch_alerts", side_effect=nws.NoCoverageError("US only")).start()
         # Never reach the real Pirate Weather either: by default it reports no alerts
         self.pirate_alerts = mock.patch.object(u.pirateweather, "fetch_alerts", return_value=[]).start()
+        # Nor MET Norway: no warnings
+        self.metno_alerts = mock.patch.object(u.metno, "fetch_alerts", return_value=[]).start()
         mock.patch.object(u, "CUSTOM_THEMES_DIR", Path("/does/not/exist/custom")).start()
         mock.patch.object(u, "COMMUNITY_THEMES_DIR", Path("/does/not/exist/community")).start()
         self.print = mock.patch("builtins.print").start()
