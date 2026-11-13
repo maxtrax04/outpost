@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.5] - 2026-11-13
+
+### Added
+
+- Pirate Weather: `OUTPOST_PROVIDER=pirateweather` uses [Pirate Weather](https://pirateweather.net), which covers the whole world, with a free API key in `OUTPOST_PIRATEWEATHER_API_KEY`. The free tier allows 10,000 calls a month, so Outpost asks at most every 10 minutes (about 4,300 calls a month) whatever `OUTPOST_UPDATE_INTERVAL` is, and if the quota still runs out it waits for the reset Pirate Weather reports instead of asking again. The key is sent only to Pirate Weather, in a request header, and never appears in an address, the log, or Outpost's files. Pirate Weather's alerts aren't used, since its documentation doesn't say where they are available; in the US, `OUTPOST_ALERTS_PROVIDER=auto` adds the National Weather Service's. The footer credits Pirate Weather.
+- With a Pirate Weather key set, `OUTPOST_PROVIDER=auto` tries Pirate Weather first. If it fails, `auto` makes its usual choice (MET Norway in the Nordic countries, the National Weather Service in the US, Open-Meteo elsewhere) and logs why.
+
 ## [0.6.0-beta.4] - 2026-11-13
 
 ### Added

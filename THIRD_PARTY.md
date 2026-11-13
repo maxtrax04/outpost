@@ -21,3 +21,4 @@ Weather data is provided by the services you configure and remains subject to th
 - National Weather Service (weather.gov)
 - Open-Meteo.com
 - MET Norway (met.no), shared under the Creative Commons 4.0 BY International license
+- Pirate Weather (pirateweather.net)

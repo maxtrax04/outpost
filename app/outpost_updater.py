@@ -2,7 +2,7 @@
 """
 Outpost updater.
 
-Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, or auto) and alerts from
+Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, pirateweather, or auto) and alerts from
 OUTPOST_ALERTS_PROVIDER, and writes /data/weather.json (docs/data-format.md) and /data/config.json
 for the dashboard. On a failed update the last good data is kept, marked degraded.
 """
@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import regions
 import units
-from providers import gapfill, metno, nws, openmeteo
+from providers import gapfill, metno, nws, openmeteo, pirateweather
 
 DATA_PATH = Path("/data/weather.json")
 
@@ -137,6 +137,9 @@ def load_contact_settings() -> Tuple[str, str]:
     return contact, build_user_agent(APP_VERSION, contact, override)
 
 CONTACT, USER_AGENT = load_contact_settings()
+
+# Pirate Weather API key (never written to weather.json or config.json, and sent only in a request header)
+PIRATEWEATHER_API_KEY = clean_header_text("OUTPOST_PIRATEWEATHER_API_KEY", os.getenv("OUTPOST_PIRATEWEATHER_API_KEY", ""))
 
 DEFAULT_THEME = "retro-crt"
 THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
@@ -434,6 +437,7 @@ CAPABILITIES = {
     "openmeteo": openmeteo.CAPABILITIES,
     "nws": nws.CAPABILITIES,
     "metno": metno.CAPABILITIES,
+    "pirateweather": pirateweather.CAPABILITIES,
 }
 
 def mock_data() -> Dict[str, Any]:
@@ -689,9 +693,19 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
     if PROVIDER == "metno":
         warn_about_user_agent("MET Norway")
         return "metno", metno.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    if PROVIDER == "pirateweather":
+        return "pirateweather", pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT)
     if PROVIDER == "auto":
-        # MET Norway in the Nordic countries, the National Weather Service in the US, Open-Meteo
-        # everywhere else; anything MET Norway or NWS leaves empty is filled from Open-Meteo
+        # Pirate Weather first when a key is set; otherwise (or if it fails) MET Norway in the Nordic
+        # countries, the National Weather Service in the US, and Open-Meteo everywhere else. Anything
+        # the provider leaves empty is filled from Open-Meteo.
+        if PIRATEWEATHER_API_KEY:
+            try:
+                return "pirateweather", with_gap_fill(
+                    pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
+            except Exception as error:
+                print(f"[Outpost] Pirate Weather failed, using the regular choice instead: {error}",
+                      file=sys.stderr, flush=True)
         if regions.in_nordic_countries(LATITUDE, LONGITUDE):
             warn_about_user_agent("MET Norway")
             return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
@@ -701,7 +715,7 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
         except nws.NoCoverageError:
             return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     raise RuntimeError(
-        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, or auto."
+        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, pirateweather, or auto."
     )
 
 def can_keep_previous(previous: Dict[str, Any]) -> bool:
