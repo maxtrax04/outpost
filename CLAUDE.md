@@ -9,7 +9,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 - JS tests: `TZ=UTC node --test` (finds `tests/*.test.js`)
 
 ## Layout
-- `app/`: updater, health check, community theme download (`outpost_community.py`, run once by `start.sh`), `start.sh`, `providers/{openmeteo,nws,metno,gapfill}.py`, `units.py`
+- `app/`: updater, health check, community theme download (`outpost_community.py`, run once by `start.sh`), `start.sh`, `providers/{openmeteo,nws,metno,gapfill}.py`, `units.py`, `regions.py` (offline region checks for auto)
 - `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `effects.js`, `fit.js`, `clock.js`, `themes.js`, `gauges.js`, `data.js` (reads weather.json), `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
 - `assets/`: `icons/` (13 original SVGs), `logo/` (original logo: mark, wordmark, lockup), `app/` (favicon and PWA icons, built from the logo by `scripts/build-app-icons.js`), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations; `tests/browser/check-themes.js` (Playwright, run by CI against the container)

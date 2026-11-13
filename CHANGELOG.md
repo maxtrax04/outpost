@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - MET Norway weather: `OUTPOST_PROVIDER=metno` uses MET Norway's forecast, which covers the whole world and is especially good in the Nordic countries. MET Norway asks for `OUTPOST_CONTACT`, and the footer credits it. Outpost downloads the forecast again only when MET Norway says it has changed (about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so the current conditions are the forecast for this hour, visibility shows `--`, and the UV index is for a clear sky. Forecast days follow the container's `TZ` setting. MET Norway has no alerts in this release; in the US, `OUTPOST_ALERTS_PROVIDER=auto` still adds National Weather Service alerts.
+- `OUTPOST_PROVIDER=auto` uses MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen (worked out from the coordinates, without asking any service), with anything it lacks, such as visibility, filled in from Open-Meteo. Elsewhere `auto` is unchanged. Outpost also no longer asks the National Weather Service about alerts for a Nordic location.
 
 ### Changed
 

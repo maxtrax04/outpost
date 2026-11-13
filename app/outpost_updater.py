@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import regions
 import units
 from providers import gapfill, metno, nws, openmeteo
 
@@ -659,6 +660,9 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     # The weather provider has no alerts (or another source was asked for): ask NWS separately
     nws_source = source_entry("nws", nws.SOURCE)
     try:
+        if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+            # Certainly not covered by NWS, so the location is not sent there just to hear that
+            raise nws.NoCoverageError("NWS has no data for this location (US only)")
         alerts = nws.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT)
     except nws.NoCoverageError:
         if ALERTS_PROVIDER == "nws" and not _warned_no_alert_coverage:
@@ -686,10 +690,14 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
         warn_about_user_agent("MET Norway")
         return "metno", metno.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     if PROVIDER == "auto":
-        # National Weather Service inside the US, Open-Meteo everywhere else
+        # MET Norway in the Nordic countries, the National Weather Service in the US, Open-Meteo
+        # everywhere else; anything MET Norway or NWS leaves empty is filled from Open-Meteo
+        if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+            warn_about_user_agent("MET Norway")
+            return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
         warn_about_user_agent()
         try:
-            return "nws", fetch_nws_with_gap_fill()
+            return "nws", with_gap_fill(nws.fetch(LATITUDE, LONGITUDE, USER_AGENT))
         except nws.NoCoverageError:
             return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     raise RuntimeError(
@@ -733,12 +741,11 @@ def write_degraded_or_error(error_message: str) -> None:
 
     write_json(build_error_payload(error_message=error_message))
 
-def fetch_nws_with_gap_fill() -> Dict[str, Any]:
+def with_gap_fill(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    NWS data, plus Open-Meteo for anything NWS does not publish (such as UV
-    index). If Open-Meteo is unavailable, NWS data is used as-is.
+    Provider data, plus Open-Meteo for anything the provider left empty (such as UV index from NWS,
+    or visibility from MET Norway). If Open-Meteo is unavailable, the data is used as-is.
     """
-    data = nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
 
     if gapfill.has_gaps(data):
         try:
