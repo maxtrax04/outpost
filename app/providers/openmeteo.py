@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Optional
 
 API_URL = "https://api.open-meteo.com/v1/forecast"
 SOURCE = "Open-Meteo.com"
+# What this provider supplies. Open-Meteo has no official alerts.
+CAPABILITIES = frozenset({"current", "forecast", "uv"})
 TIMEOUT_SECONDS = 15
 FORECAST_DAYS = 5
 
@@ -193,7 +195,6 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "current": normalized_current,
         "forecast": forecast,
         "alerts": [],  # Open-Meteo does not provide official alerts
-        "alerts_supported": False,
     }
 
 

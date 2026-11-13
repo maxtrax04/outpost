@@ -147,8 +147,9 @@ class AlertTests(unittest.TestCase):
 
 
 class NormalizeTests(unittest.TestCase):
-    def test_alerts_are_supported(self):
-        self.assertTrue(nws.normalize(periods(), None, [])["alerts_supported"])
+    def test_alerts_are_a_capability(self):
+        self.assertIn("alerts", nws.CAPABILITIES)
+        self.assertNotIn("uv", nws.CAPABILITIES)  # NWS does not publish a UV index
 
     def test_empty_forecast_raises(self):
         with self.assertRaises(RuntimeError):
@@ -192,6 +193,28 @@ class FetchTests(unittest.TestCase):
 
     def count(self, text):
         return sum(1 for call in self.calls if text in call)
+
+    def test_alerts_only(self):
+        alerts = nws.fetch_alerts(10.0, 20.0, "Outpost-Test")
+        self.assertEqual([a["title"] for a in alerts], ["Red Flag Warning", "Heat Advisory"])
+        self.assertEqual(self.count("/forecast"), 0)
+        self.assertEqual(self.count("/observations/latest"), 0)
+
+    def test_alerts_only_outside_the_us(self):
+        self.outside_us = True
+        with self.assertRaises(nws.NoCoverageError):
+            nws.fetch_alerts(10.0, 20.0, "Outpost-Test")
+        self.assertEqual(self.count("/alerts/active"), 0)
+
+    def test_alerts_only_lookup_failure_is_an_error(self):
+        self.alerts_error = RuntimeError("NWS HTTP 503")
+        with self.assertRaises(RuntimeError):
+            nws.fetch_alerts(10.0, 20.0, "Outpost-Test")
+
+    def test_alerts_only_reuses_the_cached_location(self):
+        nws.fetch(10.0, 20.0, "Outpost-Test")
+        nws.fetch_alerts(10.0, 20.0, "Outpost-Test")
+        self.assertEqual(self.count("/points/"), 1)
 
     def test_full_fetch(self):
         data = nws.fetch(10.0, 20.0, "Outpost-Test")

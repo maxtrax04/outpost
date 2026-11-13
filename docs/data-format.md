@@ -88,7 +88,7 @@ Any reading can be `null` when the source doesn't have it.
 | :--- | :--- |
 | `$schema` | The address of this format's [JSON Schema](schema/weather-v1.json), for editors (see "Editors" above). |
 | `schema_version` | The format version, `1`. |
-| `status` | `ok`; `degraded` (the last update failed, so this is the last good data, and `generated_at` shows its age); or `error` (no usable data, with every reading `null`). |
+| `status` | `ok`; `degraded` (the last update failed, so this is the last good data, and `generated_at` shows its age; or the readings are fresh but the alerts lookup failed, so `alerts` are the last ones known, and `last_error` says so); or `error` (no usable data, with every reading `null`). |
 | `app`, `version` | `Outpost` and the version that wrote the file. |
 | `provider` | The `OUTPOST_PROVIDER` setting, such as `auto`. The provider actually used is in `sources`. |
 | `sources` | Where the data came from (below). |
@@ -105,7 +105,7 @@ Any reading can be `null` when the source doesn't have it.
 | Field | Meaning |
 | :--- | :--- |
 | `weather` | The source of the readings and forecast: `id` (a provider, as in `OUTPOST_PROVIDER`) and `name` (the name to credit). `null` in an error file. |
-| `alerts` | The source of `alerts`, in the same form. `null` when the source has no official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
+| `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
 | `fill` | A second source used for readings the first one left empty, with `fields` listing them (such as `current.uv_index` or `forecast.high`). `null` when nothing was filled. |
 
 The dashboard credits each source by name in its footer. Open-Meteo requires that credit.

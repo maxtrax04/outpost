@@ -70,6 +70,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | Variable | Default | Description |
 |---|---|---|
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
+| `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own, or NWS in the US when it has none), `nws`, or `none`. See [Alerts](#alerts). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
 | `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
 | `OUTPOST_COMMUNITY_THEMES` | (empty) | Community themes to download when the container starts, as `username/theme` separated by commas. See [Community themes](#community-themes). |
@@ -181,7 +182,13 @@ Scanlines, glow, and animation can be turned off in every theme, which helps rea
 
 ## Alerts
 
-The Alerts panel lists active weather warnings from the National Weather Service (`nws`, or `auto` inside the US). Open-Meteo does not provide alerts at all, so with that source the dashboard says so instead of claiming there are none.
+The Alerts panel lists active weather warnings. `OUTPOST_ALERTS_PROVIDER` picks where they come from:
+
+- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US. So in the US you get official alerts with any weather provider, and elsewhere the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes). Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
+- **`nws`:** always from the National Weather Service, whatever the weather provider. Outside the US there are none, and the log says so once.
+- **`none`:** no alerts.
+
+If the alerts lookup fails while the weather comes through, the dashboard keeps the last alerts it had and shows the degraded warning, so a failed check never looks like "no alerts". The footer names the alerts source when it differs from the weather source.
 
 By default the panel is hidden when there is nothing to show, and a one-line note below the forecast says when alerts were last checked, for example `Alerts: none (checked 2:15 PM)`. Set `OUTPOST_ALERTS_ALWAYS_SHOW=true` to keep the panel visible. Severe and extreme alerts turn the panel red.
 

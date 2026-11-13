@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.3] - 2026-11-12
+
+### Added
+
+- `OUTPOST_ALERTS_PROVIDER` picks where official alerts come from, separately from the weather: `auto` (default), `nws`, or `none`. With `auto`, alerts come from the weather provider when it has them; when it doesn't, as with Open-Meteo, they come from the National Weather Service wherever it covers the location (the US). `weather.json` names the alerts source in `sources.alerts`, and the dashboard footer credits it. See "Alerts" in the README.
+
+### Changed
+
+- **With Open-Meteo in the US, the dashboard now shows official alerts** from the National Weather Service, where before it said alerts were not available. This sends your coordinates to the National Weather Service too; set `OUTPOST_ALERTS_PROVIDER=none` to go back to no alerts, and set `OUTPOST_CONTACT`, since NWS asks for it. Outside the US the dashboard looks the same, but Outpost still asks the National Weather Service about every 30 minutes whether it covers the location (sending it the coordinates); `none` stops that too.
+- When alerts come from a different source than the weather and that lookup fails, the weather still updates. The dashboard keeps the last alerts and shows the degraded warning, and `last_error` in `weather.json` explains it.
+
 ## [0.6.0-beta.2] - 2026-11-12
 
 ### Added

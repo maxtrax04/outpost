@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 BASE_URL = "https://api.weather.gov"
 SOURCE = "National Weather Service (weather.gov)"
+# What this provider supplies (the updater decides where alerts and missing values come from)
+CAPABILITIES = frozenset({"current", "forecast", "alerts"})
 TIMEOUT_SECONDS = 20
 RETRIES = 3
 FORECAST_DAYS = 5
@@ -357,7 +359,6 @@ def normalize(periods: List[Dict[str, Any]],
         "current": build_current(periods, observation),
         "forecast": build_forecast(periods),
         "alerts": build_alerts(alert_features),
-        "alerts_supported": True,
     }
 
 
@@ -378,9 +379,21 @@ def fetch(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
     observation = _fresh_observation(point, user_agent)
 
     # A failed alert lookup must not look like "no alerts", so let it fail the update
+    return normalize(periods, observation, _alert_features(latitude, longitude, user_agent))
+
+
+def _alert_features(latitude: float, longitude: float, user_agent: str) -> List[Dict[str, Any]]:
     try:
         alerts = _get(f"{BASE_URL}/alerts/active?point={latitude:.4f},{longitude:.4f}", user_agent)
     except _NotFound:
         raise RuntimeError("NWS alerts lookup returned 404")
+    return alerts.get("features") or []
 
-    return normalize(periods, observation, alerts.get("features"))
+
+def fetch_alerts(latitude: float, longitude: float, user_agent: str) -> List[Dict[str, Any]]:
+    """
+    Only the active alerts, for when the weather comes from another provider. Raises NoCoverageError
+    outside the US (the location lookup is cached, so this is one request per update).
+    """
+    get_point(latitude, longitude, user_agent)
+    return build_alerts(_alert_features(latitude, longitude, user_agent))

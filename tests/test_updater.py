@@ -38,6 +38,10 @@ class UpdaterTestCase(unittest.TestCase):
         mock.patch.object(u, "PROVIDER", "mock").start()
         mock.patch.object(u, "LOCATION_NAME", "Test Site").start()
         mock.patch.object(u, "_warned_user_agent", False).start()
+        mock.patch.object(u, "_warned_no_alert_coverage", False).start()
+        mock.patch.object(u, "ALERTS_PROVIDER", "auto").start()
+        # Never reach the real NWS: by default the test location is outside NWS coverage
+        self.nws_alerts = mock.patch.object(u.nws, "fetch_alerts", side_effect=nws.NoCoverageError("US only")).start()
         mock.patch.object(u, "CUSTOM_THEMES_DIR", Path("/does/not/exist/custom")).start()
         mock.patch.object(u, "COMMUNITY_THEMES_DIR", Path("/does/not/exist/community")).start()
         self.print = mock.patch("builtins.print").start()
@@ -295,7 +299,7 @@ class FormatTests(UpdaterTestCase):
                 self.assertNotRegex(name, r"_(f|c|mph|kmh|inhg|hpa|miles|km|percent)$")
 
     def test_a_provider_without_alerts_never_lists_any(self):
-        data = {**openmeteo_data(), "alerts": [{"title": "Stray"}], "alerts_supported": False}
+        data = {**openmeteo_data(), "alerts": [{"title": "Stray"}]}
         payload = u.build_live_payload("openmeteo", data)
         self.assertEqual(payload["alerts"], [])
         self.assertIsNone(payload["sources"]["alerts"])
