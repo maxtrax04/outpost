@@ -402,7 +402,7 @@ def write_config() -> None:
         coordinates = "NOT SET, using the built-in example coordinates (set OUTPOST_LATITUDE and OUTPOST_LONGITUDE)"
     print(
         f"[Outpost] Settings written. Location: {LOCATION_NAME}; coordinates {coordinates}; "
-        f"theme: {theme}; provider: {PROVIDER}",
+        f"theme: {theme}; provider: {PROVIDER}; alerts: {ALERTS_PROVIDER}",
         flush=True
     )
 
@@ -435,9 +435,17 @@ def mock_sample_alerts(now: datetime) -> List[Dict[str, Any]]:
         },
     ]
 
-def build_mock_payload() -> Dict[str, Any]:
+MOCK_SOURCE = "Outpost Mock Provider"
+# What each provider supplies: current readings, a forecast, official alerts, and UV index
+CAPABILITIES = {
+    "mock": frozenset({"current", "forecast", "alerts", "uv"}),
+    "openmeteo": openmeteo.CAPABILITIES,
+    "nws": nws.CAPABILITIES,
+}
+
+def mock_data() -> Dict[str, Any]:
     """
-    Build predictable-but-changing mock data.
+    Predictable-but-changing mock data, in the same form a provider returns.
 
     This intentionally looks weather-like so the dashboard can be tested,
     but it does not call any external weather service.
@@ -495,11 +503,9 @@ def build_mock_payload() -> Dict[str, Any]:
     if env_flag("OUTPOST_MOCK_ALERTS", False):
         alerts.extend(mock_sample_alerts(now))
 
-    mock_source = source_entry("mock", "Outpost Mock Provider")
-    return build_payload(
-        status="ok",
-        sources={"weather": mock_source, "alerts": mock_source, "fill": None},
-        current={
+    return {
+        "source": MOCK_SOURCE,
+        "current": {
             "temperature": base_temp,
             "feels_like": feels_like,
             "condition": current_condition,
@@ -510,9 +516,13 @@ def build_mock_payload() -> Dict[str, Any]:
             "uv_index": random.randint(0, 8),
             "visibility": random.randint(5, 10)
         },
-        forecast=forecast,
-        alerts=alerts,
-    )
+        "forecast": forecast,
+        "alerts": alerts,
+    }
+
+def build_mock_payload() -> Dict[str, Any]:
+    """weather.json from mock data, with the mock's own alerts."""
+    return build_live_payload("mock", mock_data())
 
 def source_entry(source_id: str, name: str, **extra: Any) -> Dict[str, Any]:
     """One entry of the "sources" block: the provider's id (as in OUTPOST_PROVIDER) and the name to credit."""
@@ -573,20 +583,122 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
         last_error=error_message,
     )
 
-def build_live_payload(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
-    """Wrap normalized provider data with Outpost metadata."""
-    weather = source_entry(provider_name, data.get("source") or provider_name)
+def own_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """The weather provider's own alerts, if it has any (see resolve_alerts)."""
+    if "alerts" not in CAPABILITIES.get(provider_name, ()):
+        return {"source": None, "alerts": [], "error": None}
+    return {
+        "source": source_entry(provider_name, data.get("source") or provider_name),
+        "alerts": data.get("alerts") or [],
+        "error": None,
+    }
+
+def build_live_payload(provider_name: str, data: Dict[str, Any],
+                       alerts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Wrap normalized provider data with Outpost metadata. `alerts` comes from resolve_alerts; without
+    it, the provider's own alerts are used.
+    """
+    alerts = alerts if alerts is not None else own_alerts(provider_name, data)
     return build_payload(
-        status="ok",
+        # A failed alerts lookup is shown as degraded, so it is never mistaken for "no alerts"
+        status="degraded" if alerts["error"] else "ok",
         sources={
-            "weather": weather,
-            # null when the provider has no official alerts (the dashboard then says so)
-            "alerts": weather if data.get("alerts_supported") else None,
+            "weather": source_entry(provider_name, data.get("source") or provider_name),
+            # null when there is no source of official alerts (the dashboard then says so)
+            "alerts": alerts["source"],
             "fill": data.get("fill"),
         },
         current=data["current"],
         forecast=data["forecast"],
-        alerts=data.get("alerts", []) if data.get("alerts_supported") else [],
+        alerts=alerts["alerts"],
+        last_error=alerts["error"],
+    )
+
+ALERTS_PROVIDER_VALUES = ("auto", "nws", "none")
+
+def alerts_provider_setting(value: Optional[str]) -> str:
+    """
+    OUTPOST_ALERTS_PROVIDER: where official alerts come from.
+      auto (default)  the weather provider's alerts; if it has none, NWS where NWS covers the location (the US)
+      nws             always the National Weather Service (US only)
+      none            no alerts
+    """
+    value = (value or "").strip().lower()
+    if not value:
+        return "auto"
+    if value in ALERTS_PROVIDER_VALUES:
+        return value
+    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, or none); using auto",
+          file=sys.stderr, flush=True)
+    return "auto"
+
+ALERTS_PROVIDER = alerts_provider_setting(os.getenv("OUTPOST_ALERTS_PROVIDER"))
+
+_warned_no_alert_coverage = False
+
+def previous_alerts(source_id: str) -> List[Dict[str, Any]]:
+    """The alerts in the last weather.json, if they came from the same source (else none)."""
+    try:
+        with DATA_PATH.open("r", encoding="utf-8") as file:
+            previous = json.load(file)
+        if ((previous.get("sources") or {}).get("alerts") or {}).get("id") == source_id:
+            return [alert for alert in previous.get("alerts") or [] if isinstance(alert, dict)]
+    except Exception:
+        pass
+    return []
+
+def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Where this update's alerts come from (OUTPOST_ALERTS_PROVIDER), as
+    {"source": sources.alerts entry or None, "alerts": [...], "error": message or None}.
+    A separate alerts lookup that fails keeps the previous alerts and reports the error, but never
+    fails the weather update.
+    """
+    global _warned_no_alert_coverage
+
+    if ALERTS_PROVIDER == "none":
+        return {"source": None, "alerts": [], "error": None}
+
+    own = own_alerts(provider_name, data)
+    if own["source"] is not None and (ALERTS_PROVIDER == "auto" or provider_name == ALERTS_PROVIDER):
+        return own
+
+    # The weather provider has no alerts (or another source was asked for): ask NWS separately
+    nws_source = source_entry("nws", nws.SOURCE)
+    try:
+        alerts = nws.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT)
+    except nws.NoCoverageError:
+        if ALERTS_PROVIDER == "nws" and not _warned_no_alert_coverage:
+            print("[Outpost] OUTPOST_ALERTS_PROVIDER=nws, but NWS has no alerts for this location (US only); "
+                  "showing no alerts", file=sys.stderr, flush=True)
+        _warned_no_alert_coverage = True
+        return {"source": None, "alerts": [], "error": None}
+    except Exception as error:
+        print(f"[Outpost] Alerts lookup failed: {error}", file=sys.stderr, flush=True)
+        warn_about_user_agent()
+        return {"source": nws_source, "alerts": previous_alerts("nws"), "error": f"Alerts unavailable: {error}"}
+    warn_about_user_agent()
+    return {"source": nws_source, "alerts": alerts, "error": None}
+
+def fetch_weather() -> Tuple[str, Dict[str, Any]]:
+    """(provider id, normalized data) from OUTPOST_PROVIDER."""
+    if PROVIDER == "mock":
+        return "mock", mock_data()
+    if PROVIDER == "openmeteo":
+        return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    if PROVIDER == "nws":
+        warn_about_user_agent()
+        return "nws", nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    if PROVIDER == "auto":
+        # National Weather Service inside the US, Open-Meteo everywhere else
+        warn_about_user_agent()
+        try:
+            return "nws", fetch_nws_with_gap_fill()
+        except nws.NoCoverageError:
+            return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    raise RuntimeError(
+        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, or auto."
     )
 
 def can_keep_previous(previous: Dict[str, Any]) -> bool:
@@ -669,28 +781,8 @@ def update_once() -> None:
     try:
         print(f"[Outpost] Starting update. Provider={PROVIDER}", flush=True)
 
-        if PROVIDER == "mock":
-            payload = build_mock_payload()
-        elif PROVIDER == "openmeteo":
-            data = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
-            payload = build_live_payload("openmeteo", data)
-        elif PROVIDER == "nws":
-            warn_about_user_agent()
-            data = nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
-            payload = build_live_payload("nws", data)
-        elif PROVIDER == "auto":
-            # National Weather Service inside the US, Open-Meteo everywhere else
-            warn_about_user_agent()
-            try:
-                data = fetch_nws_with_gap_fill()
-                payload = build_live_payload("nws", data)
-            except nws.NoCoverageError:
-                data = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
-                payload = build_live_payload("openmeteo", data)
-        else:
-            raise RuntimeError(
-                f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, or auto."
-            )
+        provider_name, data = fetch_weather()
+        payload = build_live_payload(provider_name, data, resolve_alerts(provider_name, data))
 
         write_json(payload)
 

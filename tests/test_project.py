@@ -79,6 +79,15 @@ class AutomationTests(unittest.TestCase):
         self.assertIn('tags: ["v*"]', text)
         self.assertIn("linux/amd64,linux/arm64", text)
 
+    def test_a_final_release_turns_only_its_own_betas_into_drafts(self):
+        text = read(".github/workflows/release.yml")
+        step = text[text.index("Turn this version's betas into drafts"):]
+        # Only for a final version (no suffix), and only tags that start with that version and a dash
+        self.assertIn("if: ${{ !contains(github.ref_name, '-') }}", step)
+        self.assertIn('prefix="${GITHUB_REF_NAME}-"', step)
+        self.assertIn("gh release edit \"$tag\" --draft", step)
+        self.assertNotIn("gh release delete", text)
+
 
 class SettingsDocumentationTests(unittest.TestCase):
     """Every OUTPOST_* setting the code or compose file uses must be documented."""
