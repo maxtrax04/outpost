@@ -29,6 +29,7 @@ CURRENT_VARS = [
     "weather_code",
     "pressure_msl",
     "wind_speed_10m",
+    "wind_gusts_10m",
 ]
 
 # UV index and visibility are only offered hourly, so we read the current hour.
@@ -171,6 +172,7 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "icon": icon,
         "humidity": _round(current.get("relative_humidity_2m")),
         "wind_speed": current.get("wind_speed_10m"),
+        "wind_gust": current.get("wind_gusts_10m"),
         "pressure": pressure_hpa * HPA_TO_INHG if pressure_hpa is not None else None,
         "uv_index": _round(_hourly_value(raw, "uv_index")),
         "visibility": visibility_m / METERS_PER_MILE if visibility_m is not None else None,

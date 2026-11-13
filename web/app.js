@@ -266,6 +266,11 @@ async function loadWeather(config) {
         setText("feelsLike", valueOrDash(current.feels_like, units.temperature));
         setText("humidity", valueOrDash(current.humidity, "%"));
         setText("wind", valueOrDash(current.wind_speed, ` ${units.speed}`));
+        const gust = document.getElementById("windGust");
+        if (gust) {
+            gust.textContent = OutpostData.gustText(current, units);
+            gust.hidden = gust.textContent === "";
+        }
         setText("pressure", valueOrDash(current.pressure, ` ${units.pressure}`));
         setText("uv", valueOrDash(current.uv_index));
         setText("visibility", valueOrDash(current.visibility, ` ${units.distance}`));

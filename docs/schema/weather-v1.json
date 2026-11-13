@@ -63,7 +63,7 @@
     },
     "current": {
       "type": "object",
-      "required": ["temperature", "feels_like", "condition", "icon", "humidity", "wind_speed", "pressure", "uv_index", "visibility"],
+      "required": ["temperature", "feels_like", "condition", "icon", "humidity", "wind_speed", "wind_gust", "pressure", "uv_index", "visibility"],
       "properties": {
         "temperature": { "$ref": "#/$defs/reading" },
         "feels_like": { "$ref": "#/$defs/reading" },
@@ -71,6 +71,7 @@
         "icon": { "$ref": "#/$defs/icon" },
         "humidity": { "$ref": "#/$defs/percent" },
         "wind_speed": { "$ref": "#/$defs/reading" },
+        "wind_gust": { "$ref": "#/$defs/reading", "description": "The strongest gusts, in the speed unit. null when there are none or the source has none." },
         "pressure": { "$ref": "#/$defs/reading" },
         "uv_index": { "$ref": "#/$defs/reading" },
         "visibility": { "$ref": "#/$defs/reading" }

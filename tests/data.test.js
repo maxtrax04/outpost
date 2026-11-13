@@ -51,3 +51,18 @@ test("an alerts source that may not cover the location is named when it reports 
     assert.strictEqual(data.uncertainAlertsSource({ sources: { alerts: null } }), "");
     assert.strictEqual(data.uncertainAlertsSource({}), "");
 });
+
+test("the gust line shows gusts stronger than the wind", () => {
+    const mph = data.units({});
+    assert.strictEqual(data.gustText({ wind_speed: 9, wind_gust: 18 }, mph), "Gusts 18 mph");
+    assert.strictEqual(data.gustText({ wind_speed: 20, wind_gust: 31 }, { speed: "km/h" }), "Gusts 31 km/h");
+    assert.strictEqual(data.gustText({ wind_speed: null, wind_gust: 12 }, mph), "Gusts 12 mph");
+});
+
+test("no gust line without a gust, or when it is no stronger than the wind", () => {
+    const mph = data.units({});
+    for (const current of [{ wind_speed: 9, wind_gust: null }, { wind_speed: 9 }, { wind_speed: 9, wind_gust: 9 },
+        { wind_speed: 9, wind_gust: 5 }, { wind_speed: 9, wind_gust: "18" }, null]) {
+        assert.strictEqual(data.gustText(current, mph), "");
+    }
+});

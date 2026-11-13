@@ -50,6 +50,7 @@ CURRENT_FIELDS = {
     "temperature": "temperature",
     "feels_like": "temperature",
     "wind_speed": "speed",
+    "wind_gust": "speed",
     "pressure": "pressure",
     "visibility": "distance",
 }

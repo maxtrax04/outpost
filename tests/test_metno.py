@@ -110,7 +110,7 @@ class NormalizeTests(unittest.TestCase):
     def test_every_reading_is_present(self):
         current = normalized()["current"]
         self.assertEqual(set(current), {"temperature", "feels_like", "condition", "icon", "humidity",
-                                        "wind_speed", "pressure", "uv_index", "visibility"})
+                                        "wind_speed", "wind_gust", "pressure", "uv_index", "visibility"})
 
 
 class ZoneTests(unittest.TestCase):

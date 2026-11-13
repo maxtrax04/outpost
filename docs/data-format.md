@@ -51,6 +51,7 @@ always matches its `schema_version`.
     "icon": "partly-cloudy",
     "humidity": 55,
     "wind_speed": 8,
+    "wind_gust": 17,
     "pressure": 30.02,
     "uv_index": 4,
     "visibility": 10
@@ -118,7 +119,7 @@ The dashboard credits each source by name in its footer. Open-Meteo and MET Norw
 | :--- | :--- | :--- | :--- |
 | `system` | | `imperial` | `metric` |
 | `temperature` | `temperature`, `feels_like`, `high`, `low` | `°F`, whole degrees | `°C`, whole degrees |
-| `speed` | `wind_speed` | `mph`, whole numbers | `km/h`, whole numbers |
+| `speed` | `wind_speed`, `wind_gust` | `mph`, whole numbers | `km/h`, whole numbers |
 | `pressure` | `pressure` | `inHg`, 2 decimals | `hPa`, whole numbers |
 | `distance` | `visibility` | `mi`, 1 decimal | `km`, 1 decimal |
 
@@ -138,6 +139,7 @@ The values are labels to show next to the number; a reader that converts values 
 | `icon` | One of the dashboard's icons: `sunny`, `clear-night`, `partly-cloudy`, `partly-cloudy-night`, `cloudy`, `fog`, `drizzle`, `rain`, `sleet`, `snow`, `storm`, `wind`, or `unknown`. |
 | `humidity` | Relative humidity, in percent. |
 | `wind_speed` | Sustained wind speed. |
+| `wind_gust` | The strongest gusts, in the same unit as `wind_speed`. `null` when there are none (the National Weather Service reports none in calm weather) or the source doesn't say. |
 | `pressure` | Air pressure. |
 | `uv_index` | UV index. |
 | `visibility` | How far one can see. |

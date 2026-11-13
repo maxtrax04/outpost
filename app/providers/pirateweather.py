@@ -175,6 +175,7 @@ def build_current(currently: Dict[str, Any]) -> Dict[str, Any]:
         "icon": icon,
         "humidity": _percent(currently.get("humidity")),
         "wind_speed": _number(currently.get("windSpeed")),
+        "wind_gust": _number(currently.get("windGust")),
         "pressure": pressure * HPA_TO_INHG if pressure is not None else None,  # millibars = hPa
         "uv_index": round(uv) if uv is not None else None,
         "visibility": _number(currently.get("visibility")),  # miles, up to 10

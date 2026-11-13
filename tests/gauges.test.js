@@ -129,3 +129,9 @@ test("without a unit system, readings are treated as imperial", () => {
     assert.deepStrictEqual(gauges.values({ temperature: 50 }, gauges.CURRENT),
         gauges.values({ temperature: 50 }, gauges.CURRENT, "imperial"));
 });
+
+test("gusts get a value for themes, on the same scale as the wind", () => {
+    const result = gauges.values({ wind_speed: 15, wind_gust: 30 }, gauges.CURRENT, "imperial");
+    assert.strictEqual(result.wind, 0.25);
+    assert.strictEqual(result.gust, 0.5);
+});

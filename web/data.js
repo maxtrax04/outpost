@@ -37,6 +37,15 @@
         return Boolean(sources && sources.alerts);
     }
 
+    // The gust line under the wind ("Gusts 18 mph"), or "" when there is no gust stronger than the wind
+    function gustText(current, unitLabels) {
+        const gust = current ? current.wind_gust : null;
+        const wind = current ? current.wind_speed : null;
+        if (typeof gust !== "number" || !Number.isFinite(gust)) return "";
+        if (typeof wind === "number" && gust <= wind) return "";
+        return `Gusts ${gust} ${(unitLabels || DEFAULT_UNITS).speed}`;
+    }
+
     // Alerts sources whose empty list can also mean "this country is not covered" (Pirate Weather's alerts
     // cover only the countries on the WMO alert hub), so "none" is said as "none reported by" them
     const UNCERTAIN_ALERTS_SOURCES = ["pirateweather"];
@@ -48,7 +57,7 @@
         return typeof source.name === "string" && source.name.trim() ? source.name.trim() : source.id;
     }
 
-    const api = { SCHEMA_VERSION, DEFAULT_UNITS, units, sourceText, alertsSupported, uncertainAlertsSource };
+    const api = { SCHEMA_VERSION, DEFAULT_UNITS, units, sourceText, alertsSupported, uncertainAlertsSource, gustText };
 
     root.OutpostData = api;
 
