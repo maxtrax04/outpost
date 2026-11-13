@@ -239,3 +239,117 @@ class UpdaterTests(UpdaterTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AlertTests(unittest.TestCase):
+    def setUp(self):
+        self.alerts = pirateweather.build_alerts(load_fixture("pirateweather.json"))
+
+    def test_most_serious_first_and_repeats_dropped(self):
+        self.assertEqual([a["title"] for a in self.alerts], ["Tornado Warning", "Wind Advisory", "Avis de gel"])
+
+    def test_fields(self):
+        wind = self.alerts[1]
+        self.assertEqual(wind["severity"], "moderate")
+        self.assertEqual(wind["description"], "South winds 25 to 35 mph with gusts up to 50 mph.")
+        self.assertEqual(wind["expires"], "2026-11-14T02:00:00+00:00")
+        self.assertEqual(wind["uri"], "https://alerts.example.gov/wind")
+
+    def test_blank_severity_missing_end_and_bad_links(self):
+        frost = self.alerts[2]
+        self.assertEqual(frost["severity"], "unknown")
+        self.assertIsNone(frost["expires"])  # -999
+        self.assertIsNone(frost["uri"])
+        self.assertEqual(frost["title"], "Avis de gel")  # kept in the publisher's language
+
+    def test_no_alerts(self):
+        for raw in ({}, {"alerts": None}, {"alerts": []}, {"alerts": ["junk"]}):
+            with self.subTest(raw=raw):
+                self.assertEqual(pirateweather.build_alerts(raw), [])
+
+    def test_at_most_five(self):
+        many = {"alerts": [{"title": f"Alert {n}", "severity": "Minor", "expires": -999} for n in range(9)]}
+        self.assertEqual(len(pirateweather.build_alerts(many)), pirateweather.MAX_ALERTS)
+
+    def test_the_forecast_request_includes_alerts(self):
+        with mock.patch.object(pirateweather.urllib.request, "urlopen") as urlopen:
+            urlopen.return_value = FakeResponse(load_fixture("pirateweather.json"), headers())
+            pirateweather._cache.clear()
+            self.addCleanup(pirateweather._cache.clear)
+            with mock.patch.object(pirateweather, "_blocked_until", 0.0):
+                pirateweather.fetch_alerts(1, 2, "k", "ua")
+                pirateweather.fetch(1, 2, "k", "ua")
+        self.assertEqual(urlopen.call_count, 1)  # the weather and the alerts share one call
+        self.assertIn("exclude=minutely%2Chourly", urlopen.call_args[0][0].full_url)
+        self.assertNotIn("alerts", urlopen.call_args[0][0].full_url)
+
+
+class AlertOrderTests(UpdaterTestCase):
+    PIRATE_ALERTS = [{"title": "Storm Warning", "description": "", "severity": "severe", "expires": None, "uri": None}]
+    NWS_ALERTS = [{"title": "Flood Watch", "description": "", "severity": "moderate", "expires": None, "uri": None}]
+
+    def run_update(self, provider="openmeteo", alerts_provider="auto", key="k", latitude=48.85, longitude=2.35):
+        self.pirate_alerts.return_value = self.PIRATE_ALERTS
+        with mock.patch.object(u, "PROVIDER", provider), mock.patch.object(u, "ALERTS_PROVIDER", alerts_provider), \
+                mock.patch.object(u, "PIRATEWEATHER_API_KEY", key), \
+                mock.patch.object(u, "LATITUDE", latitude), mock.patch.object(u, "LONGITUDE", longitude), \
+                mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()), \
+                mock.patch.object(u.metno, "fetch", return_value=metno_data()), \
+                mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
+                mock.patch.object(u.pirateweather, "fetch", return_value=pirate_data()):
+            u.update_once()
+        return self.output()
+
+    def in_the_us(self):
+        self.nws_alerts.side_effect = None
+        self.nws_alerts.return_value = self.NWS_ALERTS
+
+    def printed(self):
+        return " ".join(str(arg) for call in self.print.call_args_list for arg in call.args)
+
+    def test_outside_the_us_auto_uses_pirate_weather_alerts_with_a_key(self):
+        data = self.run_update()
+        self.assertEqual(data["sources"]["alerts"], {"id": "pirateweather", "name": "Pirate Weather"})
+        self.assertEqual(data["alerts"], self.PIRATE_ALERTS)
+
+    def test_without_a_key_outside_the_us_there_are_none(self):
+        data = self.run_update(key="")
+        self.pirate_alerts.assert_not_called()
+        self.assertIsNone(data["sources"]["alerts"])
+
+    def test_in_the_us_nws_comes_first(self):
+        self.in_the_us()
+        data = self.run_update(provider="pirateweather")
+        self.pirate_alerts.assert_not_called()
+        self.assertEqual(data["sources"]["alerts"]["id"], "nws")
+        self.assertEqual(data["alerts"], self.NWS_ALERTS)
+
+    def test_nws_weather_keeps_its_own_alerts(self):
+        data = self.run_update(provider="nws")
+        self.pirate_alerts.assert_not_called()
+        self.assertEqual(data["sources"]["alerts"]["id"], "nws")
+
+    def test_nordic_locations_get_pirate_weather_alerts_without_asking_nws(self):
+        data = self.run_update(provider="metno", latitude=59.91, longitude=10.75)
+        self.nws_alerts.assert_not_called()
+        self.assertEqual(data["sources"]["alerts"]["id"], "pirateweather")
+
+    def test_pirateweather_can_be_chosen_anywhere(self):
+        self.in_the_us()
+        data = self.run_update(provider="nws", alerts_provider="pirateweather")
+        self.nws_alerts.assert_not_called()
+        self.assertEqual(data["sources"]["alerts"]["id"], "pirateweather")
+
+    def test_choosing_pirateweather_without_a_key_warns_once(self):
+        self.run_update(alerts_provider="pirateweather", key="")
+        data = self.run_update(alerts_provider="pirateweather", key="")
+        self.assertIsNone(data["sources"]["alerts"])
+        self.assertEqual(self.printed().count("needs OUTPOST_PIRATEWEATHER_API_KEY"), 1)
+
+    def test_a_failed_pirate_weather_alerts_lookup_keeps_the_last_ones(self):
+        self.run_update()
+        self.pirate_alerts.side_effect = RuntimeError("Pirate Weather HTTP 500")
+        data = self.run_update()
+        self.assertEqual(data["status"], "degraded")
+        self.assertEqual(data["alerts"], self.PIRATE_ALERTS)
+        self.assertIsNotNone(data["current"]["temperature"])

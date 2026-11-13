@@ -43,3 +43,11 @@ test("the dashboard reads the format the updater writes", () => {
     const updater = fs.readFileSync(require.resolve("../app/outpost_updater.py"), "utf8");
     assert.match(updater, new RegExp(`^SCHEMA_VERSION = ${data.SCHEMA_VERSION}$`, "m"));
 });
+
+test("an alerts source that may not cover the location is named when it reports none", () => {
+    const pirate = { sources: { alerts: { id: "pirateweather", name: "Pirate Weather" } } };
+    assert.strictEqual(data.uncertainAlertsSource(pirate), "Pirate Weather");
+    assert.strictEqual(data.uncertainAlertsSource({ sources: { alerts: { id: "nws", name: "NWS" } } }), "");
+    assert.strictEqual(data.uncertainAlertsSource({ sources: { alerts: null } }), "");
+    assert.strictEqual(data.uncertainAlertsSource({}), "");
+});

@@ -191,8 +191,10 @@ function renderAlertsSection(weather, config) {
         panelText = "Alerts are not provided by this data source";
         noteText = "Alerts: not provided by this data source";
     } else {
-        panelText = `No active alerts (checked ${checked})`;
-        noteText = `Alerts: none (checked ${checked})`;
+        // Where an empty list may only mean "not covered here", say who reported none
+        const reporter = OutpostData.uncertainAlertsSource(weather);
+        panelText = reporter ? `No alerts reported by ${reporter} (checked ${checked})` : `No active alerts (checked ${checked})`;
+        noteText = reporter ? `Alerts: none reported by ${reporter} (checked ${checked})` : `Alerts: none (checked ${checked})`;
     }
     if (outdated) {
         panelText += " - data may be out of date";

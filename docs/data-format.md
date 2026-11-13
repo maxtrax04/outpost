@@ -105,7 +105,7 @@ Any reading can be `null` when the source doesn't have it.
 | Field | Meaning |
 | :--- | :--- |
 | `weather` | The source of the readings and forecast: `id` (a provider, as in `OUTPOST_PROVIDER`) and `name` (the name to credit). `null` in an error file. |
-| `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
+| `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. With Pirate Weather (`pirateweather`) an empty `alerts` list can also mean the country is not covered, and alerts are in the language they were published in. `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
 | `fill` | A second source used for readings the first one left empty, with `fields` listing them (such as `current.uv_index` or `forecast.high`). `null` when nothing was filled. |
 
 The dashboard credits each source by name in its footer. Open-Meteo and MET Norway require that credit.

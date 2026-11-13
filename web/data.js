@@ -37,7 +37,18 @@
         return Boolean(sources && sources.alerts);
     }
 
-    const api = { SCHEMA_VERSION, DEFAULT_UNITS, units, sourceText, alertsSupported };
+    // Alerts sources whose empty list can also mean "this country is not covered" (Pirate Weather's alerts
+    // cover only the countries on the WMO alert hub), so "none" is said as "none reported by" them
+    const UNCERTAIN_ALERTS_SOURCES = ["pirateweather"];
+
+    // The name to give in "none reported by ...", or "" when an empty list really means no alerts
+    function uncertainAlertsSource(weather) {
+        const source = weather && weather.sources && weather.sources.alerts;
+        if (!source || !UNCERTAIN_ALERTS_SOURCES.includes(source.id)) return "";
+        return typeof source.name === "string" && source.name.trim() ? source.name.trim() : source.id;
+    }
+
+    const api = { SCHEMA_VERSION, DEFAULT_UNITS, units, sourceText, alertsSupported, uncertainAlertsSource };
 
     root.OutpostData = api;
 

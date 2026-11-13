@@ -258,5 +258,51 @@
   "nearest-station": 0,
   "units": "us",
   "version": "V2.10.4"
- }
+ },
+ "alerts": [
+  {
+   "title": "Wind Advisory",
+   "regions": [
+    "Example County"
+   ],
+   "severity": "Moderate",
+   "time": 1794600000,
+   "expires": 1794621600,
+   "description": "South winds 25 to 35 mph\nwith gusts up to 50 mph.",
+   "uri": "https://alerts.example.gov/wind"
+  },
+  {
+   "title": "Avis de gel",
+   "regions": [
+    "Exemple"
+   ],
+   "severity": "",
+   "time": 1794600000,
+   "expires": -999,
+   "description": "Gel possible cette nuit.",
+   "uri": "not a link"
+  },
+  {
+   "title": "Tornado Warning",
+   "regions": [
+    "Example County"
+   ],
+   "severity": "Extreme",
+   "time": 1794600000,
+   "expires": 1794603600,
+   "description": "A tornado was reported.",
+   "uri": "https://alerts.example.gov/tornado"
+  },
+  {
+   "title": "Wind Advisory",
+   "regions": [
+    "Example County"
+   ],
+   "severity": "Moderate",
+   "time": 1794600000,
+   "expires": 1794621600,
+   "description": "South winds 25 to 35 mph with gusts up to 50 mph.",
+   "uri": "https://alerts.example.gov/wind"
+  }
+ ]
 }

@@ -9,8 +9,13 @@ Terms: needs a free API key from https://pirateweather.net (OUTPOST_PIRATEWEATHE
 
 The key goes in the `apikey` request header rather than the address, so it never appears in a URL,
 a log line, or an error message. Requested in US units: °F, mph, miles (pressure is in millibars,
-which are hPa). Pirate Weather's alerts are left out: its documentation does not say which regions
-they cover, so an empty list could not be told apart from "not covered here".
+which are hPa).
+
+Alerts (fetch_alerts) come in the same response: the National Weather Service's for the lower 48 US
+states, and elsewhere the official warnings that national weather services publish to the WMO
+alert hub (Europe through MeteoAlarm). Which countries are included changes over time, and an empty
+list looks the same whether there are no alerts or the country is not covered, so the dashboard
+says "none reported by Pirate Weather" rather than "none". Alerts are in the publisher's language.
 
 Uses only the Python standard library.
 """
@@ -27,7 +32,8 @@ from zoneinfo import ZoneInfo
 
 API_URL = "https://api.pirateweather.net/forecast"
 SOURCE = "Pirate Weather"
-# What this provider supplies (alerts come from OUTPOST_ALERTS_PROVIDER)
+# What this provider supplies as a weather provider. Its alerts (fetch_alerts) are not counted: the
+# updater asks NWS first in the US and uses them only after that (OUTPOST_ALERTS_PROVIDER).
 CAPABILITIES = frozenset({"current", "forecast", "uv"})
 TIMEOUT_SECONDS = 20
 FORECAST_DAYS = 5
@@ -92,7 +98,7 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
     if not api_key:
         raise RuntimeError("Pirate Weather needs an API key: set OUTPOST_PIRATEWEATHER_API_KEY")
 
-    params = {"units": "us", "exclude": "minutely,hourly,alerts"}
+    params = {"units": "us", "exclude": "minutely,hourly"}
     # The key travels in the apikey header; the address only needs something in its place
     url = f"{API_URL}/key-in-header/{latitude:.4f},{longitude:.4f}?{urllib.parse.urlencode(params)}"
     now = time.time()
@@ -207,3 +213,60 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
 def fetch(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
     """Fetch (or reuse, for at least 10 minutes) and normalize the forecast for a location."""
     return normalize(fetch_raw(latitude, longitude, api_key, user_agent))
+
+
+# ---------------------------------------------------------------- alerts
+
+SEVERITIES = ("extreme", "severe", "moderate", "minor")
+SEVERITY_ORDER = {name: rank for rank, name in enumerate(SEVERITIES + ("unknown",))}
+MAX_ALERTS = 5
+
+
+def _alert_time(value: Any) -> Optional[str]:
+    """Pirate Weather sends times in UNIX seconds, and -999 when there is none."""
+    number = _number(value)
+    if number is None or number < 0:
+        return None
+    return datetime.fromtimestamp(number, timezone.utc).isoformat()
+
+
+def _text(value: Any) -> str:
+    return " ".join(value.split()) if isinstance(value, str) else ""
+
+
+def build_alerts(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Outpost's alert format, most serious first. Severity is lowercased, and anything outside the CAP
+    levels (including a blank one) is "unknown". Repeats of the same alert are dropped.
+    """
+    alerts: List[Dict[str, Any]] = []
+    seen = set()
+    for alert in (raw or {}).get("alerts") or []:
+        if not isinstance(alert, dict):
+            continue
+        title = _text(alert.get("title")) or "Weather alert"
+        description = _text(alert.get("description"))
+        expires = _alert_time(alert.get("expires"))
+        key = (title.lower(), expires, description.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        severity = _text(alert.get("severity")).lower()
+        uri = alert.get("uri")
+        alerts.append({
+            "title": title,
+            "description": description,
+            "severity": severity if severity in SEVERITIES else "unknown",
+            "expires": expires,
+            "uri": uri if isinstance(uri, str) and uri.startswith(("https://", "http://")) else None,
+        })
+    alerts.sort(key=lambda a: SEVERITY_ORDER[a["severity"]])
+    return alerts[:MAX_ALERTS]
+
+
+def fetch_alerts(latitude: float, longitude: float, api_key: str, user_agent: str) -> List[Dict[str, Any]]:
+    """
+    The location's alerts. They come with the forecast, so when the weather is from Pirate Weather
+    too this reuses the same response (no extra call).
+    """
+    return build_alerts(fetch_raw(latitude, longitude, api_key, user_agent))
