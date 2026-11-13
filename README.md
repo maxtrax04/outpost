@@ -6,7 +6,7 @@
 
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
-> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo, National Weather Service, and MET Norway data. More providers are in progress. Expect breaking changes until 1.0.
+> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo, National Weather Service, MET Norway, and Pirate Weather data. More providers are in progress. Expect breaking changes until 1.0.
 
 <!-- TODO (public beta): add a hero screenshot here, e.g.
 ![Outpost dashboard](docs/images/dashboard.png)
@@ -70,7 +70,8 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | Variable | Default | Description |
 |---|---|---|
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
-| `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own, or NWS in the US when it has none), `nws`, or `none`. See [Alerts](#alerts). |
+| `OUTPOST_PIRATEWEATHER_API_KEY` | *(empty)* | Your free [Pirate Weather](https://pirateweather.net) API key, for `pirateweather`, or for `auto` to try Pirate Weather first. Keep it private; it is only sent to Pirate Weather. |
+| `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own; else NWS in the US; else Pirate Weather when you have a key), `nws`, `pirateweather`, or `none`. See [Alerts](#alerts). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
 | `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
 | `OUTPOST_COMMUNITY_THEMES` | (empty) | Community themes to download when the container starts, as `username/theme` separated by commas. See [Community themes](#community-themes). |
@@ -105,12 +106,23 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 | Mock (test data) | `mock` | No | Available |
 | [Open-Meteo](https://open-meteo.com) | `openmeteo` | No | Available (recommended default) |
 | [National Weather Service](https://www.weather.gov/documentation/services-web-api) | `nws` | No | Available (US only, includes alerts) |
-| Auto | `auto` | No | Available (MET Norway in the Nordic countries, NWS in the US, Open-Meteo elsewhere) |
+| Auto | `auto` | No | Available (Pirate Weather first if you have a key; otherwise MET Norway in the Nordic countries, NWS in the US, Open-Meteo elsewhere) |
 | [MET Norway](https://api.met.no) | `metno` | No | Available (worldwide, best in the Nordic countries) |
-| [Pirate Weather](https://pirateweather.net) | `pirateweather` | Yes | Planned |
+| [Pirate Weather](https://pirateweather.net) | `pirateweather` | Yes (free) | Available (worldwide) |
 | [OpenWeatherMap](https://openweathermap.org) | `openweathermap` | Yes | Planned |
 
-The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, Outpost uses MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen, where its forecast is at its best; the National Weather Service in the US; and Open-Meteo everywhere else. The Nordic check uses rough areas around those countries, worked out from your coordinates without asking any service, so near a border set `OUTPOST_PROVIDER` yourself if it picks the wrong one. Anything MET Norway or NWS leaves empty (such as visibility from MET Norway, or UV index and any reading a station is missing from NWS) is filled in from Open-Meteo, and the footer credits both sources. MET Norway requires every request to say what is asking (Outpost always sends its project page) and asks for a contact, so set `OUTPOST_CONTACT`; it also requires credit, which the footer gives; its data is shared under CC BY 4.0. Outpost downloads its forecast only when it has changed (MET Norway says when, about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so "now" is the forecast for this hour, visibility shows `--`, and UV index is for a clear sky. Forecast days follow the container's `TZ` setting, so set it to your time zone. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
+### How `auto` chooses
+
+| Your location | Weather from | Filled in from | Alerts (with `OUTPOST_ALERTS_PROVIDER=auto`) |
+|---|---|---|---|
+| Anywhere, with `OUTPOST_PIRATEWEATHER_API_KEY` set | Pirate Weather (if it fails, the rows below) | Open-Meteo, for anything missing | National Weather Service in the US; Pirate Weather elsewhere |
+| Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, Jan Mayen | MET Norway | Open-Meteo (visibility, later UV) | Pirate Weather with a key, else none (NWS is not asked) |
+| The United States and its territories | National Weather Service | Open-Meteo (UV, missing station readings) | National Weather Service |
+| Everywhere else | Open-Meteo | (nothing missing) | Pirate Weather with a key, else none |
+
+The Nordic check is done from your coordinates alone; the US check is the National Weather Service answering that it covers them. To always use one provider, set `OUTPOST_PROVIDER` to it.
+
+The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, Outpost uses Pirate Weather first when `OUTPOST_PIRATEWEATHER_API_KEY` is set, and if that fails (or there is no key) it uses MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen, where its forecast is at its best; the National Weather Service in the US; and Open-Meteo everywhere else. The Nordic check uses rough areas around those countries, worked out from your coordinates without asking any service, so near a border set `OUTPOST_PROVIDER` yourself if it picks the wrong one. Anything MET Norway or NWS leaves empty (such as visibility from MET Norway, or UV index and any reading a station is missing from NWS) is filled in from Open-Meteo, and the footer credits both sources. MET Norway requires every request to say what is asking (Outpost always sends its project page) and asks for a contact, so set `OUTPOST_CONTACT`; it also requires credit, which the footer gives; its data is shared under CC BY 4.0. Outpost downloads its forecast only when it has changed (MET Norway says when, about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so "now" is the forecast for this hour, visibility shows `--`, and UV index is for a clear sky. Forecast days follow the container's `TZ` setting, so set it to your time zone. Pirate Weather needs a free API key from [pirateweather.net](https://pirateweather.net): sign up, subscribe the key to the forecast API, and set `OUTPOST_PIRATEWEATHER_API_KEY`. The free tier allows 10,000 calls a month, so Outpost asks at most every 10 minutes (about 4,300 a month) whatever `OUTPOST_UPDATE_INTERVAL` is, and if the quota still runs out it waits for the reset instead of asking again. Its alerts come with the forecast; see [Alerts](#alerts). Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
 
 ## Data and storage
 
@@ -184,8 +196,9 @@ Scanlines, glow, and animation can be turned off in every theme, which helps rea
 
 The Alerts panel lists active weather warnings. `OUTPOST_ALERTS_PROVIDER` picks where they come from:
 
-- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US. So in the US you get official alerts with any weather provider, and elsewhere the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes), except in the Nordic countries, which Outpost recognizes by itself. Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
+- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US (including Alaska, Hawaii, and the territories). Outside the US, if you have set `OUTPOST_PIRATEWEATHER_API_KEY`, alerts come from Pirate Weather. Otherwise the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes), except in the Nordic countries, which Outpost recognizes by itself. Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
 - **`nws`:** always from the National Weather Service, whatever the weather provider. Outside the US there are none, and the log says so once.
+- **`pirateweather`:** always from Pirate Weather (needs `OUTPOST_PIRATEWEATHER_API_KEY`). Pirate Weather passes on the official warnings that national weather services publish to the WMO's global alert hub (in Europe through MeteoAlarm), plus the National Weather Service's for the lower 48 US states. Which countries take part changes over time, and an empty list looks the same whether there are no alerts or your country isn't covered, so the dashboard then says "none reported by Pirate Weather" rather than "none". Alerts are in the language the weather service published them in. If you also get the weather from Pirate Weather, the alerts come in the same request and use none of your quota.
 - **`none`:** no alerts.
 
 If the alerts lookup fails while the weather comes through, the dashboard keeps the last alerts it had and shows the degraded warning, so a failed check never looks like "no alerts". The footer names the alerts source when it differs from the weather source.

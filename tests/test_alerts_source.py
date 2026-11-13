@@ -118,7 +118,7 @@ class SettingTests(unittest.TestCase):
         self.print.assert_not_called()
 
     def test_unknown_value_warns_and_uses_auto(self):
-        self.assertEqual(u.alerts_provider_setting("pirateweather"), "auto")
+        self.assertEqual(u.alerts_provider_setting("metalerts"), "auto")
         self.assertIn("OUTPOST_ALERTS_PROVIDER", self.print.call_args[0][0])
 
 

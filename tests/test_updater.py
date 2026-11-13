@@ -46,10 +46,12 @@ class UpdaterTestCase(unittest.TestCase):
         mock.patch.object(u, "PROVIDER", "mock").start()
         mock.patch.object(u, "LOCATION_NAME", "Test Site").start()
         mock.patch.object(u, "_warned_user_agent", False).start()
-        mock.patch.object(u, "_warned_no_alert_coverage", False).start()
+        mock.patch.object(u, "_warned_alerts", set()).start()
         mock.patch.object(u, "ALERTS_PROVIDER", "auto").start()
         # Never reach the real NWS: by default the test location is outside NWS coverage
         self.nws_alerts = mock.patch.object(u.nws, "fetch_alerts", side_effect=nws.NoCoverageError("US only")).start()
+        # Never reach the real Pirate Weather either: by default it reports no alerts
+        self.pirate_alerts = mock.patch.object(u.pirateweather, "fetch_alerts", return_value=[]).start()
         mock.patch.object(u, "CUSTOM_THEMES_DIR", Path("/does/not/exist/custom")).start()
         mock.patch.object(u, "COMMUNITY_THEMES_DIR", Path("/does/not/exist/community")).start()
         self.print = mock.patch("builtins.print").start()

@@ -27,6 +27,7 @@ unless you prefer otherwise.
   the internet; put it behind a reverse proxy with authentication if you need remote access.
 - `weather.json` and `config.json` contain your location. Anyone who can reach the dashboard can read them.
 - Your `OUTPOST_CONTACT` value is sent to weather services in the User-Agent header.
+- `OUTPOST_PIRATEWEATHER_API_KEY` is a secret. Outpost sends it only to Pirate Weather, in a request header (never in an address), and never writes it to `weather.json`, `config.json`, or the log.
 - Theme files in a folder mounted at `/config/themes` (CSS, fonts, and images only) are served to anyone who
   can reach the dashboard. Mount a folder that holds only themes, read-only.
 - With `OUTPOST_COMMUNITY_THEMES` set, Outpost downloads those themes from GitHub (`codeload.github.com`) once each time

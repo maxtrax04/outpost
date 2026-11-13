@@ -2,7 +2,7 @@
 """
 Outpost updater.
 
-Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, or auto) and alerts from
+Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, pirateweather, or auto) and alerts from
 OUTPOST_ALERTS_PROVIDER, and writes /data/weather.json (docs/data-format.md) and /data/config.json
 for the dashboard. On a failed update the last good data is kept, marked degraded.
 """
@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import regions
 import units
-from providers import gapfill, metno, nws, openmeteo
+from providers import gapfill, metno, nws, openmeteo, pirateweather
 
 DATA_PATH = Path("/data/weather.json")
 
@@ -137,6 +137,9 @@ def load_contact_settings() -> Tuple[str, str]:
     return contact, build_user_agent(APP_VERSION, contact, override)
 
 CONTACT, USER_AGENT = load_contact_settings()
+
+# Pirate Weather API key (never written to weather.json or config.json, and sent only in a request header)
+PIRATEWEATHER_API_KEY = clean_header_text("OUTPOST_PIRATEWEATHER_API_KEY", os.getenv("OUTPOST_PIRATEWEATHER_API_KEY", ""))
 
 DEFAULT_THEME = "retro-crt"
 THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
@@ -434,6 +437,7 @@ CAPABILITIES = {
     "openmeteo": openmeteo.CAPABILITIES,
     "nws": nws.CAPABILITIES,
     "metno": metno.CAPABILITIES,
+    "pirateweather": pirateweather.CAPABILITIES,
 }
 
 def mock_data() -> Dict[str, Any]:
@@ -608,27 +612,34 @@ def build_live_payload(provider_name: str, data: Dict[str, Any],
         last_error=alerts["error"],
     )
 
-ALERTS_PROVIDER_VALUES = ("auto", "nws", "none")
+ALERTS_PROVIDER_VALUES = ("auto", "nws", "pirateweather", "none")
 
 def alerts_provider_setting(value: Optional[str]) -> str:
     """
     OUTPOST_ALERTS_PROVIDER: where official alerts come from.
-      auto (default)  the weather provider's alerts; if it has none, NWS where NWS covers the location (the US)
-      nws             always the National Weather Service (US only)
-      none            no alerts
+      auto (default)   the weather provider's own (NWS); else NWS where it covers the location (the US);
+                       else Pirate Weather when OUTPOST_PIRATEWEATHER_API_KEY is set; else none
+      nws              always the National Weather Service (US only)
+      pirateweather    always Pirate Weather (needs OUTPOST_PIRATEWEATHER_API_KEY)
+      none             no alerts
     """
     value = (value or "").strip().lower()
     if not value:
         return "auto"
     if value in ALERTS_PROVIDER_VALUES:
         return value
-    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, or none); using auto",
+    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, pirateweather, or none); using auto",
           file=sys.stderr, flush=True)
     return "auto"
 
 ALERTS_PROVIDER = alerts_provider_setting(os.getenv("OUTPOST_ALERTS_PROVIDER"))
 
-_warned_no_alert_coverage = False
+_warned_alerts: set = set()
+
+def warn_alerts_once(key: str, message: str) -> None:
+    if key not in _warned_alerts:
+        _warned_alerts.add(key)
+        print(f"[Outpost] {message}", file=sys.stderr, flush=True)
 
 def previous_alerts(source_id: str) -> List[Dict[str, Any]]:
     """The alerts in the last weather.json, if they came from the same source (else none)."""
@@ -641,41 +652,70 @@ def previous_alerts(source_id: str) -> List[Dict[str, Any]]:
         pass
     return []
 
+NO_ALERTS = {"source": None, "alerts": [], "error": None}
+
+def lookup_alerts(source_id: str, name: str, fetch: Any) -> Dict[str, Any]:
+    """
+    One separate alerts lookup. A failure keeps the previous alerts from the same source and reports
+    the error (shown as degraded), but never fails the weather update. NoCoverageError passes through.
+    """
+    source = source_entry(source_id, name)
+    try:
+        alerts = fetch()
+    except nws.NoCoverageError:
+        raise
+    except Exception as error:
+        print(f"[Outpost] Alerts lookup failed: {error}", file=sys.stderr, flush=True)
+        return {"source": source, "alerts": previous_alerts(source_id), "error": f"Alerts unavailable: {error}"}
+    return {"source": source, "alerts": alerts, "error": None}
+
+def nws_alerts() -> Dict[str, Any]:
+    """NWS alerts; raises NoCoverageError outside the US (without asking NWS for a Nordic location)."""
+    if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+        # Certainly not covered by NWS, so the location is not sent there just to hear that
+        raise nws.NoCoverageError("NWS has no data for this location (US only)")
+    result = lookup_alerts("nws", nws.SOURCE, lambda: nws.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT))
+    warn_about_user_agent()
+    return result
+
+def pirateweather_alerts() -> Dict[str, Any]:
+    return lookup_alerts("pirateweather", pirateweather.SOURCE, lambda: pirateweather.fetch_alerts(
+        LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
+
 def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Where this update's alerts come from (OUTPOST_ALERTS_PROVIDER), as
     {"source": sources.alerts entry or None, "alerts": [...], "error": message or None}.
-    A separate alerts lookup that fails keeps the previous alerts and reports the error, but never
-    fails the weather update.
-    """
-    global _warned_no_alert_coverage
 
+    auto: the weather provider's own alerts; else NWS (the official source in the US, including
+    Alaska, Hawaii, and the territories); else Pirate Weather's when a key is set; else none.
+    """
     if ALERTS_PROVIDER == "none":
-        return {"source": None, "alerts": [], "error": None}
+        return NO_ALERTS
+
+    if ALERTS_PROVIDER == "pirateweather":
+        if not PIRATEWEATHER_API_KEY:
+            warn_alerts_once("pirateweather-key", "OUTPOST_ALERTS_PROVIDER=pirateweather needs "
+                             "OUTPOST_PIRATEWEATHER_API_KEY; showing no alerts")
+            return NO_ALERTS
+        return pirateweather_alerts()
 
     own = own_alerts(provider_name, data)
     if own["source"] is not None and (ALERTS_PROVIDER == "auto" or provider_name == ALERTS_PROVIDER):
         return own
 
-    # The weather provider has no alerts (or another source was asked for): ask NWS separately
-    nws_source = source_entry("nws", nws.SOURCE)
     try:
-        if regions.in_nordic_countries(LATITUDE, LONGITUDE):
-            # Certainly not covered by NWS, so the location is not sent there just to hear that
-            raise nws.NoCoverageError("NWS has no data for this location (US only)")
-        alerts = nws.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT)
+        return nws_alerts()
     except nws.NoCoverageError:
-        if ALERTS_PROVIDER == "nws" and not _warned_no_alert_coverage:
-            print("[Outpost] OUTPOST_ALERTS_PROVIDER=nws, but NWS has no alerts for this location (US only); "
-                  "showing no alerts", file=sys.stderr, flush=True)
-        _warned_no_alert_coverage = True
-        return {"source": None, "alerts": [], "error": None}
-    except Exception as error:
-        print(f"[Outpost] Alerts lookup failed: {error}", file=sys.stderr, flush=True)
-        warn_about_user_agent()
-        return {"source": nws_source, "alerts": previous_alerts("nws"), "error": f"Alerts unavailable: {error}"}
-    warn_about_user_agent()
-    return {"source": nws_source, "alerts": alerts, "error": None}
+        if ALERTS_PROVIDER == "nws":
+            warn_alerts_once("nws-coverage", "OUTPOST_ALERTS_PROVIDER=nws, but NWS has no alerts for this "
+                             "location (US only); showing no alerts")
+            return NO_ALERTS
+
+    # auto, outside the US
+    if PIRATEWEATHER_API_KEY:
+        return pirateweather_alerts()
+    return NO_ALERTS
 
 def fetch_weather() -> Tuple[str, Dict[str, Any]]:
     """(provider id, normalized data) from OUTPOST_PROVIDER."""
@@ -689,9 +729,19 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
     if PROVIDER == "metno":
         warn_about_user_agent("MET Norway")
         return "metno", metno.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    if PROVIDER == "pirateweather":
+        return "pirateweather", pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT)
     if PROVIDER == "auto":
-        # MET Norway in the Nordic countries, the National Weather Service in the US, Open-Meteo
-        # everywhere else; anything MET Norway or NWS leaves empty is filled from Open-Meteo
+        # Pirate Weather first when a key is set; otherwise (or if it fails) MET Norway in the Nordic
+        # countries, the National Weather Service in the US, and Open-Meteo everywhere else. Anything
+        # the provider leaves empty is filled from Open-Meteo.
+        if PIRATEWEATHER_API_KEY:
+            try:
+                return "pirateweather", with_gap_fill(
+                    pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
+            except Exception as error:
+                print(f"[Outpost] Pirate Weather failed, using the regular choice instead: {error}",
+                      file=sys.stderr, flush=True)
         if regions.in_nordic_countries(LATITUDE, LONGITUDE):
             warn_about_user_agent("MET Norway")
             return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
@@ -701,7 +751,7 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
         except nws.NoCoverageError:
             return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     raise RuntimeError(
-        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, or auto."
+        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, pirateweather, or auto."
     )
 
 def can_keep_previous(previous: Dict[str, Any]) -> bool:
