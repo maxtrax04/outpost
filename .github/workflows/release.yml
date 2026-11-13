@@ -165,3 +165,22 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" --verify-tag --title "Outpost $version" --notes-file release-notes.md $flags
           fi
+
+      - name: Turn this version's betas into drafts
+        # Once a final version is out, its betas (v0.6.0-beta.1 and so on) leave the public Releases
+        # page. They stay as drafts, which only maintainers see, and keep their tags and images.
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prefix="${GITHUB_REF_NAME}-"
+          gh release list --limit 200 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft | not) | .tagName' |
+          while read -r tag; do
+            case "$tag" in
+              "$prefix"*)
+                gh release edit "$tag" --draft > /dev/null
+                echo "$tag is now a draft"
+                ;;
+            esac
+          done

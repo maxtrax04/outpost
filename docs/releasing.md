@@ -56,8 +56,12 @@ same checklist with a suffix on the version: `0.5.0-beta.1`, then `0.5.0-beta.2`
 
 For the final release, set `VERSION` to `0.5.0` and merge every `0.5.0-beta.N` section and `[Unreleased]`
 into one `## [0.5.0] - <date>` section, removing the beta sections. Its notes then cover everything since
-0.4.0, which is what people upgrading from the last full release need. The beta tags and GitHub pre-releases
-stay as the record of each beta.
+0.4.0, which is what people upgrading from the last full release need.
+
+When the final release is published, the release workflow turns that version's beta releases into drafts.
+They leave the public Releases page, but stay visible to maintainers with their notes, and their tags and
+images are kept, so anyone who pinned a beta image is not affected. To show one again, edit it on GitHub
+and publish it, or run `gh release edit v0.5.0-beta.1 --draft=false`.
 
 ## Image tags
 
