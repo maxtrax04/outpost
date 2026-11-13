@@ -761,18 +761,57 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
 def fetch_pirateweather() -> Tuple[str, Dict[str, Any]]:
     return "pirateweather", with_gap_fill(pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
 
+def read_previous() -> Optional[Dict[str, Any]]:
+    """The last weather.json, or None if there is none or it cannot be read."""
+    try:
+        with DATA_PATH.open("r", encoding="utf-8") as file:
+            previous = json.load(file)
+        return previous if isinstance(previous, dict) else None
+    except Exception:
+        return None
+
+def stale_after_seconds() -> int:
+    """How old data may be before the dashboard calls it stale: three missed updates, at least 5 minutes."""
+    return max(300, UPDATE_INTERVAL * 3)
+
+def should_switch_to_open_meteo() -> bool:
+    """
+    Whether a failed regional specialist should give way to Open-Meteo now. Not during a short outage:
+    then the last good data stays, marked degraded, so the dashboard does not flip between sources.
+    Yes once that data is older than stale_after_seconds(), when there is no usable data at all, and
+    while already on Open-Meteo for this outage (so it does not go back to degraded every few minutes).
+    """
+    previous = read_previous()
+    if not previous or not can_keep_previous(previous):
+        return True
+    if ((previous.get("sources") or {}).get("weather") or {}).get("id") == "openmeteo":
+        return True
+    try:
+        generated = datetime.fromisoformat(previous["generated_at"])
+        return (datetime.now(timezone.utc) - generated).total_seconds() > stale_after_seconds()
+    except Exception:
+        return True
+
 def instead_of(specialist: str, error: Exception) -> Tuple[str, Dict[str, Any]]:
     """
-    When the regional specialist (MET Norway or NWS) fails: Pirate Weather, if a key is set. Otherwise,
-    or if that fails too, the specialist's error stands, so the last good data is kept as degraded.
+    When the regional specialist (MET Norway or NWS) fails: Pirate Weather, if a key is set; then
+    Open-Meteo, once should_switch_to_open_meteo() says so. Until then (or if Open-Meteo fails too) the
+    specialist's error stands, so the last good data is kept as degraded.
     """
-    if not PIRATEWEATHER_API_KEY:
+    if PIRATEWEATHER_API_KEY:
+        print(f"[Outpost] {specialist} failed ({error}); using Pirate Weather for this update", file=sys.stderr, flush=True)
+        try:
+            return fetch_pirateweather()
+        except Exception as pirate_error:
+            print(f"[Outpost] Pirate Weather failed too: {pirate_error}", file=sys.stderr, flush=True)
+
+    if not should_switch_to_open_meteo():
         raise error
-    print(f"[Outpost] {specialist} failed ({error}); using Pirate Weather for this update", file=sys.stderr, flush=True)
+    print(f"[Outpost] {specialist} failed ({error}); using Open-Meteo until it is back", file=sys.stderr, flush=True)
     try:
-        return fetch_pirateweather()
-    except Exception as pirate_error:
-        print(f"[Outpost] Pirate Weather failed too: {pirate_error}", file=sys.stderr, flush=True)
+        return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    except Exception as open_meteo_error:
+        print(f"[Outpost] Open-Meteo failed too: {open_meteo_error}", file=sys.stderr, flush=True)
         raise error
 
 def fetch_auto() -> Tuple[str, Dict[str, Any]]:
@@ -780,7 +819,8 @@ def fetch_auto() -> Tuple[str, Dict[str, Any]]:
     OUTPOST_PROVIDER=auto. The regional specialists first: MET Norway in the Nordic countries and the
     National Weather Service in the US. Everywhere else Pirate Weather when a key is set, and
     Open-Meteo otherwise (or if Pirate Weather fails). When a specialist fails, Pirate Weather (with a
-    key) takes over for that update. Anything the provider leaves empty is filled from Open-Meteo.
+    key) takes over for that update, and Open-Meteo once the outage outlasts the last good data
+    (instead_of). Anything the provider leaves empty is filled from Open-Meteo.
     """
     if regions.in_nordic_countries(LATITUDE, LONGITUDE):
         warn_about_user_agent("MET Norway")

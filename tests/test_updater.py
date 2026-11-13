@@ -395,12 +395,22 @@ class AutoProviderTests(UpdaterTestCase):
         self.assertIsNone(data["sources"]["fill"])
         self.assertIsNone(data["current"]["uv_index"])
 
-    def test_nws_failure_is_not_hidden_by_switching_providers(self):
+    def test_a_short_nws_outage_keeps_the_last_good_data(self):
+        with mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
+                mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
+            u.update_once()
         with mock.patch.object(u.nws, "fetch", side_effect=RuntimeError("NWS HTTP 503")), \
                 mock.patch.object(u.openmeteo, "fetch") as backup:
             u.update_once()
-        backup.assert_not_called()
-        self.assertEqual(self.output()["status"], "error")
+        backup.assert_not_called()  # the data is still recent, so no switching sources
+        self.assertEqual(self.output()["status"], "degraded")
+
+    def test_with_no_data_yet_an_nws_outage_uses_open_meteo(self):
+        with mock.patch.object(u.nws, "fetch", side_effect=RuntimeError("NWS HTTP 503")), \
+                mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
+            u.update_once()
+        data = self.output()
+        self.assertEqual((data["status"], data["sources"]["weather"]["id"]), ("ok", "openmeteo"))
 
     def test_degraded_data_is_kept_in_auto_mode(self):
         with mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
