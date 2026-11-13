@@ -66,15 +66,16 @@ class VersionTests(UpdaterTestCase):
         self.assertEqual(u.APP_VERSION, (ROOT / "VERSION").read_text().strip())
 
     def test_default_user_agent_includes_the_version(self):
-        self.assertEqual(u.USER_AGENT, f"Outpost/{u.APP_VERSION}")
+        self.assertEqual(u.USER_AGENT, f"Outpost/{u.APP_VERSION} (+https://github.com/maxtrax04/outpost)")
 
 
 class UserAgentTests(UpdaterTestCase):
     def test_without_contact(self):
-        self.assertEqual(u.build_user_agent("1.2.3"), "Outpost/1.2.3")
+        self.assertEqual(u.build_user_agent("1.2.3"), "Outpost/1.2.3 (+https://github.com/maxtrax04/outpost)")
 
     def test_with_contact(self):
-        self.assertEqual(u.build_user_agent("1.2.3", "me@example.com"), "Outpost/1.2.3 (me@example.com)")
+        self.assertEqual(u.build_user_agent("1.2.3", "me@example.com"),
+                         "Outpost/1.2.3 (me@example.com; +https://github.com/maxtrax04/outpost)")
 
     def test_override_replaces_everything(self):
         self.assertEqual(u.build_user_agent("1.2.3", "me@example.com", "Custom/1"), "Custom/1")
@@ -96,7 +97,7 @@ class UserAgentTests(UpdaterTestCase):
         with mock.patch.dict(os.environ, {"OUTPOST_CONTACT": "me@example.com"}):
             contact, agent = u.load_contact_settings()
         self.assertEqual(contact, "me@example.com")
-        self.assertEqual(agent, f"Outpost/{u.APP_VERSION} (me@example.com)")
+        self.assertEqual(agent, f"Outpost/{u.APP_VERSION} (me@example.com; +{u.PROJECT_URL})")
 
     def test_override_is_read_from_the_environment(self):
         with mock.patch.dict(os.environ, {"OUTPOST_CONTACT": "me@example.com", "OUTPOST_USER_AGENT": "Custom/1"}):
@@ -106,7 +107,7 @@ class UserAgentTests(UpdaterTestCase):
         with mock.patch.dict(os.environ, {"OUTPOST_CONTACT": "bad\nvalue"}):
             contact, agent = u.load_contact_settings()
         self.assertEqual(contact, "")
-        self.assertEqual(agent, f"Outpost/{u.APP_VERSION}")
+        self.assertEqual(agent, f"Outpost/{u.APP_VERSION} (+{u.PROJECT_URL})")
 
     def printed(self):
         return " ".join(str(call) for call in self.print.call_args_list)
@@ -120,6 +121,16 @@ class UserAgentTests(UpdaterTestCase):
         with mock.patch.object(u, "CONTACT", "me@example.com"), mock.patch.object(u, "USER_AGENT", "Outpost/1 (me@example.com)"):
             u.warn_about_user_agent()
         self.print.assert_not_called()
+
+    def test_the_project_page_alone_is_not_a_contact(self):
+        with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", u.build_user_agent(u.APP_VERSION)):
+            u.warn_about_user_agent()
+        self.assertIn("OUTPOST_CONTACT", self.printed())
+
+    def test_the_user_agent_stays_a_valid_header(self):
+        agent = u.build_user_agent("0.6.0-beta.4", "a" * 120)
+        self.assertEqual(u.clean_header_text("X", agent[:120]), agent[:120])
+        self.assertTrue(all(32 <= ord(char) < 127 for char in agent))
 
     def test_an_override_containing_contact_info_counts(self):
         with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", "Custom (https://example.com)"):

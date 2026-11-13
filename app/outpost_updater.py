@@ -115,16 +115,19 @@ def clean_header_text(name: str, value: str) -> str:
         return ""
     return value
 
+# Always in the User-Agent, so a weather service can see what Outpost is even without OUTPOST_CONTACT
+PROJECT_URL = "https://github.com/maxtrax04/outpost"
+
 def build_user_agent(version: str, contact: str = "", override: str = "") -> str:
     """
-    The User-Agent sent to weather services: "Outpost/<version> (<contact>)".
-    OUTPOST_USER_AGENT, if set, replaces the whole thing.
+    The User-Agent sent to weather services: "Outpost/<version> (<contact>; +<project page>)", or
+    "Outpost/<version> (+<project page>)" without a contact. OUTPOST_USER_AGENT, if set, replaces it all.
     """
     if override:
         return override
     if contact:
-        return f"Outpost/{version} ({contact})"
-    return f"Outpost/{version}"
+        return f"Outpost/{version} ({contact}; +{PROJECT_URL})"
+    return f"Outpost/{version} (+{PROJECT_URL})"
 
 def load_contact_settings() -> Tuple[str, str]:
     """Returns (contact, user_agent) from OUTPOST_CONTACT and OUTPOST_USER_AGENT."""
@@ -752,8 +755,15 @@ def fetch_nws_with_gap_fill() -> Dict[str, Any]:
 _warned_user_agent = False
 
 def has_contact_info() -> bool:
-    """True if a contact was configured (an advanced User-Agent override counts if it contains one)."""
-    return bool(CONTACT) or "@" in USER_AGENT or "http" in USER_AGENT.lower()
+    """
+    True if a contact was configured. An advanced User-Agent override counts if it contains one; the
+    project page in the default User-Agent does not, since it does not say how to reach this install's owner.
+    """
+    if CONTACT:
+        return True
+    if USER_AGENT == build_user_agent(APP_VERSION):
+        return False
+    return "@" in USER_AGENT or "http" in USER_AGENT.lower()
 
 def warn_about_user_agent(service: str = "The National Weather Service") -> None:
     """The National Weather Service and MET Norway ask every client to include contact information."""
@@ -763,7 +773,8 @@ def warn_about_user_agent(service: str = "The National Weather Service") -> None
     _warned_user_agent = True
     if not has_contact_info():
         print(
-            f"[Outpost] Warning: no contact information is set. {service} asks for one. "
+            f"[Outpost] No contact information is set. {service} asks for one, so it can reach you about a problem "
+            "before blocking requests. Outpost identifies itself with its project page meanwhile. "
             "Set OUTPOST_CONTACT to an email address or website, for example OUTPOST_CONTACT=you@example.com",
             file=sys.stderr,
             flush=True

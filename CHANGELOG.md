@@ -10,7 +10,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- MET Norway weather: `OUTPOST_PROVIDER=metno` uses MET Norway's forecast, which covers the whole world and is especially good in the Nordic countries. It needs `OUTPOST_CONTACT` (MET Norway refuses requests that don't say who is asking), and the footer credits it. Outpost downloads the forecast again only when MET Norway says it has changed (about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so the current conditions are the forecast for this hour, visibility shows `--`, and the UV index is for a clear sky. Forecast days follow the container's `TZ` setting. MET Norway has no alerts in this release; in the US, `OUTPOST_ALERTS_PROVIDER=auto` still adds National Weather Service alerts.
+- MET Norway weather: `OUTPOST_PROVIDER=metno` uses MET Norway's forecast, which covers the whole world and is especially good in the Nordic countries. MET Norway asks for `OUTPOST_CONTACT`, and the footer credits it. Outpost downloads the forecast again only when MET Norway says it has changed (about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so the current conditions are the forecast for this hour, visibility shows `--`, and the UV index is for a clear sky. Forecast days follow the container's `TZ` setting. MET Norway has no alerts in this release; in the US, `OUTPOST_ALERTS_PROVIDER=auto` still adds National Weather Service alerts.
+
+### Changed
+
+- Outpost now always tells weather services what it is: the User-Agent includes the project page, as `Outpost/<version> (+https://github.com/maxtrax04/outpost)`, or `Outpost/<version> (you@example.com; +https://github.com/maxtrax04/outpost)` with `OUTPOST_CONTACT`. So it works with services that refuse anonymous requests even before a contact is set. Setting `OUTPOST_CONTACT` is still recommended, so a service can reach you instead of blocking every Outpost install; the startup reminder says so. `OUTPOST_USER_AGENT` still replaces it all.
 
 ## [0.6.0-beta.3] - 2026-11-12
 
