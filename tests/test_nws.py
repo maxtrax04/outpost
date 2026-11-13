@@ -88,10 +88,10 @@ class ForecastTests(unittest.TestCase):
 class CurrentTests(unittest.TestCase):
     def test_from_observation(self):
         current = nws.build_current(periods(), observation()["properties"])
-        self.assertEqual(current["temperature"], 84)
-        self.assertEqual(current["wind_speed"], 9)
-        self.assertEqual(current["pressure"], 30.05)
-        self.assertEqual(current["visibility"], 10.0)
+        self.assertEqual(round(current["temperature"]), 84)
+        self.assertEqual(round(current["wind_speed"]), 9)
+        self.assertEqual(round(current["pressure"], 2), 30.05)
+        self.assertEqual(round(current["visibility"], 1), 10.0)
         self.assertEqual(current["humidity"], 22)
         self.assertIsNone(current["uv_index"])
         self.assertEqual(current["condition"], "Fair")
@@ -106,15 +106,15 @@ class CurrentTests(unittest.TestCase):
     def test_heat_index_is_used_for_feels_like(self):
         obs = observation()["properties"]
         obs["heatIndex"]["value"] = 35.0
-        self.assertEqual(nws.build_current(periods(), obs)["feels_like"], 95)
+        self.assertEqual(round(nws.build_current(periods(), obs)["feels_like"]), 95)
 
     def test_feels_like_defaults_to_temperature(self):
-        self.assertEqual(nws.build_current(periods(), observation()["properties"])["feels_like"], 84)
+        self.assertEqual(round(nws.build_current(periods(), observation()["properties"])["feels_like"]), 84)
 
     def test_falls_back_to_the_forecast_without_an_observation(self):
         current = nws.build_current(periods(), None)
-        self.assertEqual(current["temperature"], 62)
-        self.assertEqual(current["wind_speed"], 10)
+        self.assertEqual(round(current["temperature"]), 62)
+        self.assertEqual(round(current["wind_speed"]), 10)
         self.assertEqual(current["condition"], "Mostly Clear")
         self.assertIsNone(current["pressure"])
         self.assertIsNone(current["visibility"])
@@ -201,7 +201,7 @@ class FetchTests(unittest.TestCase):
 
     def test_skips_a_station_without_a_temperature(self):
         data = nws.fetch(10.0, 20.0, "Outpost-Test")
-        self.assertEqual(data["current"]["temperature"], 84)  # from KBBB, not the forecast's 62
+        self.assertEqual(round(data["current"]["temperature"]), 84)  # from KBBB, not the forecast's 62
 
     def test_user_agent_is_sent_on_every_request(self):
         nws.fetch(10.0, 20.0, "Outpost-Test")

@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.2] - 2026-11-12
+
+### Added
+
+- Metric units: `OUTPOST_UNITS=metric` shows °C, km/h, hPa, and km on the dashboard and in `weather.json` (its `units` block says which system is used). The setting was accepted before but did nothing. Each reading is converted and rounded once, from the weather source's own numbers. Theme gauges point to the same place in either system. An unknown value logs a warning and uses imperial.
+
+### Changed
+
+- Changing `OUTPOST_UNITS` and restarting while the weather source is unreachable shows that there is no data, rather than the last saved readings in the other units.
+
 ## [0.6.0-beta.1] - 2026-11-12
 
 ### Added

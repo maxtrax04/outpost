@@ -15,12 +15,12 @@ class NormalizeTests(unittest.TestCase):
 
     def test_current_values(self):
         current = openmeteo.normalize(self.raw)["current"]
-        self.assertEqual(current["temperature"], 84)
-        self.assertEqual(current["feels_like"], 80)
+        self.assertEqual(round(current["temperature"]), 84)
+        self.assertEqual(round(current["feels_like"]), 80)
         self.assertEqual(current["humidity"], 12)
-        self.assertEqual(current["wind_speed"], 10)
-        self.assertEqual(current["pressure"], 29.9)
-        self.assertEqual(current["visibility"], 15.0)
+        self.assertEqual(round(current["wind_speed"]), 10)
+        self.assertEqual(round(current["pressure"], 2), 29.9)
+        self.assertEqual(round(current["visibility"], 1), 15.0)
         self.assertEqual(current["condition"], "Mainly clear")
         self.assertEqual(current["icon"], "sunny")
 
@@ -31,8 +31,8 @@ class NormalizeTests(unittest.TestCase):
         forecast = openmeteo.normalize(self.raw)["forecast"]
         self.assertEqual(len(forecast), 5)
         self.assertEqual(forecast[0]["day"], "2026-07-15")
-        self.assertEqual([d["high"] for d in forecast], [88, 86, 84, 79, 82])
-        self.assertEqual([d["low"] for d in forecast], [60, 59, 58, 55, 57])
+        self.assertEqual([round(d["high"]) for d in forecast], [88, 86, 84, 79, 82])
+        self.assertEqual([round(d["low"]) for d in forecast], [60, 59, 58, 55, 57])
         self.assertEqual([d["icon"] for d in forecast], ["sunny", "partly-cloudy", "cloudy", "rain", "storm"])
         self.assertEqual([d["precipitation_chance"] for d in forecast], [0, 5, 10, 60, 40])
 

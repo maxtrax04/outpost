@@ -88,7 +88,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LOCATION_NAME` | `Goodsprings, NV` | Name shown at the top of the dashboard. |
 | `OUTPOST_LATITUDE` | `35.8319` | Latitude in decimal degrees. |
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
-| `OUTPOST_UNITS` | `imperial` | Unit system. |
+| `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`. It is sent in the User-Agent header. |
 | `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>)`). |

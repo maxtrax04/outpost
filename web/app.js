@@ -69,7 +69,7 @@ function setBanner(visible) {
     document.getElementById("alertBanner").classList.toggle("visible", visible);
 }
 
-function renderForecast(periods) {
+function renderForecast(periods, system) {
     const container = document.getElementById("forecastContainer");
     container.replaceChildren();
 
@@ -91,7 +91,7 @@ function renderForecast(periods) {
     periods.slice(0, 5).forEach(period => {
         const card = document.createElement("div");
         card.className = "forecast-card";
-        OutpostGauges.applyForecast(card, period);
+        OutpostGauges.applyForecast(card, period, system);
 
         const day = text("forecast-day", formatDay(period.day));
 
@@ -270,7 +270,7 @@ async function loadWeather(config) {
         setText("lastUpdated", formatDateTime(weather.generated_at));
 
         setIcon(document.getElementById("currentIcon"), current.icon, current.condition);
-        OutpostGauges.applyCurrent(current);
+        OutpostGauges.applyCurrent(current, document, units.system);
 
         // Data is stale after 3 missed updates (interval comes from the updater)
         const staleAfterMs = Math.max(MIN_STALE_MS, (weather.update_interval_seconds || 60) * 3 * 1000);
@@ -282,7 +282,7 @@ async function loadWeather(config) {
         setSignal(isOk ? "ok" : "degraded");
         setBanner(!isOk);
 
-        renderForecast(weather.forecast);
+        renderForecast(weather.forecast, units.system);
         renderAlertsSection(weather, config);
     } catch (error) {
         console.error("Unable to load Outpost data:", error);

@@ -112,13 +112,16 @@ The dashboard credits each source by name in its footer. Open-Meteo requires tha
 
 ### `units`
 
-| Field | Used for | Imperial |
-| :--- | :--- | :--- |
-| `system` | | `imperial` (metric is planned) |
-| `temperature` | `temperature`, `feels_like`, `high`, `low` | `°F` |
-| `speed` | `wind_speed` | `mph` |
-| `pressure` | `pressure` | `inHg` |
-| `distance` | `visibility` | `mi` |
+| Field | Used for | Imperial | Metric |
+| :--- | :--- | :--- | :--- |
+| `system` | | `imperial` | `metric` |
+| `temperature` | `temperature`, `feels_like`, `high`, `low` | `°F`, whole degrees | `°C`, whole degrees |
+| `speed` | `wind_speed` | `mph`, whole numbers | `km/h`, whole numbers |
+| `pressure` | `pressure` | `inHg`, 2 decimals | `hPa`, whole numbers |
+| `distance` | `visibility` | `mi`, 1 decimal | `km`, 1 decimal |
+
+`OUTPOST_UNITS` picks the system (`imperial` by default). Every reading is converted and rounded once,
+from the source's own numbers, so switching systems does not add rounding errors.
 
 `humidity` and `precipitation_chance` are always percentages (0 to 100), and `uv_index` has no unit.
 The values are labels to show next to the number; a reader that converts values should check

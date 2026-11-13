@@ -27,6 +27,12 @@ async function waitFor(page, fn, arg, timeoutMs) {
     return false;
 }
 
+let unitLabels = { temperature: "°F", speed: "mph" };
+
+function endsWithNumberAnd(text, label) {
+    return text.endsWith(label) && /\d/.test(text.slice(0, -label.length).trim().slice(-1));
+}
+
 async function checkTheme(browser, theme, name, viewport) {
     const page = await browser.newPage({ viewport });
     const problems = [];
@@ -70,8 +76,12 @@ async function checkTheme(browser, theme, name, viewport) {
     if (state.gauges !== 6) problems.push(`${state.gauges} readings are marked as gauges, expected 6`);
     if (!/^0?\.\d+$|^[01](\.0+)?$/.test(state.humidity.trim())) problems.push(`--wx-humidity is "${state.humidity}", expected 0..1`);
     // Unit labels and the source line come from weather.json (its "units" and "sources" blocks)
-    if (!/\d°F$/.test(state.temperature)) problems.push(`the temperature reads "${state.temperature}", expected a number and °F`);
-    if (!/\d mph$/.test(state.wind)) problems.push(`the wind reads "${state.wind}", expected a number and mph`);
+    if (!endsWithNumberAnd(state.temperature, unitLabels.temperature)) {
+        problems.push(`the temperature reads "${state.temperature}", expected a number and ${unitLabels.temperature}`);
+    }
+    if (!endsWithNumberAnd(state.wind, unitLabels.speed)) {
+        problems.push(`the wind reads "${state.wind}", expected a number and ${unitLabels.speed}`);
+    }
     if (!state.source || state.source === "--") problems.push("the footer names no data source");
     // The header shows the logo or the text title (the theme's --title-logo), never both or neither
     if ((state.logoHeight > 0) === (state.titleTextSize > 0)) {
@@ -216,6 +226,9 @@ async function checkFraming(browser) {
 (async () => {
     const config = await (await fetch(`${BASE}/data/config.json`)).json();
     const themes = config.themes || [];
+    // The unit labels the page should show (weather.json's "units" block)
+    const weather = await (await fetch(`${BASE}/data/weather.json`)).json();
+    unitLabels = weather.units;
     if (themes.length === 0) throw new Error("config.json lists no themes");
 
     const browser = await chromium.launch();

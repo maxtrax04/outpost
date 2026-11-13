@@ -33,6 +33,6 @@ Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (rel
 ## Current state
 - v0.5.0 released (themes and customization; betas 1 to 8 folded into one CHANGELOG section). Built-in themes: retro-crt, amber-terminal, command-center, modern-dark, field-station, atomic-broadcast, ink. Community themes live in maxtrax04/outpost-themes (`username/theme`, downloaded by `OUTPOST_COMMUNITY_THEMES`; its own checks in `.github/scripts/check_themes.py` and Outpost edge in a browser).
 - Every PR after a release bumps VERSION to the next beta (see docs/releasing.md "Beta releases").
-- Next: v0.6.0, data model and providers, starting with the unit-neutral weather.json schema (#23) and metric units (#24). Ideas, not planned: an ePaper image renderer (#64).
+- v0.6.0 in progress (data model and providers): versioned weather.json (#23, beta.1) and metric units (#24, beta.2) done; next #25 (separate alerts source), MET Norway (#26), Pirate Weather (#27), smarter auto (#28). Providers return unrounded imperial readings; app/units.py converts and rounds once. Ideas, not planned: an ePaper image renderer (#64).
 - The CSP has no `unsafe-inline` or `unsafe-eval`: no inline scripts, styles, or `style=` attributes (CSSOM `style.setProperty` is fine). Playwright's `page.waitForFunction` is blocked by it too; `tests/browser/check-themes.js` polls with `page.evaluate` instead.
 - Not verified on real iOS/Android, on real ePaper, or with the real Share Tech Mono file.

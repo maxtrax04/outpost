@@ -30,6 +30,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import units
 from providers import gapfill, nws, openmeteo
 
 DATA_PATH = Path("/data/weather.json")
@@ -40,12 +41,6 @@ SCHEMA_VERSION = 1
 
 # Where editors find the JSON Schema for this format (written to weather.json as "$schema")
 SCHEMA_URL = f"https://raw.githubusercontent.com/maxtrax04/outpost/main/docs/schema/weather-v{SCHEMA_VERSION}.json"
-
-# The unit each kind of reading is in, written to weather.json as "units". Providers return
-# imperial values for now; metric is added later (OUTPOST_UNITS).
-UNIT_LABELS = {
-    "imperial": {"temperature": "°F", "speed": "mph", "pressure": "inHg", "distance": "mi"},
-}
 
 def get_env(name: str, default: Optional[str] = None) -> Optional[str]:
     """Get environment variable or return default."""
@@ -99,11 +94,21 @@ UPDATE_INTERVAL = get_int_env("OUTPOST_UPDATE_INTERVAL", 60)
 LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
 LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
 LONGITUDE = get_float_env("OUTPOST_LONGITUDE", -115.4328)
-UNITS = get_env("OUTPOST_UNITS", "imperial").lower()
+def units_setting(value: Optional[str]) -> str:
+    """OUTPOST_UNITS: imperial (default; °F, mph, inHg, miles) or metric (°C, km/h, hPa, km)."""
+    value = (value or "").strip().lower()
+    if not value:
+        return units.DEFAULT_SYSTEM
+    if value in units.SYSTEMS:
+        return value
+    print(f"[Outpost] Unknown OUTPOST_UNITS \"{value}\" (use imperial or metric); using imperial", file=sys.stderr, flush=True)
+    return units.DEFAULT_SYSTEM
+
+UNITS = units_setting(os.getenv("OUTPOST_UNITS"))
 
 def units_block() -> Dict[str, str]:
     """The "units" block of weather.json: the unit system and the label for each kind of reading."""
-    return {"system": "imperial", **UNIT_LABELS["imperial"]}
+    return units.block(UNITS)
 
 def clean_header_text(name: str, value: str) -> str:
     """
@@ -521,7 +526,11 @@ def build_payload(
     alerts: List[Dict[str, Any]],
     last_error: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """weather.json, in the format described in docs/data-format.md."""
+    """
+    weather.json, in the format described in docs/data-format.md. Readings arrive in the providers'
+    units, unrounded, and are converted to OUTPOST_UNITS and rounded here.
+    """
+    readings = units.present({"current": current, "forecast": forecast}, UNITS)
     return {
         "$schema": SCHEMA_URL,
         "schema_version": SCHEMA_VERSION,
@@ -538,8 +547,8 @@ def build_payload(
         "generated_at": utc_now(),
         "update_interval_seconds": UPDATE_INTERVAL,
         "units": units_block(),
-        "current": current,
-        "forecast": forecast,
+        "current": readings["current"],
+        "forecast": readings["forecast"],
         "alerts": alerts,
         "last_error": last_error
     }
@@ -586,11 +595,11 @@ def can_keep_previous(previous: Dict[str, Any]) -> bool:
     current format and units, and is for the same provider setting and location. Data from before
     an upgrade or a settings change is not shown, because it would be read or labeled wrongly.
     """
-    units = previous.get("units")
+    saved_units = previous.get("units")
     return (
         previous.get("schema_version") == SCHEMA_VERSION
-        and isinstance(units, dict)
-        and units == units_block()
+        and isinstance(saved_units, dict)
+        and saved_units == units_block()
         and (previous.get("current") or {}).get("temperature") is not None
         and previous.get("provider") == PROVIDER
         and previous.get("location") == LOCATION_NAME

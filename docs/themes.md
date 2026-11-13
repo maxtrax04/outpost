@@ -200,18 +200,18 @@ themes use most of them and are a good place to start.
 Decorations must not cover text, and should not catch taps (`.frame` already ignores them).
 
 **Values for gauges.** Each reading is given to CSS as a number from `0` to `1`, so a dial or bar
-needs no code. The scale stays the same whatever units the dashboard shows. A value outside the range
+needs no code. The scale stays the same whatever units the dashboard shows (`OUTPOST_UNITS`), so a needle points to the same place for 32 °F and 0 °C. A value outside the range
 stops at `0` or `1`.
 
 | Reading | `data-metric` | Property on the page | `0` | `1` |
 |---|---|---|---|---|
-| Temperature | `temperature` | `--wx-temperature` | -20 °F | 120 °F |
-| Feels like | `feels-like` | `--wx-feels-like` | -20 °F | 120 °F |
+| Temperature | `temperature` | `--wx-temperature` | -20 °F (-29 °C) | 120 °F (49 °C) |
+| Feels like | `feels-like` | `--wx-feels-like` | -20 °F (-29 °C) | 120 °F (49 °C) |
 | Humidity | `humidity` | `--wx-humidity` | 0% | 100% |
-| Wind | `wind` | `--wx-wind` | 0 mph | 60 mph |
+| Wind | `wind` | `--wx-wind` | 0 mph | 60 mph (97 km/h) |
 | Pressure | `pressure` | `--wx-pressure` | 28.5 inHg (965 hPa) | 31 inHg (1050 hPa) |
 | UV index | `uv` | `--wx-uv` | 0 | 11 |
-| Visibility | `visibility` | `--wx-visibility` | 0 mi | 10 mi |
+| Visibility | `visibility` | `--wx-visibility` | 0 mi | 10 mi (16 km) |
 
 The element with that `data-metric` also gets the value as `--value` and a `data-gauge` attribute, so
 one rule can draw every dial. When a reading is not available, `--value` and `--wx-<name>` are removed
