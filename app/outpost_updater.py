@@ -17,6 +17,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 import regions
 import units
@@ -525,6 +526,23 @@ def source_entry(source_id: str, name: str, **extra: Any) -> Dict[str, Any]:
     """One entry of the "sources" block: the provider's id (as in OUTPOST_PROVIDER) and the name to credit."""
     return {"id": source_id, "name": name, **extra}
 
+def valid_timezone(name: Any) -> Optional[str]:
+    """An IANA time zone name such as Europe/Oslo, if this system knows it (else None)."""
+    if not isinstance(name, str) or not name.strip():
+        return None
+    try:
+        ZoneInfo(name.strip())
+        return name.strip()
+    except Exception:
+        return None
+
+def location_timezone(data: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """
+    The location's time zone, for showing times as they are there: the one the weather service
+    reports (Open-Meteo, NWS, Pirate Weather), or else the container's TZ setting (MET Norway, mock).
+    """
+    return valid_timezone((data or {}).get("timezone")) or valid_timezone(os.environ.get("TZ"))
+
 def build_payload(
     status: str,
     sources: Dict[str, Any],
@@ -532,6 +550,7 @@ def build_payload(
     forecast: List[Dict[str, Any]],
     alerts: List[Dict[str, Any]],
     last_error: Optional[str] = None,
+    timezone: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     weather.json, in the format described in docs/data-format.md. Readings arrive in the providers'
@@ -551,6 +570,7 @@ def build_payload(
             "latitude": LATITUDE,
             "longitude": LONGITUDE
         },
+        "timezone": timezone or location_timezone(),
         "generated_at": utc_now(),
         "update_interval_seconds": UPDATE_INTERVAL,
         "units": units_block(),
@@ -610,6 +630,7 @@ def build_live_payload(provider_name: str, data: Dict[str, Any],
         forecast=data["forecast"],
         alerts=alerts["alerts"],
         last_error=alerts["error"],
+        timezone=location_timezone(data),
     )
 
 ALERTS_PROVIDER_VALUES = ("auto", "nws", "pirateweather", "none")

@@ -194,6 +194,7 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "source": SOURCE,
         "current": normalized_current,
         "forecast": forecast,
+        "timezone": raw.get("timezone"),  # the location's (timezone=auto), such as Europe/Oslo
         "alerts": [],  # Open-Meteo does not provide official alerts
     }
 

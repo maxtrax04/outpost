@@ -207,7 +207,7 @@ By default the panel is hidden when there is nothing to show, and a one-line not
 
 To see how alerts look without waiting for real weather, use `OUTPOST_PROVIDER=mock` with `OUTPOST_MOCK_ALERTS=true`: the dashboard then always shows three sample alerts, one each of severe, moderate, and minor.
 
-The dashboard also shows today's sunrise and sunset (or "Midnight sun" / "Polar night" near the poles), calculated in the browser from your coordinates (no weather service needed). Times appear in the viewing device's time zone.
+The dashboard also shows today's sunrise and sunset (or "Midnight sun" / "Polar night" near the poles), calculated in the browser from your coordinates (no weather service needed). Times on the dashboard (sunrise and sunset, "Updated", and when alerts end) are shown as they are at the weather location, in the time zone the weather service reports (or the container's `TZ` setting for MET Norway). When the screen is in a different time zone, the zone is added, as in `4:12 PM GMT+1`, so it is clear whose time it is.
 
 ## Phones, tablets, and tall screens
 

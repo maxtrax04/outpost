@@ -1,5 +1,6 @@
 // Outpost clock: 12- or 24-hour times on every theme.
-// Sets data-clock="auto", "12", or "24" on <html>; app.js formats times with time() and dateTime().
+// Sets data-clock="auto", "12", or "24" on <html>; app.js formats times with time() and dateTime(),
+// in the weather location's time zone (setZone), labelled when it differs from the viewer's.
 //
 // Which setting is used, in order:
 //   1. ?clock=12 or ?clock=24 in the address (?clock=auto for the browser's own)
@@ -82,14 +83,74 @@
         return choice === "auto" ? browserDefault(locales) : choice;
     }
 
-    function time(date, choice = current, locales = []) {
-        return date.toLocaleTimeString(locales, { hour: "numeric", minute: "2-digit", ...options(choice) });
+    // ---- The location's time zone --------------------------------------------------------------
+    // Times are shown as they are at the weather location (weather.json "timezone"), so a dashboard
+    // for a faraway place shows its sunrise in that place's time. When that differs from the viewer's
+    // own time zone, the zone's short name is added ("4:12 PM GMT+1"), so it is clear whose time it is.
+
+    let zone = null;
+
+    // An IANA name this browser knows, such as "Europe/Oslo", or null
+    function validZone(name) {
+        if (typeof name !== "string" || !name.trim()) return null;
+        try {
+            new Intl.DateTimeFormat("en-US", { timeZone: name.trim() });
+            return name.trim();
+        } catch (error) {
+            return null;
+        }
     }
 
-    function dateTime(date, choice = current, locales = []) {
-        return date.toLocaleString(locales, {
-            month: "short", day: "numeric", hour: "numeric", minute: "2-digit", ...options(choice)
+    // Sets the location's time zone (null or unknown: the viewer's own); returns what is used
+    function setZone(name) {
+        zone = validZone(name);
+        return zone;
+    }
+
+    function getZone() {
+        return zone;
+    }
+
+    // The UTC offset of a time zone at a moment, as "GMT+01:00" (undefined: the viewer's own)
+    function offsetAt(date, timeZone) {
+        try {
+            const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" }).formatToParts(date);
+            const part = parts.find((item) => item.type === "timeZoneName");
+            return part ? part.value : null;
+        } catch (error) {
+            return null;  // an older browser: no label rather than a wrong one
+        }
+    }
+
+    // True when the location's clock shows a different time than the viewer's at that moment
+    function differs(date, timeZone = zone) {
+        if (!timeZone) return false;
+        const there = offsetAt(date, timeZone);
+        return there !== null && there !== offsetAt(date, undefined);
+    }
+
+    // Extra toLocale*String options for showing a moment in the location's time
+    function zoneOptions(date, timeZone = zone, label = true) {
+        if (!timeZone) return {};
+        return label && differs(date, timeZone) ? { timeZone, timeZoneName: "short" } : { timeZone };
+    }
+
+    function time(date, choice = current, locales = [], timeZone = zone) {
+        return date.toLocaleTimeString(locales, {
+            hour: "numeric", minute: "2-digit", ...options(choice), ...zoneOptions(date, timeZone)
         });
+    }
+
+    function dateTime(date, choice = current, locales = [], timeZone = zone) {
+        return date.toLocaleString(locales, {
+            month: "short", day: "numeric", hour: "numeric", minute: "2-digit", ...options(choice),
+            ...zoneOptions(date, timeZone)
+        });
+    }
+
+    // A date (no time) as it is at the location, for example for the subtitle's {date}
+    function day(date, format, locales = [], timeZone = zone) {
+        return date.toLocaleDateString(locales, { ...format, ...zoneOptions(date, timeZone, false) });
     }
 
     // Applies the setting to the page; returns what choose() decided
@@ -134,7 +195,8 @@
 
     const api = {
         STORAGE_KEY, pick, toggleAllowed, readSaved, writeSaved, choose, options, browserDefault,
-        effective, time, dateTime, apply, savedChoice, toggle, clear,
+        effective, time, dateTime, day, apply, savedChoice, toggle, clear,
+        validZone, setZone, getZone, offsetAt, differs, zoneOptions,
     };
 
     root.OutpostClock = api;

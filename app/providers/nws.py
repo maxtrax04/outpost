@@ -114,6 +114,7 @@ def get_point(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
     point = {
         "forecast_url": props["forecast"],
         "stations_url": props.get("observationStations"),
+        "time_zone": props.get("timeZone"),
         "station_ids": None,
     }
     _point_cache[key] = (time.time() + POINT_CACHE_SECONDS, point)
@@ -380,7 +381,9 @@ def fetch(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
     observation = _fresh_observation(point, user_agent)
 
     # A failed alert lookup must not look like "no alerts", so let it fail the update
-    return normalize(periods, observation, _alert_features(latitude, longitude, user_agent))
+    data = normalize(periods, observation, _alert_features(latitude, longitude, user_agent))
+    data["timezone"] = point.get("time_zone")  # the location's, such as America/Chicago
+    return data
 
 
 def _alert_features(latitude: float, longitude: float, user_agent: str) -> List[Dict[str, Any]]:

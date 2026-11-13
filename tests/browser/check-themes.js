@@ -183,8 +183,10 @@ async function checkClock(browser) {
         await waitFor(page, () => /\d/.test(document.getElementById("lastUpdated").textContent), null, 3000);
         return updated();
     };
-    const is12 = (text) => /\d\s?[AP]M$/i.test(text);
-    const is24 = (text) => /\b\d\d:\d\d$/.test(text);
+    // A time may end with the location's zone ("12:29 PM GMT+9") when it differs from the browser's
+    const withoutZone = (text) => text.replace(/\s+(GMT|UTC)[+-]?[\d:]*$|\s+(?!AM$|PM$)[A-Z]{2,5}$/, "");
+    const is12 = (text) => /\d\s?[AP]M$/i.test(withoutZone(text));
+    const is24 = (text) => /\b\d\d:\d\d$/.test(withoutZone(text));
 
     let text = await open("/");
     if (!is12(text)) problems.push(`a US English browser showed "${text}", expected a 12-hour time`);
@@ -195,7 +197,7 @@ async function checkClock(browser) {
     await open("/");
     await page.click("#themeButton");
     await page.click("#clockToggle");
-    if (!await waitFor(page, () => /\b\d\d:\d\d$/.test(document.getElementById("lastUpdated").textContent), null, 3000)) {
+    if (!await waitFor(page, () => /\b\d\d:\d\d(\s+(GMT|UTC)[+-]?[\d:]*|\s+(?!AM$|PM$)[A-Z]{2,5})?$/.test(document.getElementById("lastUpdated").textContent), null, 3000)) {
         problems.push(`the 24-hour clock checkbox did not change the times ("${await updated()}")`);
     }
     if (await page.getAttribute("#clockToggle", "aria-checked") !== "true") problems.push("the clock checkbox is not shown as checked");
@@ -203,7 +205,7 @@ async function checkClock(browser) {
     if (!is24(text)) problems.push(`the clock choice was not remembered after a reload ("${text}")`);
     await page.click("#themeButton");
     await page.click("#themeReset");
-    if (!await waitFor(page, () => /\d\s?[AP]M$/i.test(document.getElementById("lastUpdated").textContent), null, 3000)) {
+    if (!await waitFor(page, () => /\d\s?[AP]M(\s+(GMT|UTC)[+-]?[\d:]*|\s+[A-Z]{2,5})?$/i.test(document.getElementById("lastUpdated").textContent), null, 3000)) {
         problems.push(`"Use server default" did not bring back 12-hour times ("${await updated()}")`);
     }
     await context.close();

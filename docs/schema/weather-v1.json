@@ -6,7 +6,7 @@
   "type": "object",
   "required": [
     "$schema", "schema_version", "status", "app", "version", "provider", "sources", "location", "coordinates",
-    "generated_at", "update_interval_seconds", "units", "current", "forecast", "alerts", "last_error"
+    "timezone", "generated_at", "update_interval_seconds", "units", "current", "forecast", "alerts", "last_error"
   ],
   "properties": {
     "$schema": { "type": "string", "description": "This schema's address, for editors that check the file." },
@@ -47,6 +47,7 @@
         "longitude": { "type": "number" }
       }
     },
+    "timezone": { "type": ["string", "null"], "description": "The location's IANA time zone, such as Europe/Oslo, for showing times as they are there. null when unknown." },
     "generated_at": { "type": "string", "format": "date-time", "description": "When the data was last fetched successfully (left unchanged while degraded)." },
     "update_interval_seconds": { "type": "integer", "minimum": 1 },
     "units": {

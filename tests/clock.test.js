@@ -91,3 +91,39 @@ test("dates with times follow the clock too", () => {
     assert.match(clock.dateTime(afternoon, "24", "en-US"), /^Nov 8, 13:05$/);
     assert.match(clock.dateTime(afternoon, "12", "en-US"), /^Nov 8, 1:05\sPM$/);
 });
+
+// ---- The location's time zone (these tests run with TZ=UTC, so the viewer is in UTC) ----
+
+test("times are shown in the location's time zone, labelled when it differs from the viewer's", (t) => {
+    t.after(() => clock.setZone(null));
+    const moment = new Date("2026-11-13T20:00:00Z");
+    assert.strictEqual(clock.setZone("America/Chicago"), "America/Chicago");
+    assert.strictEqual(clock.time(moment, "24", "en-US"), "14:00 CST");
+    assert.strictEqual(clock.time(moment, "12", "en-US"), "2:00 PM CST");
+    assert.match(clock.dateTime(moment, "24", "en-US"), /^Nov 13, 14:00 CST$/);
+});
+
+test("no label when the location keeps the viewer's time", (t) => {
+    t.after(() => clock.setZone(null));
+    const winter = new Date("2026-01-15T12:00:00Z");
+    clock.setZone("Europe/London");  // UTC+0 in winter, like the viewer
+    assert.strictEqual(clock.time(winter, "24", "en-US"), "12:00");
+    assert.strictEqual(clock.differs(new Date("2026-07-15T12:00:00Z")), true);  // but not in summer
+});
+
+test("without a known zone, times are the viewer's own", (t) => {
+    t.after(() => clock.setZone(null));
+    const moment = new Date("2026-11-13T20:00:00Z");
+    for (const value of [null, undefined, "", "Not/AZone", 42]) {
+        assert.strictEqual(clock.setZone(value), null);
+        assert.strictEqual(clock.time(moment, "24", "en-US"), "20:00");
+    }
+});
+
+test("the date follows the location, without a label", (t) => {
+    t.after(() => clock.setZone(null));
+    const lateEvening = new Date("2026-11-13T23:30:00Z");
+    clock.setZone("Asia/Tokyo");
+    assert.strictEqual(clock.day(lateEvening, { weekday: "long", month: "long", day: "numeric" }, "en-US"),
+        "Saturday, November 14");
+});
