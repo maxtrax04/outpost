@@ -6,7 +6,7 @@
 
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
-> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo and National Weather Service data. More providers are in progress. Expect breaking changes until 1.0.
+> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo, National Weather Service, and MET Norway data. More providers are in progress. Expect breaking changes until 1.0.
 
 <!-- TODO (public beta): add a hero screenshot here, e.g.
 ![Outpost dashboard](docs/images/dashboard.png)
@@ -91,7 +91,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
-| `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`. It is sent in the User-Agent header. |
+| `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`, and required by `metno`. It is sent in the User-Agent header. |
 | `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>)`). |
 | `OUTPOST_FRAME_ANCESTORS` | *(empty)* | Comma-separated list of sites allowed to show Outpost in a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. Empty allows only Outpost itself. See [SECURITY.md](SECURITY.md#security-headers). |
 | `OUTPOST_WEB_PORT` | `8088` | Host port for the web UI (Compose only). |
@@ -106,11 +106,11 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 | [Open-Meteo](https://open-meteo.com) | `openmeteo` | No | Available (recommended default) |
 | [National Weather Service](https://www.weather.gov/documentation/services-web-api) | `nws` | No | Available (US only, includes alerts) |
 | Auto | `auto` | No | Available (NWS in the US, Open-Meteo elsewhere) |
-| [MET Norway](https://api.met.no) | `metno` | No | Planned |
+| [MET Norway](https://api.met.no) | `metno` | No | Available (worldwide, best in the Nordic countries) |
 | [Pirate Weather](https://pirateweather.net) | `pirateweather` | Yes | Planned |
 | [OpenWeatherMap](https://openweathermap.org) | `openweathermap` | Yes | Planned |
 
-The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, anything NWS leaves empty (UV index, and any reading a station is missing) is filled in from Open-Meteo, and the footer credits both sources. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
+The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, anything NWS leaves empty (UV index, and any reading a station is missing) is filled in from Open-Meteo, and the footer credits both sources. MET Norway requires `OUTPOST_CONTACT` (it refuses requests that don't say who is asking) and credit, which the footer gives; its data is shared under CC BY 4.0. Outpost downloads its forecast only when it has changed (MET Norway says when, about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so "now" is the forecast for this hour, visibility shows `--`, and UV index is for a clear sky. Forecast days follow the container's `TZ` setting, so set it to your time zone. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
 
 ## Data and storage
 

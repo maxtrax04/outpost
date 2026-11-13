@@ -10,7 +10,7 @@ import helpers
 from helpers import ROOT, load_fixture
 
 import outpost_updater as u
-from providers import nws, openmeteo
+from providers import metno, nws, openmeteo
 
 DIM_VARS = ["OUTPOST_AUTO_DIM", "OUTPOST_DIM_LEVEL", "OUTPOST_DIM_MODE", "OUTPOST_DIM_START", "OUTPOST_DIM_END"]
 UI_VARS = ["OUTPOST_SUBTITLE", "OUTPOST_ALERTS_ALWAYS_SHOW", "OUTPOST_THEME_SWITCHER", "OUTPOST_EFFECTS", "OUTPOST_EFFECTS_TOGGLE"]
@@ -26,6 +26,14 @@ def nws_data():
 
 def openmeteo_data():
     return openmeteo.normalize(load_fixture("openmeteo.json"))
+
+
+def metno_data():
+    # At the time the sample was taken, so the result does not change as the real date moves on
+    from datetime import timezone as tz
+    from zoneinfo import ZoneInfo
+    return metno.normalize(load_fixture("metno.json"), now=datetime(2026, 11, 13, 1, 30, tzinfo=tz.utc),
+                           zone=ZoneInfo("Europe/Oslo"))
 
 
 class UpdaterTestCase(unittest.TestCase):
@@ -308,6 +316,33 @@ class FormatTests(UpdaterTestCase):
         for system in ("imperial", "metric"):
             with self.subTest(system=system), mock.patch.object(u, "UNITS", system):
                 self.assertEqual(u.build_mock_payload()["units"], u.units.block(system))
+
+
+class MetNorwayTests(UpdaterTestCase):
+    def test_metno(self):
+        with mock.patch.object(u, "PROVIDER", "metno"), mock.patch.object(u.metno, "fetch", return_value=metno_data()) as fetch:
+            u.update_once()
+        fetch.assert_called_once_with(u.LATITUDE, u.LONGITUDE, u.USER_AGENT)
+        data = self.output()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["sources"]["weather"], {"id": "metno", "name": "MET Norway (met.no)"})
+        self.assertIsNone(data["sources"]["alerts"])  # outside NWS coverage in these tests
+        self.assertEqual(len(data["forecast"]), 5)
+
+    def test_metno_asks_for_contact_information(self):
+        with mock.patch.object(u, "CONTACT", ""), mock.patch.object(u, "USER_AGENT", "Outpost/1"), \
+                mock.patch.object(u, "PROVIDER", "metno"), mock.patch.object(u.metno, "fetch", return_value=metno_data()):
+            u.update_once()
+        printed = " ".join(str(arg) for call in self.print.call_args_list for arg in call.args)
+        self.assertIn("MET Norway asks for one", printed)
+
+    def test_metno_failure_keeps_the_last_good_data(self):
+        with mock.patch.object(u, "PROVIDER", "metno"):
+            with mock.patch.object(u.metno, "fetch", return_value=metno_data()):
+                u.update_once()
+            with mock.patch.object(u.metno, "fetch", side_effect=RuntimeError("MET Norway HTTP 503")):
+                u.update_once()
+        self.assertEqual(self.output()["status"], "degraded")
 
 
 class AutoProviderTests(UpdaterTestCase):

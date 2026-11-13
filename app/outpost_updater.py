@@ -1,22 +1,10 @@
 #!/usr/bin/env python3
 """
-Outpost updater - Phase 1
+Outpost updater.
 
-Purpose:
-- Validate Docker build
-- Validate Docker Compose startup
-- Validate volume writes
-- Validate Nginx can serve generated JSON
-- Validate browser dashboard can consume normalized JSON
-
-Phase 1 Provider:
-- mock
-
-Future Providers:
-- openmeteo
-- pirateweather
-- metno
-- openweathermap
+Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, or auto) and alerts from
+OUTPOST_ALERTS_PROVIDER, and writes /data/weather.json (docs/data-format.md) and /data/config.json
+for the dashboard. On a failed update the last good data is kept, marked degraded.
 """
 
 import argparse
@@ -31,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import units
-from providers import gapfill, nws, openmeteo
+from providers import gapfill, metno, nws, openmeteo
 
 DATA_PATH = Path("/data/weather.json")
 
@@ -441,6 +429,7 @@ CAPABILITIES = {
     "mock": frozenset({"current", "forecast", "alerts", "uv"}),
     "openmeteo": openmeteo.CAPABILITIES,
     "nws": nws.CAPABILITIES,
+    "metno": metno.CAPABILITIES,
 }
 
 def mock_data() -> Dict[str, Any]:
@@ -690,6 +679,9 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
     if PROVIDER == "nws":
         warn_about_user_agent()
         return "nws", nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    if PROVIDER == "metno":
+        warn_about_user_agent("MET Norway")
+        return "metno", metno.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     if PROVIDER == "auto":
         # National Weather Service inside the US, Open-Meteo everywhere else
         warn_about_user_agent()
@@ -698,7 +690,7 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
         except nws.NoCoverageError:
             return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     raise RuntimeError(
-        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, or auto."
+        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, or auto."
     )
 
 def can_keep_previous(previous: Dict[str, Any]) -> bool:
@@ -763,15 +755,15 @@ def has_contact_info() -> bool:
     """True if a contact was configured (an advanced User-Agent override counts if it contains one)."""
     return bool(CONTACT) or "@" in USER_AGENT or "http" in USER_AGENT.lower()
 
-def warn_about_user_agent() -> None:
-    """The National Weather Service asks every client to include contact information."""
+def warn_about_user_agent(service: str = "The National Weather Service") -> None:
+    """The National Weather Service and MET Norway ask every client to include contact information."""
     global _warned_user_agent
     if _warned_user_agent:
         return
     _warned_user_agent = True
     if not has_contact_info():
         print(
-            "[Outpost] Warning: no contact information is set. The National Weather Service asks for one. "
+            f"[Outpost] Warning: no contact information is set. {service} asks for one. "
             "Set OUTPOST_CONTACT to an email address or website, for example OUTPOST_CONTACT=you@example.com",
             file=sys.stderr,
             flush=True
