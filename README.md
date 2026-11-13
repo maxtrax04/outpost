@@ -71,7 +71,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 |---|---|---|
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
 | `OUTPOST_PIRATEWEATHER_API_KEY` | *(empty)* | Your free [Pirate Weather](https://pirateweather.net) API key, for `pirateweather`, or for `auto` to use Pirate Weather outside the Nordic countries and the US (and as a fallback there). Keep it private; it is only sent to Pirate Weather. |
-| `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own; else NWS in the US; else Pirate Weather when you have a key), `nws`, `pirateweather`, or `none`. See [Alerts](#alerts). |
+| `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own; else NWS in the US; else MET Norway in Norway; else Pirate Weather when you have a key), `nws`, `metno`, `pirateweather`, or `none`. See [Alerts](#alerts). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
 | `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
 | `OUTPOST_COMMUNITY_THEMES` | (empty) | Community themes to download when the container starts, as `username/theme` separated by commas. See [Community themes](#community-themes). |
@@ -115,7 +115,7 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 
 | Your location | Weather from | Filled in from | Alerts (with `OUTPOST_ALERTS_PROVIDER=auto`) |
 |---|---|---|---|
-| Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, Jan Mayen | MET Norway (if it fails: Pirate Weather with a key, then Open-Meteo once the data is stale) | Open-Meteo (visibility, later UV) | Pirate Weather with a key, else none (NWS is not asked) |
+| Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, Jan Mayen | MET Norway (if it fails: Pirate Weather with a key, then Open-Meteo once the data is stale) | Open-Meteo (visibility, later UV) | MET Norway in Norway; elsewhere Pirate Weather with a key, else none (NWS is not asked) |
 | The United States and its territories | National Weather Service (if it fails: Pirate Weather with a key, then Open-Meteo once the data is stale) | Open-Meteo (UV, missing station readings) | National Weather Service |
 | Everywhere else, with `OUTPOST_PIRATEWEATHER_API_KEY` set | Pirate Weather (Open-Meteo if it fails) | Open-Meteo, for anything missing | Pirate Weather |
 | Everywhere else, without a key | Open-Meteo | (nothing missing) | None |
@@ -196,8 +196,9 @@ Scanlines, glow, and animation can be turned off in every theme, which helps rea
 
 The Alerts panel lists active weather warnings. `OUTPOST_ALERTS_PROVIDER` picks where they come from:
 
-- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US (including Alaska, Hawaii, and the territories). Outside the US, if you have set `OUTPOST_PIRATEWEATHER_API_KEY`, alerts come from Pirate Weather. Otherwise the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes), except in the Nordic countries, which Outpost recognizes by itself. Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
+- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US (including Alaska, Hawaii, and the territories). In Norway (including Svalbard and Jan Mayen), they come from MET Norway, which issues Norway's official warnings. Outside the US, if you have set `OUTPOST_PIRATEWEATHER_API_KEY`, alerts come from Pirate Weather. Otherwise the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes), except in the Nordic countries, which Outpost recognizes by itself. Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
 - **`nws`:** always from the National Weather Service, whatever the weather provider. Outside the US there are none, and the log says so once.
+- **`metno`:** always MET Norway's warnings (MetAlerts), the official ones for Norway, for land (not the gale warnings for sea areas). Outpost works out from your coordinates whether you are in Norway, since MET Norway has no warnings elsewhere; outside Norway there are none, and the log says so once.
 - **`pirateweather`:** always from Pirate Weather (needs `OUTPOST_PIRATEWEATHER_API_KEY`). Pirate Weather passes on the official warnings that national weather services publish to the WMO's global alert hub (in Europe through MeteoAlarm), plus the National Weather Service's for the lower 48 US states. Which countries take part changes over time, and an empty list looks the same whether there are no alerts or your country isn't covered, so the dashboard then says "none reported by Pirate Weather" rather than "none". Alerts are in the language the weather service published them in. If you also get the weather from Pirate Weather, the alerts come in the same request and use none of your quota.
 - **`none`:** no alerts.
 

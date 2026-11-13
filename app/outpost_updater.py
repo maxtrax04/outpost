@@ -633,14 +633,16 @@ def build_live_payload(provider_name: str, data: Dict[str, Any],
         timezone=location_timezone(data),
     )
 
-ALERTS_PROVIDER_VALUES = ("auto", "nws", "pirateweather", "none")
+ALERTS_PROVIDER_VALUES = ("auto", "nws", "metno", "pirateweather", "none")
 
 def alerts_provider_setting(value: Optional[str]) -> str:
     """
     OUTPOST_ALERTS_PROVIDER: where official alerts come from.
       auto (default)   the weather provider's own (NWS); else NWS where it covers the location (the US);
-                       else Pirate Weather when OUTPOST_PIRATEWEATHER_API_KEY is set; else none
+                       else MET Norway in Norway; else Pirate Weather when OUTPOST_PIRATEWEATHER_API_KEY
+                       is set; else none
       nws              always the National Weather Service (US only)
+      metno            always MET Norway's warnings (Norway only)
       pirateweather    always Pirate Weather (needs OUTPOST_PIRATEWEATHER_API_KEY)
       none             no alerts
     """
@@ -649,7 +651,7 @@ def alerts_provider_setting(value: Optional[str]) -> str:
         return "auto"
     if value in ALERTS_PROVIDER_VALUES:
         return value
-    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, pirateweather, or none); using auto",
+    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, metno, pirateweather, or none); using auto",
           file=sys.stderr, flush=True)
     return "auto"
 
@@ -699,6 +701,12 @@ def nws_alerts() -> Dict[str, Any]:
     warn_about_user_agent()
     return result
 
+def metno_alerts() -> Dict[str, Any]:
+    """MET Norway's warnings (MetAlerts) for a location in Norway."""
+    result = lookup_alerts("metno", metno.ALERTS_SOURCE, lambda: metno.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT))
+    warn_about_user_agent("MET Norway")
+    return result
+
 def pirateweather_alerts() -> Dict[str, Any]:
     return lookup_alerts("pirateweather", pirateweather.SOURCE, lambda: pirateweather.fetch_alerts(
         LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
@@ -709,7 +717,8 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     {"source": sources.alerts entry or None, "alerts": [...], "error": message or None}.
 
     auto: the weather provider's own alerts; else NWS (the official source in the US, including
-    Alaska, Hawaii, and the territories); else Pirate Weather's when a key is set; else none.
+    Alaska, Hawaii, and the territories); else MET Norway's in Norway (the official source there);
+    else Pirate Weather's when a key is set; else none.
     """
     if ALERTS_PROVIDER == "none":
         return NO_ALERTS
@@ -720,6 +729,13 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
                              "OUTPOST_PIRATEWEATHER_API_KEY; showing no alerts")
             return NO_ALERTS
         return pirateweather_alerts()
+
+    if ALERTS_PROVIDER == "metno":
+        if not regions.in_norway(LATITUDE, LONGITUDE):
+            warn_alerts_once("metno-coverage", "OUTPOST_ALERTS_PROVIDER=metno, but MET Norway issues warnings "
+                             "only for Norway; showing no alerts")
+            return NO_ALERTS
+        return metno_alerts()
 
     own = own_alerts(provider_name, data)
     if own["source"] is not None and (ALERTS_PROVIDER == "auto" or provider_name == ALERTS_PROVIDER):
@@ -734,6 +750,8 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
             return NO_ALERTS
 
     # auto, outside the US
+    if regions.in_norway(LATITUDE, LONGITUDE):
+        return metno_alerts()
     if PIRATEWEATHER_API_KEY:
         return pirateweather_alerts()
     return NO_ALERTS

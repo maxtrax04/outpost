@@ -124,7 +124,11 @@ def fetch_raw(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
     """The Locationforecast JSON, from the cache until it expires, then revalidated with If-Modified-Since."""
     # MET Norway refuses coordinates with more than 4 decimals
     params = {"lat": f"{latitude:.4f}", "lon": f"{longitude:.4f}"}
-    url = f"{API_URL}?{urllib.parse.urlencode(params)}"
+    return _get_json(f"{API_URL}?{urllib.parse.urlencode(params)}", user_agent)
+
+
+def _get_json(url: str, user_agent: str) -> Dict[str, Any]:
+    """A MET Norway JSON document, kept until its Expires time and then revalidated with If-Modified-Since."""
     now = time.time()
     cached = _cache.get(url)
     if cached and now < cached["expires"]:
@@ -301,3 +305,74 @@ def normalize(raw: Dict[str, Any], longitude: float = 0.0, now: Optional[datetim
 def fetch(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
     """Fetch (or reuse, while it is still current) and normalize the forecast for a location."""
     return normalize(fetch_raw(latitude, longitude, user_agent), longitude)
+
+
+# ---------------------------------------------------------------- alerts (MetAlerts)
+#
+# Docs: https://api.met.no/weatherapi/metalerts/2.0/documentation
+# MET Norway's official weather warnings for Norway, for one location. Outside Norway the list is
+# always empty, so the updater asks only for locations in Norway (regions.in_norway). Only warnings
+# for land are used: the marine ones (gale for sea areas) are for boats.
+
+ALERTS_URL = "https://api.met.no/weatherapi/metalerts/2.0/current.json"
+ALERTS_SOURCE = "MET Norway (met.no)"
+MAX_ALERTS = 5
+SEVERITY_ORDER = {"extreme": 0, "severe": 1, "moderate": 2, "minor": 3, "unknown": 4}
+# Awareness colours, in case a warning has no CAP severity
+COLOUR_SEVERITY = {"red": "extreme", "orange": "severe", "yellow": "moderate", "green": "minor"}
+
+
+def _alert_severity(props: Dict[str, Any]) -> str:
+    severity = str(props.get("severity") or "").strip().lower()
+    if severity in SEVERITY_ORDER and severity != "unknown":
+        return severity
+    colour = str(props.get("riskMatrixColor") or "").strip().lower()
+    if not colour:
+        # "2; yellow; Moderate"
+        parts = [part.strip().lower() for part in str(props.get("awareness_level") or "").split(";")]
+        colour = parts[1] if len(parts) > 1 else ""
+    return COLOUR_SEVERITY.get(colour, "unknown")
+
+
+def _clean(value: Any) -> str:
+    return " ".join(value.split()) if isinstance(value, str) else ""
+
+
+def build_alerts(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Outpost's alert format, most serious first: actual, current warnings only (not tests or cancellations)."""
+    alerts: List[Dict[str, Any]] = []
+    seen = set()
+    for feature in (raw or {}).get("features") or []:
+        props = (feature or {}).get("properties") or {}
+        if not props or props.get("status", "Actual") != "Actual" or props.get("type") == "Cancel":
+            continue
+        title = (_clean(props.get("eventAwarenessName")) or _clean(props.get("event"))
+                 or _clean(props.get("title")).split(",")[0])
+        if not title:
+            continue
+        area = _clean(props.get("area"))
+        description = _clean(props.get("description")) or _clean(props.get("consequences"))
+        if area:
+            description = f"{area}: {description}" if description else area
+        interval = ((feature or {}).get("when") or {}).get("interval") or []
+        expires = interval[1] if len(interval) > 1 and isinstance(interval[1], str) else None
+        key = (title.lower(), expires, area.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        web = _clean(props.get("web"))
+        alerts.append({
+            "title": title,
+            "description": description,
+            "severity": _alert_severity(props),
+            "expires": expires,
+            "uri": web if web.startswith(("https://", "http://")) else None,
+        })
+    alerts.sort(key=lambda alert: SEVERITY_ORDER[alert["severity"]])
+    return alerts[:MAX_ALERTS]
+
+
+def fetch_alerts(latitude: float, longitude: float, user_agent: str) -> List[Dict[str, Any]]:
+    """MET Norway's land warnings for a location in Norway, in English, cached like the forecast."""
+    params = {"lat": f"{latitude:.4f}", "lon": f"{longitude:.4f}", "lang": "en", "geographicDomain": "land"}
+    return build_alerts(_get_json(f"{ALERTS_URL}?{urllib.parse.urlencode(params)}", user_agent))
