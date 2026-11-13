@@ -206,6 +206,7 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "source": SOURCE,
         "current": build_current(currently),
         "forecast": build_forecast(days, _zone(raw)),
+        "timezone": raw.get("timezone"),  # the location's, such as America/Chicago
         "alerts": [],
     }
 

@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.6] - 2026-11-13
+
+### Changed
+
+- Times on the dashboard (sunrise and sunset, "Updated", alert end times, and `{date}` and `{time}` in the subtitle) are now shown as they are at the weather location, not in the viewing device's time zone. A dashboard for a cabin in another time zone, opened from home, shows the cabin's sunset in the cabin's time. When the screen's own time zone differs, the zone is added, as in `4:12 PM GMT+1`. On a screen in the same time zone nothing changes.
+
+### Added
+
+- `timezone` in `weather.json`: the location's time zone, such as `Europe/Oslo`, from the weather service (Open-Meteo, the National Weather Service, Pirate Weather), or else the container's `TZ` setting (MET Norway, mock data). See `docs/data-format.md`.
+
 ## [0.6.0-beta.5] - 2026-11-13
 
 ### Added

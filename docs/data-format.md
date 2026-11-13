@@ -40,6 +40,7 @@ always matches its `schema_version`.
   },
   "location": "Cinder Flats",
   "coordinates": { "latitude": 10.0, "longitude": 20.0 },
+  "timezone": "America/Chicago",
   "generated_at": "2026-11-12T15:04:05.123456+00:00",
   "update_interval_seconds": 60,
   "units": { "system": "imperial", "temperature": "°F", "speed": "mph", "pressure": "inHg", "distance": "mi" },
@@ -94,6 +95,7 @@ Any reading can be `null` when the source doesn't have it.
 | `sources` | Where the data came from (below). |
 | `location` | `OUTPOST_LOCATION_NAME`. |
 | `coordinates` | `latitude` and `longitude` from the settings. |
+| `timezone` | The location's time zone, such as `Europe/Oslo`, from the weather service (Open-Meteo, NWS, Pirate Weather) or else the container's `TZ` setting. The dashboard shows times in it. `null` when unknown. |
 | `generated_at` | When the data was fetched, as an ISO 8601 time in UTC. |
 | `update_interval_seconds` | How often the updater runs. The dashboard calls data old after three missed updates. |
 | `units` | The unit of each kind of reading (below). |

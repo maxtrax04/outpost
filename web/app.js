@@ -240,7 +240,7 @@ function renderSubtitle(config) {
     const now = new Date();
 
     const text = template
-        .replaceAll("{date}", now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }))
+        .replaceAll("{date}", OutpostClock.day(now, { weekday: "long", month: "long", day: "numeric" }))
         .replaceAll("{time}", OutpostClock.time(now));
 
     element.textContent = text;
@@ -255,6 +255,8 @@ async function loadWeather(config) {
         }
 
         const weather = await response.json();
+        // Times are shown as they are at the weather location (see clock.js)
+        OutpostClock.setZone(weather.timezone);
         const current = weather.current || {};
         const units = OutpostData.units(weather);
 
@@ -366,9 +368,10 @@ async function refresh() {
     OutpostClock.apply(config);
     await applyTheme(config);
     renderThemeSwitcher(config);
+    // Weather first: it says which time zone the times below are shown in
+    await loadWeather(config);
     renderSubtitle(config);
     renderSun(config);
-    await loadWeather(config);
     OutpostFit.start();
 }
 
