@@ -41,6 +41,8 @@ FORECAST_DAYS = 5
 MIN_CACHE_SECONDS = 600
 # After "quota reached", wait at most this long before trying again (the reset time is usually sent)
 MAX_QUOTA_WAIT_SECONDS = 24 * 3600
+# After the key is refused, wait this long before trying it again
+REFUSED_KEY_WAIT_SECONDS = 600
 
 HPA_TO_INHG = 0.02952998
 
@@ -67,6 +69,7 @@ MAX_SUMMARY_LENGTH = 30
 _cache: Dict[str, Dict[str, Any]] = {}
 # No requests before this time (after the monthly quota ran out)
 _blocked_until = 0.0
+_blocked_reason = ""
 
 
 def describe(icon: Optional[str], summary: Any = None) -> Tuple[str, str]:
@@ -93,7 +96,7 @@ def _seconds(value: Any) -> Optional[float]:
 
 def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
     """The forecast JSON, kept for at least MIN_CACHE_SECONDS."""
-    global _blocked_until
+    global _blocked_until, _blocked_reason
 
     if not api_key:
         raise RuntimeError("Pirate Weather needs an API key: set OUTPOST_PIRATEWEATHER_API_KEY")
@@ -106,7 +109,7 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
     if cached and now < cached["expires"]:
         return cached["raw"]
     if now < _blocked_until:
-        raise RuntimeError("Pirate Weather monthly quota reached; waiting for it to reset")
+        raise RuntimeError(_blocked_reason)
 
     request = urllib.request.Request(url, headers={"apikey": api_key, "User-Agent": user_agent,
                                                    "Accept": "application/json"})
@@ -117,12 +120,18 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
             return raw
     except urllib.error.HTTPError as error:
         if error.code == 401:
-            raise RuntimeError("Pirate Weather HTTP 401: the API key was refused (check "
-                               "OUTPOST_PIRATEWEATHER_API_KEY, and that the key is subscribed to the forecast API)") from error
+            # A refused key does not fix itself, but a newly subscribed one can take up to 20 minutes
+            # to start working, so try again after a while rather than on every update
+            _blocked_until = now + REFUSED_KEY_WAIT_SECONDS
+            _blocked_reason = ("Pirate Weather refused the API key (check OUTPOST_PIRATEWEATHER_API_KEY, and that the "
+                               "key is subscribed to the forecast API); trying again in "
+                               f"{REFUSED_KEY_WAIT_SECONDS // 60} minutes")
+            raise RuntimeError(f"Pirate Weather HTTP 401: {_blocked_reason}") from error
         if error.code == 429:
             reset = _seconds((error.headers or {}).get("Ratelimit-Reset"))
             wait = min(reset, MAX_QUOTA_WAIT_SECONDS) if reset and reset > 0 else 3600
             _blocked_until = now + wait
+            _blocked_reason = "Pirate Weather monthly quota reached; waiting for it to reset"
             raise RuntimeError(f"Pirate Weather HTTP 429: monthly quota reached; trying again in {int(wait // 60)} minutes") from error
         raise RuntimeError(f"Pirate Weather HTTP {error.code}: {error.reason}") from error
     except urllib.error.URLError as error:

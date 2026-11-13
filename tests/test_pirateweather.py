@@ -98,6 +98,7 @@ class RequestTests(unittest.TestCase):
     def setUp(self):
         pirateweather._cache.clear()
         mock.patch.object(pirateweather, "_blocked_until", 0.0).start()
+        mock.patch.object(pirateweather, "_blocked_reason", "").start()
         self.addCleanup(pirateweather._cache.clear)
         self.addCleanup(mock.patch.stopall)
         self.requests = []
@@ -162,6 +163,18 @@ class RequestTests(unittest.TestCase):
         self.assertIn("OUTPOST_PIRATEWEATHER_API_KEY", str(caught.exception))
         self.assertNotIn(self.KEY, str(caught.exception))
 
+    def test_a_refused_key_is_not_tried_again_for_ten_minutes(self):
+        self.responses = [urllib.error.HTTPError("u", 401, "Unauthorized", headers(), None), self.ok()]
+        with self.assertRaisesRegex(RuntimeError, "refused"):
+            pirateweather.fetch_raw(1, 2, self.KEY, "ua")
+        self.clock += 540
+        with self.assertRaisesRegex(RuntimeError, "OUTPOST_PIRATEWEATHER_API_KEY"):
+            pirateweather.fetch_raw(1, 2, self.KEY, "ua")
+        self.assertEqual(len(self.requests), 1)
+        self.clock += 61
+        pirateweather.fetch_raw(1, 2, self.KEY, "ua")
+        self.assertEqual(len(self.requests), 2)
+
     def test_after_the_quota_runs_out_it_waits_for_the_reset(self):
         self.responses = [urllib.error.HTTPError("u", 429, "Too Many Requests", headers(Ratelimit_Reset="7200"), None),
                           self.ok()]
@@ -201,44 +214,68 @@ class UpdaterTests(UpdaterTestCase):
             with self.subTest(file=path.name):
                 self.assertNotIn("secret-key-123", path.read_text(encoding="utf-8"))
 
-    def run_auto(self, key, pirate=None, latitude=59.91, longitude=10.75):
+    OSLO = (59.91, 10.75)
+    KANSAS = (39.0, -98.0)
+    PARIS = (48.85, 2.35)
+
+    def run_auto(self, key, place, pirate=None, metno=None, nws_fetch=None):
+        latitude, longitude = place
+        outside_us = {"side_effect": nws.NoCoverageError("US only")}
         with mock.patch.object(u, "PROVIDER", "auto"), mock.patch.object(u, "PIRATEWEATHER_API_KEY", key), \
                 mock.patch.object(u, "LATITUDE", latitude), mock.patch.object(u, "LONGITUDE", longitude), \
                 mock.patch.object(u.pirateweather, "fetch", **(pirate or {"return_value": pirate_data()})) as pirate_fetch, \
-                mock.patch.object(u.metno, "fetch", return_value=metno_data()), \
-                mock.patch.object(u.nws, "fetch", return_value=nws_data()), \
+                mock.patch.object(u.metno, "fetch", **(metno or {"return_value": metno_data()})), \
+                mock.patch.object(u.nws, "fetch", **(nws_fetch or ({"return_value": nws_data()} if place == self.KANSAS
+                                                                   else outside_us))), \
                 mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()):
             u.update_once()
         return self.output(), pirate_fetch
 
-    def test_auto_tries_pirate_weather_first_when_a_key_is_set(self):
-        data, pirate_fetch = self.run_auto("k")
-        pirate_fetch.assert_called_once()
-        self.assertEqual(data["sources"]["weather"]["id"], "pirateweather")
+    def printed(self):
+        return " ".join(str(arg) for call in self.print.call_args_list for arg in call.args)
 
-    def test_auto_without_a_key_never_uses_it(self):
-        data, pirate_fetch = self.run_auto("")
+    def test_regional_specialists_come_first_even_with_a_key(self):
+        for place, expected in ((self.OSLO, "metno"), (self.KANSAS, "nws")):
+            with self.subTest(expected=expected):
+                data, pirate_fetch = self.run_auto("k", place)
+                pirate_fetch.assert_not_called()
+                self.assertEqual(data["sources"]["weather"]["id"], expected)
+
+    def test_elsewhere_a_key_means_pirate_weather_instead_of_open_meteo(self):
+        data, _ = self.run_auto("k", self.PARIS)
+        self.assertEqual(data["sources"]["weather"]["id"], "pirateweather")
+        data, pirate_fetch = self.run_auto("", self.PARIS)
         pirate_fetch.assert_not_called()
-        self.assertEqual(data["sources"]["weather"]["id"], "metno")
+        self.assertEqual(data["sources"]["weather"]["id"], "openmeteo")
 
-    def test_auto_falls_back_when_pirate_weather_fails(self):
-        data, _ = self.run_auto("k", pirate={"side_effect": RuntimeError("Pirate Weather HTTP 500")})
-        self.assertEqual(data["status"], "ok")
-        self.assertEqual(data["sources"]["weather"]["id"], "metno")  # the Nordic choice for this location
-        printed = " ".join(str(arg) for call in self.print.call_args_list for arg in call.args)
-        self.assertIn("Pirate Weather failed", printed)
-
-    def test_auto_in_the_us_with_pirate_weather_still_gets_nws_alerts(self):
-        self.nws_alerts.side_effect = None
-        self.nws_alerts.return_value = [{"title": "Flood Watch", "description": "", "severity": "moderate",
-                                         "expires": None, "uri": None}]
-        data, _ = self.run_auto("k", latitude=39.0, longitude=-98.0)
+    def test_pirate_weather_takes_over_when_a_specialist_fails(self):
+        data, _ = self.run_auto("k", self.OSLO, metno={"side_effect": RuntimeError("MET Norway HTTP 503")})
+        self.assertEqual((data["status"], data["sources"]["weather"]["id"]), ("ok", "pirateweather"))
+        self.assertIn("MET Norway failed", self.printed())
+        data, _ = self.run_auto("k", self.KANSAS, nws_fetch={"side_effect": RuntimeError("NWS HTTP 503")})
         self.assertEqual(data["sources"]["weather"]["id"], "pirateweather")
+
+    def test_without_a_key_a_specialist_failure_keeps_the_last_good_data(self):
+        self.run_auto("", self.OSLO)
+        data, _ = self.run_auto("", self.OSLO, metno={"side_effect": RuntimeError("MET Norway HTTP 503")})
+        self.assertEqual(data["status"], "degraded")
+        self.assertEqual(data["last_error"], "MET Norway HTTP 503")
+
+    def test_when_both_fail_the_specialists_error_is_reported(self):
+        self.run_auto("k", self.OSLO)
+        data, _ = self.run_auto("k", self.OSLO, metno={"side_effect": RuntimeError("MET Norway HTTP 503")},
+                                pirate={"side_effect": RuntimeError("Pirate Weather HTTP 500")})
+        self.assertEqual(data["status"], "degraded")
+        self.assertEqual(data["last_error"], "MET Norway HTTP 503")
+
+    def test_elsewhere_a_pirate_weather_failure_falls_back_to_open_meteo(self):
+        data, _ = self.run_auto("k", self.PARIS, pirate={"side_effect": RuntimeError("Pirate Weather HTTP 500")})
+        self.assertEqual((data["status"], data["sources"]["weather"]["id"]), ("ok", "openmeteo"))
+        self.assertIn("Pirate Weather failed", self.printed())
+
+    def test_in_the_us_alerts_stay_with_nws(self):
+        data, _ = self.run_auto("k", self.KANSAS)
         self.assertEqual(data["sources"]["alerts"]["id"], "nws")
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class AlertTests(unittest.TestCase):
@@ -353,3 +390,7 @@ class AlertOrderTests(UpdaterTestCase):
         self.assertEqual(data["status"], "degraded")
         self.assertEqual(data["alerts"], self.PIRATE_ALERTS)
         self.assertIsNotNone(data["current"]["temperature"])
+
+
+if __name__ == "__main__":
+    unittest.main()

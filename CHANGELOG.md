@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.7] - 2026-11-13
+
+### Changed
+
+- `OUTPOST_PROVIDER=auto` now prefers the regional specialists even when you have a Pirate Weather key: MET Norway in the Nordic countries and the National Weather Service in the US. Everywhere else it uses Pirate Weather with a key, and Open-Meteo without one (or if Pirate Weather fails). With a key, Pirate Weather also takes over for an update when MET Norway or the National Weather Service fails; without one, the last good data is kept as before. In beta.5 and beta.6, a key made `auto` use Pirate Weather everywhere. To keep using Pirate Weather in the Nordic countries or the US, set `OUTPOST_PROVIDER=pirateweather`.
+- When Pirate Weather refuses the API key, Outpost waits 10 minutes before trying it again, instead of asking on every update. A newly subscribed key can take up to 20 minutes to start working.
+
 ## [0.6.0-beta.6] - 2026-11-13
 
 ### Changed

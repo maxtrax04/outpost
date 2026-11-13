@@ -753,27 +753,57 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
     if PROVIDER == "pirateweather":
         return "pirateweather", pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT)
     if PROVIDER == "auto":
-        # Pirate Weather first when a key is set; otherwise (or if it fails) MET Norway in the Nordic
-        # countries, the National Weather Service in the US, and Open-Meteo everywhere else. Anything
-        # the provider leaves empty is filled from Open-Meteo.
-        if PIRATEWEATHER_API_KEY:
-            try:
-                return "pirateweather", with_gap_fill(
-                    pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
-            except Exception as error:
-                print(f"[Outpost] Pirate Weather failed, using the regular choice instead: {error}",
-                      file=sys.stderr, flush=True)
-        if regions.in_nordic_countries(LATITUDE, LONGITUDE):
-            warn_about_user_agent("MET Norway")
-            return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
-        warn_about_user_agent()
-        try:
-            return "nws", with_gap_fill(nws.fetch(LATITUDE, LONGITUDE, USER_AGENT))
-        except nws.NoCoverageError:
-            return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+        return fetch_auto()
     raise RuntimeError(
         f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, pirateweather, or auto."
     )
+
+def fetch_pirateweather() -> Tuple[str, Dict[str, Any]]:
+    return "pirateweather", with_gap_fill(pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
+
+def instead_of(specialist: str, error: Exception) -> Tuple[str, Dict[str, Any]]:
+    """
+    When the regional specialist (MET Norway or NWS) fails: Pirate Weather, if a key is set. Otherwise,
+    or if that fails too, the specialist's error stands, so the last good data is kept as degraded.
+    """
+    if not PIRATEWEATHER_API_KEY:
+        raise error
+    print(f"[Outpost] {specialist} failed ({error}); using Pirate Weather for this update", file=sys.stderr, flush=True)
+    try:
+        return fetch_pirateweather()
+    except Exception as pirate_error:
+        print(f"[Outpost] Pirate Weather failed too: {pirate_error}", file=sys.stderr, flush=True)
+        raise error
+
+def fetch_auto() -> Tuple[str, Dict[str, Any]]:
+    """
+    OUTPOST_PROVIDER=auto. The regional specialists first: MET Norway in the Nordic countries and the
+    National Weather Service in the US. Everywhere else Pirate Weather when a key is set, and
+    Open-Meteo otherwise (or if Pirate Weather fails). When a specialist fails, Pirate Weather (with a
+    key) takes over for that update. Anything the provider leaves empty is filled from Open-Meteo.
+    """
+    if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+        warn_about_user_agent("MET Norway")
+        try:
+            return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
+        except Exception as error:
+            return instead_of("MET Norway", error)
+
+    warn_about_user_agent()
+    try:
+        return "nws", with_gap_fill(nws.fetch(LATITUDE, LONGITUDE, USER_AGENT))
+    except nws.NoCoverageError:
+        pass
+    except Exception as error:
+        return instead_of("The National Weather Service", error)
+
+    if PIRATEWEATHER_API_KEY:
+        try:
+            return fetch_pirateweather()
+        except Exception as error:
+            print(f"[Outpost] Pirate Weather failed, using Open-Meteo for this update: {error}",
+                  file=sys.stderr, flush=True)
+    return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
 
 def can_keep_previous(previous: Dict[str, Any]) -> bool:
     """
