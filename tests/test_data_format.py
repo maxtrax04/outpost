@@ -15,7 +15,7 @@ from helpers import ROOT
 
 import outpost_updater as u
 from providers import openmeteo
-from test_updater import nws_data, openmeteo_data
+from test_updater import metno_data, nws_data, openmeteo_data
 
 SCHEMA = json.loads((ROOT / "docs" / "schema" / "weather-v1.json").read_text(encoding="utf-8"))
 SUPPORTED_KEYWORDS = {
@@ -127,6 +127,11 @@ class PayloadTests(unittest.TestCase):
 
     def test_nws_data(self):
         self.assertValid(u.build_live_payload("nws", nws_data()))
+
+    def test_met_norway_data(self):
+        self.assertValid(u.build_live_payload("metno", metno_data()))
+        with mock.patch.object(u, "UNITS", "metric"):
+            self.assertValid(u.build_live_payload("metno", metno_data()))
 
     def test_gap_filled_data(self):
         data, filled = u.gapfill.fill(nws_data(), openmeteo_data())

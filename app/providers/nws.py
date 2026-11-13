@@ -3,7 +3,8 @@ National Weather Service provider (api.weather.gov).
 
 Covers the United States and its territories only. Free, no API key.
 NWS asks for a User-Agent that identifies your app and how to reach you. Outpost builds it
-from the OUTPOST_CONTACT setting, for example:  Outpost/0.3.0 (you@example.com)
+from the OUTPOST_CONTACT setting, for example:
+  Outpost/0.6.0 (you@example.com; +https://github.com/maxtrax04/outpost)
 
 Data comes from four calls:
   1. /points/{lat},{lon}          -> forecast URL and nearby stations (cached)

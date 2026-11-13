@@ -1,22 +1,10 @@
 #!/usr/bin/env python3
 """
-Outpost updater - Phase 1
+Outpost updater.
 
-Purpose:
-- Validate Docker build
-- Validate Docker Compose startup
-- Validate volume writes
-- Validate Nginx can serve generated JSON
-- Validate browser dashboard can consume normalized JSON
-
-Phase 1 Provider:
-- mock
-
-Future Providers:
-- openmeteo
-- pirateweather
-- metno
-- openweathermap
+Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, or auto) and alerts from
+OUTPOST_ALERTS_PROVIDER, and writes /data/weather.json (docs/data-format.md) and /data/config.json
+for the dashboard. On a failed update the last good data is kept, marked degraded.
 """
 
 import argparse
@@ -30,8 +18,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import regions
 import units
-from providers import gapfill, nws, openmeteo
+from providers import gapfill, metno, nws, openmeteo
 
 DATA_PATH = Path("/data/weather.json")
 
@@ -127,16 +116,19 @@ def clean_header_text(name: str, value: str) -> str:
         return ""
     return value
 
+# Always in the User-Agent, so a weather service can see what Outpost is even without OUTPOST_CONTACT
+PROJECT_URL = "https://github.com/maxtrax04/outpost"
+
 def build_user_agent(version: str, contact: str = "", override: str = "") -> str:
     """
-    The User-Agent sent to weather services: "Outpost/<version> (<contact>)".
-    OUTPOST_USER_AGENT, if set, replaces the whole thing.
+    The User-Agent sent to weather services: "Outpost/<version> (<contact>; +<project page>)", or
+    "Outpost/<version> (+<project page>)" without a contact. OUTPOST_USER_AGENT, if set, replaces it all.
     """
     if override:
         return override
     if contact:
-        return f"Outpost/{version} ({contact})"
-    return f"Outpost/{version}"
+        return f"Outpost/{version} ({contact}; +{PROJECT_URL})"
+    return f"Outpost/{version} (+{PROJECT_URL})"
 
 def load_contact_settings() -> Tuple[str, str]:
     """Returns (contact, user_agent) from OUTPOST_CONTACT and OUTPOST_USER_AGENT."""
@@ -441,6 +433,7 @@ CAPABILITIES = {
     "mock": frozenset({"current", "forecast", "alerts", "uv"}),
     "openmeteo": openmeteo.CAPABILITIES,
     "nws": nws.CAPABILITIES,
+    "metno": metno.CAPABILITIES,
 }
 
 def mock_data() -> Dict[str, Any]:
@@ -667,6 +660,9 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     # The weather provider has no alerts (or another source was asked for): ask NWS separately
     nws_source = source_entry("nws", nws.SOURCE)
     try:
+        if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+            # Certainly not covered by NWS, so the location is not sent there just to hear that
+            raise nws.NoCoverageError("NWS has no data for this location (US only)")
         alerts = nws.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT)
     except nws.NoCoverageError:
         if ALERTS_PROVIDER == "nws" and not _warned_no_alert_coverage:
@@ -690,15 +686,22 @@ def fetch_weather() -> Tuple[str, Dict[str, Any]]:
     if PROVIDER == "nws":
         warn_about_user_agent()
         return "nws", nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    if PROVIDER == "metno":
+        warn_about_user_agent("MET Norway")
+        return "metno", metno.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     if PROVIDER == "auto":
-        # National Weather Service inside the US, Open-Meteo everywhere else
+        # MET Norway in the Nordic countries, the National Weather Service in the US, Open-Meteo
+        # everywhere else; anything MET Norway or NWS leaves empty is filled from Open-Meteo
+        if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+            warn_about_user_agent("MET Norway")
+            return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
         warn_about_user_agent()
         try:
-            return "nws", fetch_nws_with_gap_fill()
+            return "nws", with_gap_fill(nws.fetch(LATITUDE, LONGITUDE, USER_AGENT))
         except nws.NoCoverageError:
             return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
     raise RuntimeError(
-        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, or auto."
+        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, or auto."
     )
 
 def can_keep_previous(previous: Dict[str, Any]) -> bool:
@@ -738,12 +741,11 @@ def write_degraded_or_error(error_message: str) -> None:
 
     write_json(build_error_payload(error_message=error_message))
 
-def fetch_nws_with_gap_fill() -> Dict[str, Any]:
+def with_gap_fill(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    NWS data, plus Open-Meteo for anything NWS does not publish (such as UV
-    index). If Open-Meteo is unavailable, NWS data is used as-is.
+    Provider data, plus Open-Meteo for anything the provider left empty (such as UV index from NWS,
+    or visibility from MET Norway). If Open-Meteo is unavailable, the data is used as-is.
     """
-    data = nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
 
     if gapfill.has_gaps(data):
         try:
@@ -760,18 +762,26 @@ def fetch_nws_with_gap_fill() -> Dict[str, Any]:
 _warned_user_agent = False
 
 def has_contact_info() -> bool:
-    """True if a contact was configured (an advanced User-Agent override counts if it contains one)."""
-    return bool(CONTACT) or "@" in USER_AGENT or "http" in USER_AGENT.lower()
+    """
+    True if a contact was configured. An advanced User-Agent override counts if it contains one; the
+    project page in the default User-Agent does not, since it does not say how to reach this install's owner.
+    """
+    if CONTACT:
+        return True
+    if USER_AGENT == build_user_agent(APP_VERSION):
+        return False
+    return "@" in USER_AGENT or "http" in USER_AGENT.lower()
 
-def warn_about_user_agent() -> None:
-    """The National Weather Service asks every client to include contact information."""
+def warn_about_user_agent(service: str = "The National Weather Service") -> None:
+    """The National Weather Service and MET Norway ask every client to include contact information."""
     global _warned_user_agent
     if _warned_user_agent:
         return
     _warned_user_agent = True
     if not has_contact_info():
         print(
-            "[Outpost] Warning: no contact information is set. The National Weather Service asks for one. "
+            f"[Outpost] No contact information is set. {service} asks for one, so it can reach you about a problem "
+            "before blocking requests. Outpost identifies itself with its project page meanwhile. "
             "Set OUTPOST_CONTACT to an email address or website, for example OUTPOST_CONTACT=you@example.com",
             file=sys.stderr,
             flush=True

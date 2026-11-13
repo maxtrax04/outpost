@@ -6,7 +6,7 @@
 
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
-> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo and National Weather Service data. More providers are in progress. Expect breaking changes until 1.0.
+> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo, National Weather Service, and MET Norway data. More providers are in progress. Expect breaking changes until 1.0.
 
 <!-- TODO (public beta): add a hero screenshot here, e.g.
 ![Outpost dashboard](docs/images/dashboard.png)
@@ -91,8 +91,8 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
-| `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws` and `auto`. It is sent in the User-Agent header. |
-| `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>)`). |
+| `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
+| `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>; +https://github.com/maxtrax04/outpost)`). |
 | `OUTPOST_FRAME_ANCESTORS` | *(empty)* | Comma-separated list of sites allowed to show Outpost in a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. Empty allows only Outpost itself. See [SECURITY.md](SECURITY.md#security-headers). |
 | `OUTPOST_WEB_PORT` | `8088` | Host port for the web UI (Compose only). |
 
@@ -105,12 +105,12 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 | Mock (test data) | `mock` | No | Available |
 | [Open-Meteo](https://open-meteo.com) | `openmeteo` | No | Available (recommended default) |
 | [National Weather Service](https://www.weather.gov/documentation/services-web-api) | `nws` | No | Available (US only, includes alerts) |
-| Auto | `auto` | No | Available (NWS in the US, Open-Meteo elsewhere) |
-| [MET Norway](https://api.met.no) | `metno` | No | Planned |
+| Auto | `auto` | No | Available (MET Norway in the Nordic countries, NWS in the US, Open-Meteo elsewhere) |
+| [MET Norway](https://api.met.no) | `metno` | No | Available (worldwide, best in the Nordic countries) |
 | [Pirate Weather](https://pirateweather.net) | `pirateweather` | Yes | Planned |
 | [OpenWeatherMap](https://openweathermap.org) | `openweathermap` | Yes | Planned |
 
-The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, anything NWS leaves empty (UV index, and any reading a station is missing) is filled in from Open-Meteo, and the footer credits both sources. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
+The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, Outpost uses MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen, where its forecast is at its best; the National Weather Service in the US; and Open-Meteo everywhere else. The Nordic check uses rough areas around those countries, worked out from your coordinates without asking any service, so near a border set `OUTPOST_PROVIDER` yourself if it picks the wrong one. Anything MET Norway or NWS leaves empty (such as visibility from MET Norway, or UV index and any reading a station is missing from NWS) is filled in from Open-Meteo, and the footer credits both sources. MET Norway requires every request to say what is asking (Outpost always sends its project page) and asks for a contact, so set `OUTPOST_CONTACT`; it also requires credit, which the footer gives; its data is shared under CC BY 4.0. Outpost downloads its forecast only when it has changed (MET Norway says when, about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so "now" is the forecast for this hour, visibility shows `--`, and UV index is for a clear sky. Forecast days follow the container's `TZ` setting, so set it to your time zone. Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
 
 ## Data and storage
 
@@ -184,7 +184,7 @@ Scanlines, glow, and animation can be turned off in every theme, which helps rea
 
 The Alerts panel lists active weather warnings. `OUTPOST_ALERTS_PROVIDER` picks where they come from:
 
-- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US. So in the US you get official alerts with any weather provider, and elsewhere the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes). Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
+- **`auto` (default):** from the weather provider, if it has alerts (`nws`, and `auto` inside the US). If it has none, as with Open-Meteo, Outpost asks the National Weather Service, which covers the US. So in the US you get official alerts with any weather provider, and elsewhere the dashboard says alerts are not available rather than claiming there are none. This sends your coordinates to the National Weather Service as well, even outside the US (where it answers that it has no data, which Outpost then remembers for about 30 minutes), except in the Nordic countries, which Outpost recognizes by itself. Use `none` if you don't want that. Set `OUTPOST_CONTACT` too, since NWS asks for it.
 - **`nws`:** always from the National Weather Service, whatever the weather provider. Outside the US there are none, and the log says so once.
 - **`none`:** no alerts.
 
