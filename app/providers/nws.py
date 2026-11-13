@@ -254,23 +254,23 @@ def build_current(periods: List[Dict[str, Any]], observation: Optional[Dict[str,
         condition = observation.get("textDescription") or first.get("shortForecast") or "Unknown"
 
         return {
-            "temperature": _round(temp_f),
-            "feels_like": _round(feels_f),
+            "temperature": temp_f,
+            "feels_like": feels_f,
             "condition": condition,
             "icon": icon_from_text(condition, is_day),
             "humidity": _round(_num(observation.get("relativeHumidity"))),
-            "wind_speed": _round(_speed_mph(observation.get("windSpeed"))),
-            "pressure": _round(pressure_pa * PA_TO_INHG, 2) if pressure_pa is not None else None,
+            "wind_speed": _speed_mph(observation.get("windSpeed")),
+            "pressure": pressure_pa * PA_TO_INHG if pressure_pa is not None else None,
             "uv_index": None,  # NWS does not publish UV index
-            "visibility": _round(visibility_m / METERS_PER_MILE, 1) if visibility_m is not None else None,
+            "visibility": visibility_m / METERS_PER_MILE if visibility_m is not None else None,
         }
 
     # No usable observation: fall back to the forecast's current period
     temp_f = _period_temp_f(first)
     condition = first.get("shortForecast") or "Unknown"
     return {
-        "temperature": _round(temp_f),
-        "feels_like": _round(temp_f),
+        "temperature": temp_f,
+        "feels_like": temp_f,
         "condition": condition,
         "icon": icon_from_text(condition, is_day),
         "humidity": _round(_num(first.get("relativeHumidity"))),
@@ -316,8 +316,8 @@ def build_forecast(periods: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         text = entry["day_text"] or entry["night_text"] or "Unknown"
         forecast.append({
             "day": date,
-            "high": _round(max(entry["highs"])) if entry["highs"] else None,
-            "low": _round(min(entry["lows"])) if entry["lows"] else None,
+            "high": max(entry["highs"]) if entry["highs"] else None,
+            "low": min(entry["lows"]) if entry["lows"] else None,
             "condition": text,
             "icon": icon_from_text(text, is_day=entry["day_text"] is not None),
             "precipitation_chance": _round(max(entry["pops"])) if entry["pops"] else 0,
@@ -346,6 +346,10 @@ def build_alerts(features: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any
 def normalize(periods: List[Dict[str, Any]],
               observation: Optional[Dict[str, Any]],
               alert_features: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
+    """
+    Outpost's normalized format. Readings are unrounded, in °F, mph, inHg, and miles; the updater
+    converts them to OUTPOST_UNITS and rounds them (app/units.py).
+    """
     if not periods:
         raise RuntimeError("NWS forecast contained no periods")
     return {

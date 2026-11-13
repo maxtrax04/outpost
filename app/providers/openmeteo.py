@@ -146,7 +146,10 @@ def _hourly_value(raw: Dict[str, Any], name: str) -> Optional[float]:
 
 
 def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert an Open-Meteo response into Outpost's normalized format."""
+    """
+    Convert an Open-Meteo response into Outpost's normalized format. Readings are unrounded, in
+    °F, mph, inHg, and miles; the updater converts them to OUTPOST_UNITS and rounds them (app/units.py).
+    """
     current = raw.get("current")
     daily = raw.get("daily")
     if not current or not daily:
@@ -160,15 +163,15 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
     visibility_m = _hourly_value(raw, "visibility")
 
     normalized_current = {
-        "temperature": _round(current.get("temperature_2m")),
-        "feels_like": _round(current.get("apparent_temperature")),
+        "temperature": current.get("temperature_2m"),
+        "feels_like": current.get("apparent_temperature"),
         "condition": condition,
         "icon": icon,
         "humidity": _round(current.get("relative_humidity_2m")),
-        "wind_speed": _round(current.get("wind_speed_10m")),
-        "pressure": _round(pressure_hpa * HPA_TO_INHG, 2) if pressure_hpa is not None else None,
+        "wind_speed": current.get("wind_speed_10m"),
+        "pressure": pressure_hpa * HPA_TO_INHG if pressure_hpa is not None else None,
         "uv_index": _round(_hourly_value(raw, "uv_index")),
-        "visibility": _round(visibility_m / METERS_PER_MILE, 1) if visibility_m is not None else None,
+        "visibility": visibility_m / METERS_PER_MILE if visibility_m is not None else None,
     }
 
     forecast: List[Dict[str, Any]] = []
@@ -177,8 +180,8 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         day_condition, day_icon = describe((daily.get("weather_code") or [None] * len(days))[i])
         forecast.append({
             "day": day,
-            "high": _round((daily.get("temperature_2m_max") or [None] * len(days))[i]),
-            "low": _round((daily.get("temperature_2m_min") or [None] * len(days))[i]),
+            "high": (daily.get("temperature_2m_max") or [None] * len(days))[i],
+            "low": (daily.get("temperature_2m_min") or [None] * len(days))[i],
             "condition": day_condition,
             "icon": day_icon,
             "precipitation_chance": (daily.get("precipitation_probability_max") or [None] * len(days))[i],

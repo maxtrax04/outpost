@@ -34,7 +34,7 @@ class DependencyTests(unittest.TestCase):
     """Outpost uses only Python's standard library; keep it that way, or make the Dockerfile install packages."""
 
     def imported_modules(self):
-        local = {"providers", "outpost_updater", "outpost_health", "gapfill", "nws", "openmeteo"}
+        local = {path.stem for path in (ROOT / "app").rglob("*.py")} | {"providers"}
         found = set()
         for path in (ROOT / "app").rglob("*.py"):
             for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

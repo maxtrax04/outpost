@@ -300,10 +300,10 @@ class FormatTests(UpdaterTestCase):
         self.assertEqual(payload["alerts"], [])
         self.assertIsNone(payload["sources"]["alerts"])
 
-    def test_the_metric_setting_still_writes_imperial_labels_until_it_is_supported(self):
-        # The labels must describe the numbers, which are imperial until metric is added
-        with mock.patch.object(u, "UNITS", "metric"):
-            self.assertEqual(u.build_mock_payload()["units"]["system"], "imperial")
+    def test_the_labels_follow_the_units_setting(self):
+        for system in ("imperial", "metric"):
+            with self.subTest(system=system), mock.patch.object(u, "UNITS", system):
+                self.assertEqual(u.build_mock_payload()["units"], u.units.block(system))
 
 
 class AutoProviderTests(UpdaterTestCase):

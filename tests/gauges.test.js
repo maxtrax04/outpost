@@ -107,3 +107,25 @@ test("every field read is one the updater writes", () => {
         assert.ok(updater.includes(`"${field}"`), `${field} is not written by the updater`);
     }
 });
+
+test("metric readings point to the same place as the same imperial readings", () => {
+    const imperial = gauges.values({ temperature: 32, wind_speed: 10, pressure: 29.92, visibility: 10, humidity: 50 },
+        gauges.CURRENT, "imperial");
+    const metric = gauges.values({ temperature: 0, wind_speed: 16.09344, pressure: 1013.21, visibility: 16.09344, humidity: 50 },
+        gauges.CURRENT, "metric");
+    for (const name of ["temperature", "wind", "pressure", "visibility", "humidity"]) {
+        assert.ok(Math.abs(imperial[name] - metric[name]) < 0.001, `${name}: ${imperial[name]} vs ${metric[name]}`);
+    }
+});
+
+test("forecast temperatures in metric are placed on the same scale", () => {
+    const metric = gauges.values({ high: 100, low: -28.89, precipitation_chance: 30 }, gauges.FORECAST, "metric");
+    assert.strictEqual(metric.high, 1);  // 212 °F, clamped
+    assert.ok(Math.abs(metric.low) < 0.001);  // -20 °F
+    assert.strictEqual(metric.rain, 0.3);  // percentages are not converted
+});
+
+test("without a unit system, readings are treated as imperial", () => {
+    assert.deepStrictEqual(gauges.values({ temperature: 50 }, gauges.CURRENT),
+        gauges.values({ temperature: 50 }, gauges.CURRENT, "imperial"));
+});
