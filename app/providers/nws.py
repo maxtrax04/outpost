@@ -15,6 +15,7 @@ Data comes from four calls:
 Uses only the Python standard library.
 """
 
+import copy
 import json
 import re
 import time
@@ -35,6 +36,12 @@ MAX_OBSERVATION_AGE_SECONDS = 3 * 3600
 POINT_CACHE_SECONDS = 6 * 3600
 NO_COVERAGE_CACHE_SECONDS = 30 * 60
 MAX_ALERTS = 5
+# Never ask for the same thing again sooner than this, whatever OUTPOST_UPDATE_INTERVAL is. NWS
+# publishes no fixed limit but asks clients to cache; forecasts change about hourly, station
+# readings every 5 to 60 minutes, and alerts can come at any time.
+FORECAST_REQUEST_SECONDS = 15 * 60
+OBSERVATION_REQUEST_SECONDS = 5 * 60
+ALERTS_REQUEST_SECONDS = 60
 
 KMH_TO_MPH = 0.621371
 MS_TO_MPH = 2.236936
@@ -59,6 +66,8 @@ class _NotFound(Exception):
 
 # (latitude, longitude) -> (expires_at, point info or None)
 _point_cache: Dict[Tuple[str, str], Tuple[float, Optional[Dict[str, Any]]]] = {}
+# url -> (expires_at, decoded JSON) for the forecast, observations, and alerts
+_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
 
 
 # ---------------------------------------------------------------- HTTP
@@ -88,6 +97,17 @@ def _get(url: str, user_agent: str) -> Dict[str, Any]:
             time.sleep(2 * attempt)
 
     raise last_error
+
+
+def _cached_get(url: str, user_agent: str, seconds: int) -> Dict[str, Any]:
+    """_get, but the same answer is reused for `seconds`. Failures are not kept."""
+    now = time.time()
+    cached = _cache.get(url)
+    if cached and now < cached[0]:
+        return copy.deepcopy(cached[1])
+    data = _get(url, user_agent)
+    _cache[url] = (now + seconds, data)
+    return copy.deepcopy(data)
 
 
 # ---------------------------------------------------------------- lookups
@@ -143,7 +163,8 @@ def _fresh_observation(point: Dict[str, Any], user_agent: str) -> Optional[Dict[
 
     for station in stations[:STATIONS_TO_TRY]:
         try:
-            data = _get(f"{BASE_URL}/stations/{station}/observations/latest", user_agent)
+            data = _cached_get(f"{BASE_URL}/stations/{station}/observations/latest", user_agent,
+                               OBSERVATION_REQUEST_SECONDS)
         except (RuntimeError, _NotFound):
             continue
 
@@ -373,7 +394,7 @@ def fetch(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
     point = get_point(latitude, longitude, user_agent)
 
     try:
-        forecast = _get(point["forecast_url"], user_agent)
+        forecast = _cached_get(point["forecast_url"], user_agent, FORECAST_REQUEST_SECONDS)
     except _NotFound:
         # Grid mapping may have changed; drop the cache so the next run re-resolves it
         _point_cache.clear()
@@ -390,7 +411,8 @@ def fetch(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
 
 def _alert_features(latitude: float, longitude: float, user_agent: str) -> List[Dict[str, Any]]:
     try:
-        alerts = _get(f"{BASE_URL}/alerts/active?point={latitude:.4f},{longitude:.4f}", user_agent)
+        alerts = _cached_get(f"{BASE_URL}/alerts/active?point={latitude:.4f},{longitude:.4f}", user_agent,
+                             ALERTS_REQUEST_SECONDS)
     except _NotFound:
         raise RuntimeError("NWS alerts lookup returned 404")
     return alerts.get("features") or []

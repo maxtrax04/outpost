@@ -160,6 +160,8 @@ class FetchTests(unittest.TestCase):
     def setUp(self):
         nws._point_cache.clear()
         self.addCleanup(nws._point_cache.clear)
+        nws._cache.clear()
+        self.addCleanup(nws._cache.clear)
         self.calls = []
         self.user_agents = []
         self.observations = {"KAAA": {"properties": {"timestamp": datetime.now(timezone.utc).isoformat(),
