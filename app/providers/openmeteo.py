@@ -17,6 +17,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 API_URL = "https://api.open-meteo.com/v1/forecast"
@@ -40,6 +41,8 @@ CURRENT_VARS = [
     "pressure_msl",
     "wind_speed_10m",
     "wind_gusts_10m",
+    "wind_direction_10m",
+    "dew_point_2m",
 ]
 
 # UV index and visibility are only offered hourly, so we read the current hour.
@@ -164,6 +167,15 @@ def _hourly_value(raw: Dict[str, Any], name: str) -> Optional[float]:
     return None
 
 
+def _observed_at(local_time: Any, utc_offset_seconds: Any) -> Optional[str]:
+    """'2026-07-15T14:15' at the location (timezone=auto) -> ISO 8601 in UTC, or None."""
+    try:
+        moment = datetime.fromisoformat(local_time) - timedelta(seconds=int(utc_offset_seconds or 0))
+    except (TypeError, ValueError):
+        return None
+    return moment.replace(tzinfo=timezone.utc).isoformat()
+
+
 def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert an Open-Meteo response into Outpost's normalized format. Readings are unrounded, in
@@ -189,6 +201,9 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "humidity": _round(current.get("relative_humidity_2m")),
         "wind_speed": current.get("wind_speed_10m"),
         "wind_gust": current.get("wind_gusts_10m"),
+        "wind_direction": current.get("wind_direction_10m"),
+        "dew_point": current.get("dew_point_2m"),
+        "observed_at": _observed_at(current.get("time"), raw.get("utc_offset_seconds")),
         "pressure": pressure_hpa * HPA_TO_INHG if pressure_hpa is not None else None,
         "uv_index": _round(_hourly_value(raw, "uv_index")),
         "visibility": visibility_m / METERS_PER_MILE if visibility_m is not None else None,

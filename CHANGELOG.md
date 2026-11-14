@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.11] - 2026-11-14
+
+### Added
+
+- Wind direction: the Wind reading shows where the wind comes from, such as "SW 12 mph", and says "Calm" when there is no wind. `weather.json` has it as `current.wind_direction`, in degrees. It is never filled in from another source.
+- Dew point: a "Dew point 54°F" line in the Humidity box. `weather.json` has it as `current.dew_point`, in the temperature unit. It is filled in from Open-Meteo when the weather source has none.
+- When the readings are from: `current.observed_at` in `weather.json` (a station's observation time, or the forecast hour for MET Norway). When the readings are over an hour old, such as from a weather station that reports rarely, the Updated box adds "Reading from 2:40 PM".
+- For theme authors: `--wx-dew-point` and `--wx-wind-direction` (a fraction of a turn, for rotating an arrow), and a shared `.reading-note` class for the second lines in the reading boxes (gusts, dew point, reading time). See `docs/themes.md`.
+
 ## [0.6.0-beta.10] - 2026-11-14
 
 ### Changed

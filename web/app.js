@@ -37,6 +37,23 @@ function setText(id, value) {
 }
 
 // Times follow OUTPOST_CLOCK (12- or 24-hour, or the device's region); see clock.js
+// A second line in a reading box (a <small>): shown with its text, hidden when there is none
+function setNote(id, text) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = text;
+        element.hidden = text === "";
+    }
+}
+
+// "Reading from 2:40 PM" when the readings are over an hour old (with the date if over 12 hours), else ""
+function readingTimeText(weather) {
+    const time = OutpostData.oldReadingTime(weather);
+    if (!time) return "";
+    const day = Date.now() - time.getTime() > 12 * 60 * 60 * 1000;
+    return `Reading from ${day ? OutpostClock.dateTime(time) : OutpostClock.time(time)}`;
+}
+
 function formatDateTime(value) {
     if (!value) return "--";
     const date = new Date(value);
@@ -265,18 +282,16 @@ async function loadWeather(config) {
         setText("condition", current.condition || "Unknown");
         setText("feelsLike", valueOrDash(current.feels_like, units.temperature));
         setText("humidity", valueOrDash(current.humidity, "%"));
-        setText("wind", valueOrDash(current.wind_speed, ` ${units.speed}`));
-        const gust = document.getElementById("windGust");
-        if (gust) {
-            gust.textContent = OutpostData.gustText(current, units);
-            gust.hidden = gust.textContent === "";
-        }
+        setNote("dewPoint", OutpostData.dewPointText(current, units));
+        setText("wind", OutpostData.windText(current, units));
+        setNote("windGust", OutpostData.gustText(current, units));
         setText("pressure", valueOrDash(current.pressure, ` ${units.pressure}`));
         setText("uv", valueOrDash(current.uv_index));
         setText("visibility", valueOrDash(current.visibility, ` ${units.distance}`));
         setText("source", OutpostData.sourceText(weather));
         setText("version", weather.version || "--");
         setText("lastUpdated", formatDateTime(weather.generated_at));
+        setNote("readingTime", readingTimeText(weather));
 
         setIcon(document.getElementById("currentIcon"), current.icon, current.condition);
         OutpostGauges.applyCurrent(current, document, units.system);

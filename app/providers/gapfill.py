@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Tuple
 
 CURRENT_FIELDS = [
     "humidity",
+    "dew_point",
     "wind_speed",
     "pressure",
     "uv_index",

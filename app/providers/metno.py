@@ -221,6 +221,8 @@ def build_current(timeseries: List[Dict[str, Any]], now: datetime) -> Dict[str, 
     pressure = _number(instant.get("air_pressure_at_sea_level"))
     humidity = _number(instant.get("relative_humidity"))
     uv = _number(instant.get("ultraviolet_index_clear_sky"))
+    dew_point = _number(instant.get("dew_point_temperature"))
+    start = _time(entry)
 
     return {
         "temperature": C_TO_F(temperature) if temperature is not None else None,
@@ -231,6 +233,10 @@ def build_current(timeseries: List[Dict[str, Any]], now: datetime) -> Dict[str, 
         "humidity": round(humidity) if humidity is not None else None,
         "wind_speed": wind * MS_TO_MPH if wind is not None else None,
         "wind_gust": gust * MS_TO_MPH if gust is not None else None,
+        "wind_direction": _number(instant.get("wind_from_direction")),
+        "dew_point": C_TO_F(dew_point) if dew_point is not None else None,
+        # The hour this forecast is for (MET Norway forecasts "now" rather than measuring it)
+        "observed_at": start.astimezone(timezone.utc).isoformat() if start else None,
         "pressure": pressure * HPA_TO_INHG if pressure is not None else None,
         "uv_index": round(uv) if uv is not None else None,
         "visibility": None,  # MET Norway does not forecast visibility

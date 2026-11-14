@@ -514,6 +514,7 @@ def mock_data() -> Dict[str, Any]:
         alerts.extend(mock_sample_alerts(now))
 
     wind = random.randint(0, 25)
+    humidity = random.randint(35, 85)
 
     return {
         "source": MOCK_SOURCE,
@@ -522,9 +523,13 @@ def mock_data() -> Dict[str, Any]:
             "feels_like": feels_like,
             "condition": current_condition,
             "icon": current_icon,
-            "humidity": random.randint(35, 85),
+            "humidity": humidity,
             "wind_speed": wind,
             "wind_gust": wind + random.randint(0, 15),
+            "wind_direction": random.randint(0, 359),
+            # A rough dew point from the humidity: about 1 °C lower for every 5% below 100%
+            "dew_point": base_temp - (100 - humidity) * 9 / 25,
+            "observed_at": now.isoformat(),
             "pressure": round(random.uniform(29.70, 30.35), 2),
             "uv_index": random.randint(0, 8),
             "visibility": random.randint(5, 10)
@@ -607,6 +612,9 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
             "humidity": None,
             "wind_speed": None,
             "wind_gust": None,
+            "wind_direction": None,
+            "dew_point": None,
+            "observed_at": None,
             "pressure": None,
             "uv_index": None,
             "visibility": None

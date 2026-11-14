@@ -66,3 +66,44 @@ test("no gust line without a gust, or when it is no stronger than the wind", () 
         assert.strictEqual(data.gustText(current, mph), "");
     }
 });
+
+test("wind direction as one of 8 compass points", () => {
+    const cases = [[0, "N"], [22, "N"], [23, "NE"], [90, "E"], [200, "S"], [225, "SW"], [270, "W"], [337, "NW"],
+        [338, "N"], [359, "N"], [360, "N"], [-90, "W"]];
+    for (const [degrees, point] of cases) {
+        assert.strictEqual(data.compass(degrees), point, `${degrees}°`);
+    }
+    for (const value of [null, undefined, "SW", NaN]) {
+        assert.strictEqual(data.compass(value), "");
+    }
+});
+
+test("the wind reading has its direction, says calm at 0, and shows -- without a speed", () => {
+    const mph = data.units({});
+    assert.strictEqual(data.windText({ wind_speed: 12, wind_direction: 225 }, mph), "SW 12 mph");
+    assert.strictEqual(data.windText({ wind_speed: 19, wind_direction: 90 }, { speed: "km/h" }), "E 19 km/h");
+    assert.strictEqual(data.windText({ wind_speed: 12, wind_direction: null }, mph), "12 mph");
+    assert.strictEqual(data.windText({ wind_speed: 0, wind_direction: null }, mph), "Calm");
+    assert.strictEqual(data.windText({ wind_speed: null, wind_direction: 225 }, mph), "--");
+    assert.strictEqual(data.windText(null, mph), "--");
+});
+
+test("the dew point line", () => {
+    assert.strictEqual(data.dewPointText({ dew_point: 54 }, data.units({})), "Dew point 54°F");
+    assert.strictEqual(data.dewPointText({ dew_point: -3 }, { temperature: "°C" }), "Dew point -3°C");
+    for (const current of [{ dew_point: null }, {}, { dew_point: "54" }, null]) {
+        assert.strictEqual(data.dewPointText(current, data.units({})), "");
+    }
+});
+
+test("the reading time is given only when the readings are over an hour old", () => {
+    const now = Date.parse("2026-11-14T15:00:00Z");
+    const weather = (observed) => ({ current: { observed_at: observed } });
+    assert.strictEqual(data.oldReadingTime(weather("2026-11-14T14:30:00+00:00"), now), null);
+    assert.strictEqual(data.oldReadingTime(weather("2026-11-14T14:00:00+00:00"), now), null);  // exactly an hour
+    assert.strictEqual(data.oldReadingTime(weather("2026-11-14T13:40:00+00:00"), now).toISOString(),
+        "2026-11-14T13:40:00.000Z");
+    for (const value of [weather(null), weather("soon"), { current: {} }, {}, null]) {
+        assert.strictEqual(data.oldReadingTime(value, now), null);
+    }
+});

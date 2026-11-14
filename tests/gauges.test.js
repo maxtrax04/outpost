@@ -135,3 +135,12 @@ test("gusts get a value for themes, on the same scale as the wind", () => {
     assert.strictEqual(result.wind, 0.25);
     assert.strictEqual(result.gust, 0.5);
 });
+
+test("wind direction is a fraction of a turn, and dew point is on the temperature scale", () => {
+    const result = gauges.values({ wind_direction: 270, dew_point: 50 }, gauges.CURRENT, "imperial");
+    assert.strictEqual(result["wind-direction"], 0.75);
+    assert.strictEqual(result["dew-point"], 0.5);
+    const metric = gauges.values({ wind_direction: 270, dew_point: 10 }, gauges.CURRENT, "metric");
+    assert.strictEqual(metric["wind-direction"], 0.75);  // degrees are not converted
+    assert.ok(Math.abs(metric["dew-point"] - 0.5) < 0.001);
+});

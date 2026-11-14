@@ -2,6 +2,7 @@
   "latitude": 10.0,
   "longitude": 20.0,
   "timezone": "UTC",
+  "utc_offset_seconds": 0,
   "current": {
     "time": "2026-07-15T14:15",
     "interval": 900,
@@ -12,7 +13,9 @@
     "weather_code": 1,
     "pressure_msl": 1012.4,
     "wind_speed_10m": 9.6,
-    "wind_gusts_10m": 21.7
+    "wind_gusts_10m": 21.7,
+    "wind_direction_10m": 225,
+    "dew_point_2m": 26.4
   },
   "hourly": {
     "time": [

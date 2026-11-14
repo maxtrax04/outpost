@@ -48,14 +48,14 @@
       }
     },
     "timezone": { "type": ["string", "null"], "description": "The location's IANA time zone, such as Europe/Oslo, for showing times as they are there. null when unknown." },
-    "generated_at": { "type": "string", "format": "date-time", "description": "When the data was last fetched successfully (left unchanged while degraded)." },
+    "generated_at": { "type": "string", "format": "date-time", "description": "When the data was last updated successfully (left unchanged while degraded). A service's answer can be reused for some minutes, so current.observed_at says how old the readings are." },
     "update_interval_seconds": { "type": "integer", "minimum": 1 },
     "units": {
       "type": "object",
       "required": ["system", "temperature", "speed", "pressure", "distance"],
       "properties": {
         "system": { "enum": ["imperial", "metric"] },
-        "temperature": { "type": "string", "description": "Label for temperature, feels_like, high, and low, such as °F." },
+        "temperature": { "type": "string", "description": "Label for temperature, feels_like, dew_point, high, and low, such as °F." },
         "speed": { "type": "string", "description": "Label for wind_speed, such as mph." },
         "pressure": { "type": "string", "description": "Label for pressure, such as inHg." },
         "distance": { "type": "string", "description": "Label for visibility, such as mi." }
@@ -63,18 +63,21 @@
     },
     "current": {
       "type": "object",
-      "required": ["temperature", "feels_like", "condition", "icon", "humidity", "wind_speed", "wind_gust", "pressure", "uv_index", "visibility"],
+      "required": ["temperature", "feels_like", "condition", "icon", "humidity", "dew_point", "wind_speed", "wind_gust", "wind_direction", "pressure", "uv_index", "visibility", "observed_at"],
       "properties": {
         "temperature": { "$ref": "#/$defs/reading" },
         "feels_like": { "$ref": "#/$defs/reading" },
         "condition": { "type": "string" },
         "icon": { "$ref": "#/$defs/icon" },
         "humidity": { "$ref": "#/$defs/percent" },
+        "dew_point": { "$ref": "#/$defs/reading", "description": "In the temperature unit." },
         "wind_speed": { "$ref": "#/$defs/reading" },
         "wind_gust": { "$ref": "#/$defs/reading", "description": "The strongest gusts, in the speed unit. null when there are none or the source has none." },
+        "wind_direction": { "type": ["integer", "null"], "minimum": 0, "maximum": 359, "description": "Where the wind comes from, in whole degrees clockwise from north (270 is a west wind). null when calm or not reported." },
         "pressure": { "$ref": "#/$defs/reading" },
         "uv_index": { "$ref": "#/$defs/reading" },
-        "visibility": { "$ref": "#/$defs/reading" }
+        "visibility": { "$ref": "#/$defs/reading" },
+        "observed_at": { "type": ["string", "null"], "format": "date-time", "description": "When these readings are from: the station's observation time, or the start of the forecast hour for sources that forecast \"now\" (MET Norway). null when unknown." }
       }
     },
     "forecast": {

@@ -50,11 +50,14 @@ always matches its `schema_version`.
     "condition": "Partly Cloudy",
     "icon": "partly-cloudy",
     "humidity": 55,
+    "dew_point": 55,
     "wind_speed": 8,
     "wind_gust": 17,
+    "wind_direction": 225,
     "pressure": 30.02,
     "uv_index": 4,
-    "visibility": 10
+    "visibility": 10,
+    "observed_at": "2026-11-12T14:53:00+00:00"
   },
   "forecast": [
     {
@@ -118,7 +121,7 @@ The dashboard credits each source by name in its footer. Open-Meteo and MET Norw
 | Field | Used for | Imperial | Metric |
 | :--- | :--- | :--- | :--- |
 | `system` | | `imperial` | `metric` |
-| `temperature` | `temperature`, `feels_like`, `high`, `low` | `°F`, whole degrees | `°C`, whole degrees |
+| `temperature` | `temperature`, `feels_like`, `dew_point`, `high`, `low` | `°F`, whole degrees | `°C`, whole degrees |
 | `speed` | `wind_speed`, `wind_gust` | `mph`, whole numbers | `km/h`, whole numbers |
 | `pressure` | `pressure` | `inHg`, 2 decimals | `hPa`, whole numbers |
 | `distance` | `visibility` | `mi`, 1 decimal | `km`, 1 decimal |
@@ -126,7 +129,8 @@ The dashboard credits each source by name in its footer. Open-Meteo and MET Norw
 `OUTPOST_UNITS` picks the system (`imperial` by default). Every reading is converted and rounded once,
 from the source's own numbers, so switching systems does not add rounding errors.
 
-`humidity` and `precipitation_chance` are always percentages (0 to 100), and `uv_index` has no unit.
+`humidity` and `precipitation_chance` are always percentages (0 to 100), `wind_direction` is always
+in degrees, and `uv_index` has no unit.
 The values are labels to show next to the number; a reader that converts values should check
 `system`.
 
@@ -138,11 +142,14 @@ The values are labels to show next to the number; a reader that converts values 
 | `condition` | A short description from the source, such as `Partly Cloudy`. |
 | `icon` | One of the dashboard's icons: `sunny`, `clear-night`, `partly-cloudy`, `partly-cloudy-night`, `cloudy`, `fog`, `drizzle`, `rain`, `sleet`, `snow`, `storm`, `wind`, or `unknown`. |
 | `humidity` | Relative humidity, in percent. |
+| `dew_point` | The temperature at which dew forms, in the temperature unit. The closer it is to `temperature`, the more humid it feels. |
 | `wind_speed` | Sustained wind speed. |
 | `wind_gust` | The strongest gusts, in the same unit as `wind_speed`. `null` when there are none (the National Weather Service reports none in calm weather) or the source doesn't say. |
+| `wind_direction` | Where the wind comes from, in whole degrees clockwise from north, 0 to 359 (`270` is a west wind). `null` when calm or not reported. Never filled in from another source. |
 | `pressure` | Air pressure. |
 | `uv_index` | UV index. |
 | `visibility` | How far one can see. |
+| `observed_at` | When these readings are from (ISO 8601, UTC). For a weather station, its observation time; for MET Norway, which forecasts "now", the start of the forecast hour. It can be well before `generated_at`: stations often report hourly, and a service's answer is reused for some minutes. `null` when unknown, such as when the National Weather Service has no recent station reading. |
 
 ### `forecast`
 
