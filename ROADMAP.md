@@ -45,23 +45,26 @@ A layout that works on phones and portrait screens, a theme switcher, and a home
 
 Make themes easy to create and share, and give Outpost its own logo and look.
 
-- [ ] Switch to one folder per theme
-- [ ] Support external themes from a mounted folder
-- [ ] Add nginx security headers, including a Content-Security-Policy
-- [ ] Design an original OUTPOST logo as an SVG
-- [ ] Add original decorative themes with bezels and gauges
-- [ ] Create a community themes repository
+- [x] Switch to one folder per theme
+- [x] Support external themes from a mounted folder
+- [x] Add nginx security headers, including a Content-Security-Policy
+- [x] Design an original OUTPOST logo as an SVG
+- [x] Add original decorative themes with bezels and gauges
+- [x] Create a community themes repository
 
 ### v0.6.0 - Data model and providers
 
 A stable data format, metric units, and more weather providers with smarter automatic selection.
 
-- [ ] Define a versioned, unit-neutral weather.json schema
-- [ ] Support metric units
-- [ ] Split the weather source from the alerts source
-- [ ] Add the MET Norway provider
-- [ ] Add the Pirate Weather provider
-- [ ] Smarter automatic provider selection
+- [x] Define a versioned, unit-neutral weather.json schema
+- [x] Support metric units
+- [x] Split the weather source from the alerts source
+- [x] Add the MET Norway provider
+- [x] Add the Pirate Weather provider
+- [x] Smarter automatic provider selection
+- [x] MET Norway alerts for Norway
+- [x] Wind gusts, wind direction, dew point, and when the readings are from
+- [x] Respect each weather service's minimum time between requests
 
 ### v0.7.0 - Platform
 
@@ -74,6 +77,15 @@ A small API that enables location search, browser location, a weather map, and H
 - [ ] Home Assistant: document the iframe card and REST sensor
 - [ ] Home Assistant add-on
 - [ ] Sensor and power-monitoring panels
+
+### v0.8.0 - More weather detail
+
+More of what the weather services already send.
+
+- [ ] Hourly forecast
+- [ ] Precipitation amounts
+- [ ] Show when alerts start
+- [ ] Air quality and pollen
 
 ### v1.0.0 - First stable release
 
@@ -90,7 +102,6 @@ These are good ideas that need more thought before they get a milestone.
 
 - Auto-rotating pages and a tabbed details view
 - Environment Canada alerts
-- MET Norway alerts for Norway
 - Translations
 
 ## Why this order

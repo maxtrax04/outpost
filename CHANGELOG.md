@@ -6,109 +6,48 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-## [0.6.0-beta.11] - 2026-11-14
+## [0.6.0] - 2026-11-14
+
+Data model and providers: a versioned `weather.json` format, metric units, two new weather providers (MET Norway and Pirate Weather), alerts from a separate source (the National Weather Service with Open-Meteo, MET Norway's warnings for Norway, and Pirate Weather's worldwide alerts), smarter automatic provider choice, times in the location's time zone, wind gusts, wind direction, dew point, and limits on how often each weather service is asked. **If another tool reads `weather.json`**, its field names changed; see "Upgrading from 0.5.0" below.
 
 ### Added
 
-- Wind direction: the Wind reading shows where the wind comes from, such as "SW 12 mph", and says "Calm" when there is no wind. `weather.json` has it as `current.wind_direction`, in degrees. It is never filled in from another source.
-- Dew point: a "Dew point 54°F" line in the Humidity box. `weather.json` has it as `current.dew_point`, in the temperature unit. It is filled in from Open-Meteo when the weather source has none.
-- When the readings are from: `current.observed_at` in `weather.json` (a station's observation time, or the forecast hour for MET Norway). When the readings are over an hour old, such as from a weather station that reports rarely, the Updated box adds "Reading from 2:40 PM".
-- For theme authors: `--wx-dew-point` and `--wx-wind-direction` (a fraction of a turn, for rotating an arrow), and a shared `.reading-note` class for the second lines in the reading boxes (gusts, dew point, reading time). See `docs/themes.md`.
-
-## [0.6.0-beta.10] - 2026-11-14
+- Metric units: `OUTPOST_UNITS=metric` shows °C, km/h, hPa, and km on the dashboard and in `weather.json`. The setting was accepted before but did nothing. Each reading is converted and rounded once, from the weather source's own numbers, and theme gauges point to the same place in either system. An unknown value logs a warning and uses imperial.
+- MET Norway weather: `OUTPOST_PROVIDER=metno` uses MET Norway's forecast, which covers the whole world and is especially good in the Nordic countries. MET Norway asks for `OUTPOST_CONTACT`, and the footer credits it. MET Norway sends a forecast rather than station readings, so the current conditions are the forecast for this hour, visibility shows `--`, and the UV index is for a clear sky. Forecast days follow the container's `TZ` setting.
+- Pirate Weather: `OUTPOST_PROVIDER=pirateweather` uses [Pirate Weather](https://pirateweather.net), which covers the whole world, with a free API key in `OUTPOST_PIRATEWEATHER_API_KEY`. The free tier allows 10,000 calls a month, so Outpost asks at most every 10 minutes (about 4,300 calls a month), and if the quota still runs out it waits for the reset Pirate Weather reports. When Pirate Weather refuses the key, Outpost waits 10 minutes before trying again (a newly subscribed key can take up to 20 minutes to start working). The key is sent only to Pirate Weather, in a request header, and never appears in an address, the log, or Outpost's files.
+- `OUTPOST_ALERTS_PROVIDER` picks where official alerts come from, separately from the weather: `auto` (default), `nws`, `metno`, `pirateweather`, or `none`. `weather.json` names the alerts source in `sources.alerts`, and the dashboard footer credits it. See "Alerts" in the README. With `auto`, alerts come from the weather provider when it has them, and otherwise from:
+  - the National Weather Service in the US (including Alaska, Hawaii, and the territories);
+  - MET Norway's warnings (MetAlerts) in Norway, including Svalbard and Jan Mayen. Only warnings for land are used, not gale warnings for sea areas. Levels follow MET Norway's colours (yellow is moderate, orange severe, red extreme), and each warning shows its area and description in English, its end time, and a link to MET Norway's page about it;
+  - Pirate Weather elsewhere, with a key. It passes on the official warnings that national weather services publish to the WMO's global alert hub, including Europe's through MeteoAlarm. Not every country takes part, so an empty list is shown as "none reported by Pirate Weather". Alerts are in the language they were published in, repeats are removed, and severities are standardized.
+- Wind gusts: the Wind reading gets a second line, such as "Gusts 18 mph", when the gusts are stronger than the wind (`current.wind_gust`). Gusts are never filled in from another source.
+- Wind direction: the Wind reading shows where the wind comes from, such as "SW 12 mph", and says "Calm" when there is no wind (`current.wind_direction`, in degrees).
+- Dew point: a "Dew point 54°F" line in the Humidity box (`current.dew_point`).
+- When the readings are from: `current.observed_at` in `weather.json` (a station's observation time, or the forecast hour for MET Norway). When the readings are over an hour old, such as from a station that reports rarely, the Updated box adds "Reading from 2:40 PM".
+- `timezone` in `weather.json`: the location's time zone, such as `Europe/Oslo`, from the weather service, or else the container's `TZ` setting (MET Norway, mock data).
+- `docs/data-format.md` describes every field of `weather.json`, for anyone reading it from another tool such as Home Assistant, and `docs/schema/weather-v1.json` is the same as a JSON Schema. `weather.json` links to it in a `$schema` field, so editors such as VS Code check the file and describe each field.
+- For theme authors (see `docs/themes.md`): `--wx-gust`, `--wx-dew-point`, and `--wx-wind-direction` (a fraction of a turn, for rotating an arrow), and a shared `.reading-note` class for the second lines in the reading boxes (gusts, dew point, reading time).
 
 ### Changed
 
-- Each weather service is asked no more often than it allows, however short `OUTPOST_UPDATE_INTERVAL` is. Between requests, its last answer is reused. Open-Meteo is asked at most every 15 minutes (its current conditions change every 15 minutes, and the free tier allows fewer than 10,000 calls a day). The National Weather Service's forecast is fetched at most every 15 minutes, station readings every 5, and alerts every minute. MET Norway (when its forecast is due to change) and Pirate Weather (every 10 minutes) already worked this way. The updater lists these limits when it starts.
+- **Breaking for anything that reads `weather.json`:** the file has a versioned format (`"schema_version": 1`), and no field name includes a unit. `temperature_f` is now `temperature`, `feels_like_f` is `feels_like`, `wind_mph` is `wind_speed`, `pressure_inhg` is `pressure`, `visibility_miles` is `visibility`, `humidity_percent` is `humidity`, and in the forecast `high_f`, `low_f`, and `precipitation_percent` are `high`, `low`, and `precipitation_chance`. The units are listed once in a `units` block (for example `"temperature": "°F"`), and the dashboard shows them from there.
+- **Breaking for anything that reads `weather.json`:** where the data came from is in a `sources` block, with `weather`, `alerts` (`null` when there are no official alerts), and `fill` (the second source used for missing readings, and which ones). It replaces `source`, `provider_setting`, `filled_fields`, and `alerts_supported`. `provider` is now always the `OUTPOST_PROVIDER` setting (such as `auto`); the provider actually used is `sources.weather.id`.
+- `OUTPOST_PROVIDER=auto` picks the regional specialists first: MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen (with anything it lacks, such as visibility, filled in from Open-Meteo), and the National Weather Service in the US. Everywhere else it uses Pirate Weather with a key, and Open-Meteo without one (or if Pirate Weather fails). The region is worked out from the coordinates, without asking any service. When MET Norway or the National Weather Service fails, Pirate Weather takes over at once if you have a key; otherwise the last good data stays on screen, marked degraded, during a short outage, and once it is stale (three missed updates, at least 5 minutes) Open-Meteo takes over until the specialist answers again.
+- **With Open-Meteo in the US, the dashboard now shows official alerts** from the National Weather Service, where before it said alerts were not available. This sends your coordinates to the National Weather Service too; set `OUTPOST_ALERTS_PROVIDER=none` to go back to no alerts, and set `OUTPOST_CONTACT`, since NWS asks for it. When alerts come from a different source than the weather and that lookup fails, the weather still updates, the last alerts stay, and the degraded warning explains why.
+- Times on the dashboard (sunrise and sunset, "Updated", alert end times, and `{date}` and `{time}` in the subtitle) are shown as they are at the weather location, not in the viewing device's time zone. When the screen's own time zone differs, the zone is added, as in `4:12 PM GMT+1`.
+- Each weather service is asked no more often than it allows, however short `OUTPOST_UPDATE_INTERVAL` is; between requests its last answer is reused. Open-Meteo is asked at most every 15 minutes, the National Weather Service's forecast every 15 minutes, its station readings every 5, and its alerts every minute, MET Norway only when its forecast or warnings may have changed, and Pirate Weather every 10 minutes. The updater lists these limits when it starts.
 - `OUTPOST_UPDATE_INTERVAL` is at least 60 seconds. A shorter value is raised to 60, with a warning in the log.
-
-## [0.6.0-beta.9] - 2026-11-13
-
-### Added
-
-- Wind gusts: the Wind reading gets a second line, such as "Gusts 18 mph", when the gusts are stronger than the wind. Every weather provider supplies them (the National Weather Service only reports gusts when there are some). They are never filled in from another source, since a gust from one source beside a wind speed from another could be misleading. `weather.json` has them as `current.wind_gust`, in the same unit as `wind_speed`.
-- For theme authors: the gust line is a `<small class="wind-gust" data-metric="gust">` in the Wind box, and `--wx-gust` gives it as a 0 to 1 value on the same scale as the wind. Restyle it with `.wind-gust`, or hide it. See `docs/themes.md`.
-
-## [0.6.0-beta.8] - 2026-11-13
-
-### Added
-
-- MET Norway's warnings (MetAlerts), the official weather warnings for Norway: `OUTPOST_ALERTS_PROVIDER=metno`, and with `auto` for any location in Norway (including Svalbard and Jan Mayen), before Pirate Weather. Only warnings for land are used, not the gale warnings for sea areas. Warning levels follow MET Norway's colours (yellow is moderate, orange severe, red extreme), and each warning shows its area and description in English, its end time, and a link to MET Norway's page about it. Outpost works out from your coordinates, without asking any service, whether you are in Norway, since MET Norway has no warnings elsewhere. The warnings are downloaded again only when MET Norway says they may have changed.
-
-## [0.6.0-beta.7] - 2026-11-13
-
-### Changed
-
-- `OUTPOST_PROVIDER=auto` now prefers the regional specialists even when you have a Pirate Weather key: MET Norway in the Nordic countries and the National Weather Service in the US. Everywhere else it uses Pirate Weather with a key, and Open-Meteo without one (or if Pirate Weather fails). When MET Norway or the National Weather Service fails, Pirate Weather takes over at once if you have a key. Otherwise the last good data stays on screen, marked degraded, during a short outage; once it is stale (three missed updates, at least 5 minutes, when the dashboard also calls it old) Open-Meteo takes over until MET Norway or the National Weather Service answers again. Before, an outage of any length showed the last good data, getting older. In beta.5 and beta.6, a key made `auto` use Pirate Weather everywhere. To keep using Pirate Weather in the Nordic countries or the US, set `OUTPOST_PROVIDER=pirateweather`.
-- When Pirate Weather refuses the API key, Outpost waits 10 minutes before trying it again, instead of asking on every update. A newly subscribed key can take up to 20 minutes to start working.
-
-## [0.6.0-beta.6] - 2026-11-13
-
-### Changed
-
-- Times on the dashboard (sunrise and sunset, "Updated", alert end times, and `{date}` and `{time}` in the subtitle) are now shown as they are at the weather location, not in the viewing device's time zone. A dashboard for a cabin in another time zone, opened from home, shows the cabin's sunset in the cabin's time. When the screen's own time zone differs, the zone is added, as in `4:12 PM GMT+1`. On a screen in the same time zone nothing changes.
-
-### Added
-
-- `timezone` in `weather.json`: the location's time zone, such as `Europe/Oslo`, from the weather service (Open-Meteo, the National Weather Service, Pirate Weather), or else the container's `TZ` setting (MET Norway, mock data). See `docs/data-format.md`.
-
-## [0.6.0-beta.5] - 2026-11-13
-
-### Added
-
-- Pirate Weather: `OUTPOST_PROVIDER=pirateweather` uses [Pirate Weather](https://pirateweather.net), which covers the whole world, with a free API key in `OUTPOST_PIRATEWEATHER_API_KEY`. The free tier allows 10,000 calls a month, so Outpost asks at most every 10 minutes (about 4,300 calls a month) whatever `OUTPOST_UPDATE_INTERVAL` is, and if the quota still runs out it waits for the reset Pirate Weather reports instead of asking again. The key is sent only to Pirate Weather, in a request header, and never appears in an address, the log, or Outpost's files. The footer credits Pirate Weather.
-- Alerts from Pirate Weather: `OUTPOST_ALERTS_PROVIDER=pirateweather`, and with a key `auto` uses them outside the US (in the US, the National Weather Service stays first, since it also covers Alaska, Hawaii, and the territories, which Pirate Weather doesn't). Pirate Weather passes on the official warnings that national weather services publish to the WMO's global alert hub, including Europe's through MeteoAlarm. Which countries take part changes over time, and an empty list can also mean yours isn't covered, so the dashboard then says "none reported by Pirate Weather". Alerts are in the language they were published in, repeats are removed, and severities are standardized. With Pirate Weather weather too, the alerts come in the same request.
-- With a Pirate Weather key set, `OUTPOST_PROVIDER=auto` tries Pirate Weather first. If it fails, `auto` makes its usual choice (MET Norway in the Nordic countries, the National Weather Service in the US, Open-Meteo elsewhere) and logs why.
-
-## [0.6.0-beta.4] - 2026-11-13
-
-### Added
-
-- MET Norway weather: `OUTPOST_PROVIDER=metno` uses MET Norway's forecast, which covers the whole world and is especially good in the Nordic countries. MET Norway asks for `OUTPOST_CONTACT`, and the footer credits it. Outpost downloads the forecast again only when MET Norway says it has changed (about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so the current conditions are the forecast for this hour, visibility shows `--`, and the UV index is for a clear sky. Forecast days follow the container's `TZ` setting. MET Norway has no alerts in this release; in the US, `OUTPOST_ALERTS_PROVIDER=auto` still adds National Weather Service alerts.
-- `OUTPOST_PROVIDER=auto` uses MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen (worked out from the coordinates, without asking any service), with anything it lacks, such as visibility, filled in from Open-Meteo. Elsewhere `auto` is unchanged. Outpost also no longer asks the National Weather Service about alerts for a Nordic location.
-
-### Changed
-
-- Outpost now always tells weather services what it is: the User-Agent includes the project page, as `Outpost/<version> (+https://github.com/maxtrax04/outpost)`, or `Outpost/<version> (you@example.com; +https://github.com/maxtrax04/outpost)` with `OUTPOST_CONTACT`. So it works with services that refuse anonymous requests even before a contact is set. Setting `OUTPOST_CONTACT` is still recommended, so a service can reach you instead of blocking every Outpost install; the startup reminder says so. `OUTPOST_USER_AGENT` still replaces it all.
-
-## [0.6.0-beta.3] - 2026-11-12
-
-### Added
-
-- `OUTPOST_ALERTS_PROVIDER` picks where official alerts come from, separately from the weather: `auto` (default), `nws`, or `none`. With `auto`, alerts come from the weather provider when it has them; when it doesn't, as with Open-Meteo, they come from the National Weather Service wherever it covers the location (the US). `weather.json` names the alerts source in `sources.alerts`, and the dashboard footer credits it. See "Alerts" in the README.
-
-### Changed
-
-- **With Open-Meteo in the US, the dashboard now shows official alerts** from the National Weather Service, where before it said alerts were not available. This sends your coordinates to the National Weather Service too; set `OUTPOST_ALERTS_PROVIDER=none` to go back to no alerts, and set `OUTPOST_CONTACT`, since NWS asks for it. Outside the US the dashboard looks the same, but Outpost still asks the National Weather Service about every 30 minutes whether it covers the location (sending it the coordinates); `none` stops that too.
-- When alerts come from a different source than the weather and that lookup fails, the weather still updates. The dashboard keeps the last alerts and shows the degraded warning, and `last_error` in `weather.json` explains it.
-
-## [0.6.0-beta.2] - 2026-11-12
-
-### Added
-
-- Metric units: `OUTPOST_UNITS=metric` shows °C, km/h, hPa, and km on the dashboard and in `weather.json` (its `units` block says which system is used). The setting was accepted before but did nothing. Each reading is converted and rounded once, from the weather source's own numbers. Theme gauges point to the same place in either system. An unknown value logs a warning and uses imperial.
-
-### Changed
-
-- Changing `OUTPOST_UNITS` and restarting while the weather source is unreachable shows that there is no data, rather than the last saved readings in the other units.
-
-## [0.6.0-beta.1] - 2026-11-12
-
-### Added
-
-- `docs/data-format.md` describes every field of `weather.json`, for anyone reading it from another tool such as Home Assistant, and `docs/schema/weather-v1.json` is the same as a JSON Schema. `weather.json` links to it in a `$schema` field, so editors such as VS Code check the file and describe each field when you open it.
-
-### Changed
-
-- **Breaking for anything that reads `weather.json`:** the file has a versioned format (`"schema_version": 1`), and no field name includes a unit. `temperature_f` is now `temperature`, `feels_like_f` is `feels_like`, `wind_mph` is `wind_speed`, `pressure_inhg` is `pressure`, `visibility_miles` is `visibility`, `humidity_percent` is `humidity`, and in the forecast `high_f`, `low_f`, and `precipitation_percent` are `high`, `low`, and `precipitation_chance`. The units are listed once in a `units` block (for example `"temperature": "°F"`), and the dashboard shows them from there. The dashboard itself looks the same.
-- **Breaking for anything that reads `weather.json`:** where the data came from is in a `sources` block, with `weather`, `alerts` (`null` when the source has no official alerts), and `fill` (the second source used for missing readings, and which ones). It replaces `source`, `provider_setting`, `filled_fields`, and `alerts_supported`. `provider` is now always the `OUTPOST_PROVIDER` setting (such as `auto`); the provider actually used is `sources.weather.id`.
-- Right after an upgrade, if the first update fails, Outpost no longer shows the weather saved by the old version as "degraded" data, because that file is in the old format. The screen shows that there is no data until an update succeeds.
+- Outpost always tells weather services what it is: the User-Agent includes the project page, as `Outpost/<version> (+https://github.com/maxtrax04/outpost)`, or `Outpost/<version> (you@example.com; +https://github.com/maxtrax04/outpost)` with `OUTPOST_CONTACT`. Setting `OUTPOST_CONTACT` is still recommended. `OUTPOST_USER_AGENT` still replaces it all.
+- Right after an upgrade, or after changing `OUTPOST_UNITS`, if the first update fails the screen shows that there is no data, rather than the last saved readings in the old format or units.
 - The health check also requires `schema_version` to match.
 
 ### Upgrading from 0.5.0
 
-- **If you only use the dashboard,** nothing is required. Rebuild or pull, and reload each screen once.
+- **If you only use the dashboard,** nothing is required. Rebuild with `docker compose up -d --build`, or pull `ghcr.io/maxtrax04/outpost:0.6.0` (or `latest`), and reload each screen once.
 - **If another tool reads `weather.json`** (a Home Assistant REST sensor, a script), rename the fields it uses as listed above. For example, a Home Assistant template `{{ value_json.current.temperature_f }}` becomes `{{ value_json.current.temperature }}`, and `{{ value_json.source }}` becomes `{{ value_json.sources.weather.name }}`. Check `schema_version` to notice future breaking changes. See [docs/data-format.md](docs/data-format.md).
+- **If you use Open-Meteo in the US,** you now also get National Weather Service alerts, which sends your coordinates to the National Weather Service. Set `OUTPOST_CONTACT`, or `OUTPOST_ALERTS_PROVIDER=none` to turn them off.
+- **If you use `OUTPOST_PROVIDER=auto` in the Nordic countries,** the weather now comes from MET Norway instead of Open-Meteo. Set `OUTPOST_PROVIDER=openmeteo` to keep Open-Meteo.
+- **If `OUTPOST_UPDATE_INTERVAL` is below 60,** it is raised to 60.
+- New optional settings (see `.env.example`): `OUTPOST_ALERTS_PROVIDER` and `OUTPOST_PIRATEWEATHER_API_KEY`. `OUTPOST_UNITS=metric` now works.
 
 ## [0.5.0] - 2026-11-11
 
