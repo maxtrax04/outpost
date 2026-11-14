@@ -168,6 +168,7 @@ def build_current(currently: Dict[str, Any]) -> Dict[str, Any]:
     condition, icon = describe(currently.get("icon"), currently.get("summary"))
     pressure = _number(currently.get("pressure"))
     uv = _number(currently.get("uvIndex"))
+    observed = _number(currently.get("time"))
     return {
         "temperature": _number(currently.get("temperature")),
         "feels_like": _number(currently.get("apparentTemperature")),
@@ -176,6 +177,9 @@ def build_current(currently: Dict[str, Any]) -> Dict[str, Any]:
         "humidity": _percent(currently.get("humidity")),
         "wind_speed": _number(currently.get("windSpeed")),
         "wind_gust": _number(currently.get("windGust")),
+        "wind_direction": _number(currently.get("windBearing")),
+        "dew_point": _number(currently.get("dewPoint")),  # °F (units=us)
+        "observed_at": datetime.fromtimestamp(observed, timezone.utc).isoformat() if observed is not None else None,
         "pressure": pressure * HPA_TO_INHG if pressure is not None else None,  # millibars = hPa
         "uv_index": round(uv) if uv is not None else None,
         "visibility": _number(currently.get("visibility")),  # miles, up to 10

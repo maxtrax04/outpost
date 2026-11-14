@@ -20,8 +20,11 @@
         "temperature": ["temperature", -20, 120, "temperature"],
         "feels-like": ["feels_like", -20, 120, "temperature"],
         "humidity": ["humidity", 0, 100],
+        "dew-point": ["dew_point", -20, 120, "temperature"],
         "wind": ["wind_speed", 0, 60, "speed"],
         "gust": ["wind_gust", 0, 60, "speed"],
+        // Where the wind comes from as a fraction of a turn: rotate(calc(var(--value) * 1turn))
+        "wind-direction": ["wind_direction", 0, 360],
         "pressure": ["pressure", 28.5, 31, "pressure"],
         "uv": ["uv_index", 0, 11],
         "visibility": ["visibility", 0, 10, "distance"],

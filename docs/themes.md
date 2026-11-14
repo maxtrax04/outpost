@@ -208,8 +208,10 @@ stops at `0` or `1`.
 | Temperature | `temperature` | `--wx-temperature` | -20 °F (-29 °C) | 120 °F (49 °C) |
 | Feels like | `feels-like` | `--wx-feels-like` | -20 °F (-29 °C) | 120 °F (49 °C) |
 | Humidity | `humidity` | `--wx-humidity` | 0% | 100% |
+| Dew point | `dew-point` | `--wx-dew-point` | -20 °F (-29 °C) | 120 °F (49 °C) |
 | Wind | `wind` | `--wx-wind` | 0 mph | 60 mph (97 km/h) |
 | Gusts | `gust` | `--wx-gust` | 0 mph | 60 mph (97 km/h) |
+| Wind direction | `wind-direction` | `--wx-wind-direction` | from the north (0°) | a full turn (360°) |
 | Pressure | `pressure` | `--wx-pressure` | 28.5 inHg (965 hPa) | 31 inHg (1050 hPa) |
 | UV index | `uv` | `--wx-uv` | 0 | 11 |
 | Visibility | `visibility` | `--wx-visibility` | 0 mi | 10 mi (16 km) |
@@ -219,11 +221,24 @@ one rule can draw every dial. When a reading is not available, `--value` and `--
 and the element gets `data-missing`. The `sunrise`, `sunset`, and `updated` boxes have a `data-metric`
 but no value.
 
-Gusts are not a box of their own: they are a line under the wind speed in the Wind box, a
-`<small class="wind-gust" data-metric="gust">` reading "Gusts 18 mph". It is hidden when there are no
-gusts, or none stronger than the wind. A `<small>`, not a `<span>`, so a rule such as
-`.detail-box span` that sizes the reading leaves it alone. Restyle it with `.wind-gust`, or hide it with
-`.wind-gust { display: none; }`.
+Wind direction is where the wind comes from, as a fraction of a turn, so an arrow needs only
+`transform: rotate(calc(var(--wx-wind-direction) * 1turn))`: an arrow drawn pointing up then points to
+where the wind comes from. It is on the wind reading itself, `<span id="wind" data-metric="wind-direction">`, which shows
+it as a compass point: "SW 12 mph". In calm weather the reading says "Calm" and the direction is
+missing.
+
+Some readings are a second line in another box rather than a box of their own. Each is a
+`<small class="reading-note …">`, not a `<span>`, so a rule such as `.detail-box span` that sizes the
+reading leaves it alone, and each is hidden when it has nothing to say:
+
+| Line | Box | Shows | Class |
+|---|---|---|---|
+| Gusts | Wind | "Gusts 18 mph", when gusts are stronger than the wind (`data-metric="gust"`) | `wind-gust` |
+| Dew point | Humidity | "Dew point 54°F" (`data-metric="dew-point"`) | `dew-point` |
+| Reading time | Updated | "Reading from 2:40 PM", when the readings are over an hour old | `reading-time` |
+
+Restyle them all with `.reading-note` or one by its class, or hide one with, for example,
+`.dew-point { display: none; }`.
 
 Each forecast card gets `--wx-high` and `--wx-low` (same scale as temperature), `--wx-rain` (chance of
 rain, 0 to 100%), and `--wx-uv`.

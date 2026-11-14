@@ -49,6 +49,7 @@ DIGITS = {
 CURRENT_FIELDS = {
     "temperature": "temperature",
     "feels_like": "temperature",
+    "dew_point": "temperature",
     "wind_speed": "speed",
     "wind_gust": "speed",
     "pressure": "pressure",
@@ -77,6 +78,13 @@ def convert(value: Any, kind: str, system: str) -> Optional[float]:
     return result + 0.0
 
 
+def direction(value: Any) -> Optional[int]:
+    """A compass direction in whole degrees, 0 to 359 (360 is north, so 0). Anything else becomes None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+        return None
+    return int(round(value)) % 360
+
+
 def present(data: Dict[str, Any], system: str) -> Dict[str, Any]:
     """A copy of normalized provider data with every reading in `system`, rounded."""
     result = copy.deepcopy(data)
@@ -84,6 +92,10 @@ def present(data: Dict[str, Any], system: str) -> Dict[str, Any]:
     for field, kind in CURRENT_FIELDS.items():
         if field in current:
             current[field] = convert(current[field], kind, system)
+    if "wind_direction" in current:
+        # Calm has no direction (NWS reports calm as 0°, which would point an arrow north)
+        calm = current.get("wind_speed") == 0
+        current["wind_direction"] = None if calm else direction(current["wind_direction"])
     for day in result.get("forecast") or []:
         for field, kind in FORECAST_FIELDS.items():
             if field in day:

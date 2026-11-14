@@ -53,6 +53,10 @@ NIGHT_ICONS = {
     "partly-cloudy": "partly-cloudy-night",
 }
 
+# The forecast gives wind direction as a compass point ("SW"); the 16 points, in degrees
+COMPASS_DEGREES = {point: index * 22.5 for index, point in enumerate(
+    "N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW".split())}
+
 SEVERITY_ORDER = {"extreme": 0, "severe": 1, "moderate": 2, "minor": 3, "unknown": 4}
 
 
@@ -194,6 +198,17 @@ def _num(quantity: Any) -> Optional[float]:
     return quantity if isinstance(quantity, (int, float)) else None
 
 
+def _utc_iso(timestamp: Any) -> Optional[str]:
+    """An NWS time ('2026-07-15T21:00:00+00:00') as ISO 8601 in UTC, or None."""
+    try:
+        moment = datetime.fromisoformat(timestamp)
+    except (TypeError, ValueError):
+        return None
+    if moment.tzinfo is None:
+        return None
+    return moment.astimezone(timezone.utc).isoformat()
+
+
 def _round(value: Optional[float], digits: int = 0) -> Optional[float]:
     if value is None:
         return None
@@ -286,6 +301,9 @@ def build_current(periods: List[Dict[str, Any]], observation: Optional[Dict[str,
             "humidity": _round(_num(observation.get("relativeHumidity"))),
             "wind_speed": _speed_mph(observation.get("windSpeed")),
             "wind_gust": _speed_mph(observation.get("windGust")),  # null when there are no gusts
+            "wind_direction": _num(observation.get("windDirection")),  # null when calm
+            "dew_point": _c_to_f(_num(observation.get("dewpoint"))),
+            "observed_at": _utc_iso(observation.get("timestamp")),
             "pressure": pressure_pa * PA_TO_INHG if pressure_pa is not None else None,
             "uv_index": None,  # NWS does not publish UV index
             "visibility": visibility_m / METERS_PER_MILE if visibility_m is not None else None,
@@ -302,6 +320,9 @@ def build_current(periods: List[Dict[str, Any]], observation: Optional[Dict[str,
         "humidity": _round(_num(first.get("relativeHumidity"))),
         "wind_speed": _period_wind_mph(first),
         "wind_gust": None,
+        "wind_direction": COMPASS_DEGREES.get(str(first.get("windDirection") or "").upper()),
+        "dew_point": None,
+        "observed_at": None,  # a forecast, not a reading
         "pressure": None,
         "uv_index": None,
         "visibility": None,

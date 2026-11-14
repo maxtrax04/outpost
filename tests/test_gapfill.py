@@ -6,7 +6,7 @@ from providers import gapfill
 
 def nws_like():
     return {
-        "current": {"humidity": 20, "wind_speed": 5, "pressure": 30.0, "uv_index": None, "visibility": 10.0},
+        "current": {"humidity": 20, "dew_point": 40, "wind_speed": 5, "pressure": 30.0, "uv_index": None, "visibility": 10.0},
         "forecast": [
             {"day": "2026-07-15", "high": None, "low": 60, "uv_index": None},
             {"day": "2026-07-16", "high": 85, "low": 59, "uv_index": None},
@@ -16,7 +16,7 @@ def nws_like():
 
 def backup():
     return {
-        "current": {"humidity": 99, "wind_speed": 99, "pressure": 99.0, "uv_index": 4, "visibility": 99.0},
+        "current": {"humidity": 99, "dew_point": 99, "wind_speed": 99, "pressure": 99.0, "uv_index": 4, "visibility": 99.0},
         "forecast": [
             {"day": "2026-07-15", "high": 90, "low": 1, "uv_index": 7},
             {"day": "2026-07-16", "high": 1, "low": 1, "uv_index": 6},

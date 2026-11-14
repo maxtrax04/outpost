@@ -46,6 +46,44 @@
         return `Gusts ${gust} ${(unitLabels || DEFAULT_UNITS).speed}`;
     }
 
+    // Degrees the wind comes from -> one of 8 compass points ("SW"), or "" when not a number
+    const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    function compass(degrees) {
+        if (typeof degrees !== "number" || !Number.isFinite(degrees)) return "";
+        return COMPASS[Math.round((((degrees % 360) + 360) % 360) / 45) % 8];
+    }
+
+    // The wind reading: "SW 12 mph", "12 mph" without a direction, "Calm" at 0, or "--"
+    function windText(current, unitLabels) {
+        const speed = current ? current.wind_speed : null;
+        if (typeof speed !== "number" || !Number.isFinite(speed)) return "--";
+        if (speed === 0) return "Calm";
+        const point = compass(current.wind_direction);
+        const text = `${speed} ${(unitLabels || DEFAULT_UNITS).speed}`;
+        return point ? `${point} ${text}` : text;
+    }
+
+    // The dew point line under the humidity ("Dew point 54°F"), or "" when there is none
+    function dewPointText(current, unitLabels) {
+        const dew = current ? current.dew_point : null;
+        if (typeof dew !== "number" || !Number.isFinite(dew)) return "";
+        return `Dew point ${dew}${(unitLabels || DEFAULT_UNITS).temperature}`;
+    }
+
+    // Readings older than this get their time shown ("Reading from 2:40 PM"). Stations often report
+    // hourly, and a service's answer is reused for some minutes, so younger readings are normal.
+    const OLD_READING_MS = 60 * 60 * 1000;
+
+    // When the readings are from, if they are old enough to mention; otherwise null
+    function oldReadingTime(weather, now) {
+        const observed = weather && weather.current ? weather.current.observed_at : null;
+        if (typeof observed !== "string") return null;
+        const time = new Date(observed);
+        if (Number.isNaN(time.getTime())) return null;
+        const age = (now === undefined ? Date.now() : now) - time.getTime();
+        return age > OLD_READING_MS ? time : null;
+    }
+
     // Alerts sources whose empty list can also mean "this country is not covered" (Pirate Weather's alerts
     // cover only the countries on the WMO alert hub), so "none" is said as "none reported by" them
     const UNCERTAIN_ALERTS_SOURCES = ["pirateweather"];
@@ -57,7 +95,10 @@
         return typeof source.name === "string" && source.name.trim() ? source.name.trim() : source.id;
     }
 
-    const api = { SCHEMA_VERSION, DEFAULT_UNITS, units, sourceText, alertsSupported, uncertainAlertsSource, gustText };
+    const api = {
+        SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, units, sourceText, alertsSupported, uncertainAlertsSource,
+        gustText, compass, windText, dewPointText, oldReadingTime,
+    };
 
     root.OutpostData = api;
 

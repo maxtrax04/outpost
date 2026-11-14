@@ -291,9 +291,11 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
     background: var(--cell-bg);
 }
 
-/* Wind gusts, under the wind speed when there are any. A <small>, so themes that size every span in
-   a reading box as the big value leave it alone. Themes can restyle or hide .wind-gust. */
-.wind-gust {
+/* Second lines in a reading box: gusts under the wind (.wind-gust), the dew point under the humidity
+   (.dew-point), and how old the readings are under Updated (.reading-time). Each is a <small>, so themes
+   that size every span in a reading box as the big value leave it alone. Themes can restyle or hide
+   them all with .reading-note, or one by its own class. */
+.reading-note {
     display: block;
     margin-top: 2px;
     font-size: 0.8em;
