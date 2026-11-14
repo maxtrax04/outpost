@@ -78,6 +78,10 @@ class NormalizeTests(unittest.TestCase):
 
 
 class FetchTests(unittest.TestCase):
+    def setUp(self):
+        openmeteo._cache.clear()
+        self.addCleanup(openmeteo._cache.clear)
+
     def test_request_has_location_and_user_agent(self):
         body = io.BytesIO(json.dumps(load_fixture("openmeteo.json")).encode())
         with mock.patch("urllib.request.urlopen", return_value=body) as urlopen:

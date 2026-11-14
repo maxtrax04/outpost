@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.10] - 2026-11-14
+
+### Changed
+
+- Each weather service is asked no more often than it allows, however short `OUTPOST_UPDATE_INTERVAL` is. Between requests, its last answer is reused. Open-Meteo is asked at most every 15 minutes (its current conditions change every 15 minutes, and the free tier allows fewer than 10,000 calls a day). The National Weather Service's forecast is fetched at most every 15 minutes, station readings every 5, and alerts every minute. MET Norway (when its forecast is due to change) and Pirate Weather (every 10 minutes) already worked this way. The updater lists these limits when it starts.
+- `OUTPOST_UPDATE_INTERVAL` is at least 60 seconds. A shorter value is raised to 60, with a warning in the log.
+
 ## [0.6.0-beta.9] - 2026-11-13
 
 ### Added
