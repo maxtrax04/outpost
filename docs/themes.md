@@ -209,6 +209,7 @@ stops at `0` or `1`.
 | Feels like | `feels-like` | `--wx-feels-like` | -20 °F (-29 °C) | 120 °F (49 °C) |
 | Humidity | `humidity` | `--wx-humidity` | 0% | 100% |
 | Wind | `wind` | `--wx-wind` | 0 mph | 60 mph (97 km/h) |
+| Gusts | `gust` | `--wx-gust` | 0 mph | 60 mph (97 km/h) |
 | Pressure | `pressure` | `--wx-pressure` | 28.5 inHg (965 hPa) | 31 inHg (1050 hPa) |
 | UV index | `uv` | `--wx-uv` | 0 | 11 |
 | Visibility | `visibility` | `--wx-visibility` | 0 mi | 10 mi (16 km) |
@@ -217,6 +218,12 @@ The element with that `data-metric` also gets the value as `--value` and a `data
 one rule can draw every dial. When a reading is not available, `--value` and `--wx-<name>` are removed
 and the element gets `data-missing`. The `sunrise`, `sunset`, and `updated` boxes have a `data-metric`
 but no value.
+
+Gusts are not a box of their own: they are a line under the wind speed in the Wind box, a
+`<small class="wind-gust" data-metric="gust">` reading "Gusts 18 mph". It is hidden when there are no
+gusts, or none stronger than the wind. A `<small>`, not a `<span>`, so a rule such as
+`.detail-box span` that sizes the reading leaves it alone. Restyle it with `.wind-gust`, or hide it with
+`.wind-gust { display: none; }`.
 
 Each forecast card gets `--wx-high` and `--wx-low` (same scale as temperature), `--wx-rain` (chance of
 rain, 0 to 100%), and `--wx-uv`.

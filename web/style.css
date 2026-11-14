@@ -291,6 +291,15 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
     background: var(--cell-bg);
 }
 
+/* Wind gusts, under the wind speed when there are any. A <small>, so themes that size every span in
+   a reading box as the big value leave it alone. Themes can restyle or hide .wind-gust. */
+.wind-gust {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.8em;
+    opacity: 0.85;
+}
+
 .forecast {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

@@ -501,6 +501,8 @@ def mock_data() -> Dict[str, Any]:
     if env_flag("OUTPOST_MOCK_ALERTS", False):
         alerts.extend(mock_sample_alerts(now))
 
+    wind = random.randint(0, 25)
+
     return {
         "source": MOCK_SOURCE,
         "current": {
@@ -509,7 +511,8 @@ def mock_data() -> Dict[str, Any]:
             "condition": current_condition,
             "icon": current_icon,
             "humidity": random.randint(35, 85),
-            "wind_speed": random.randint(0, 25),
+            "wind_speed": wind,
+            "wind_gust": wind + random.randint(0, 15),
             "pressure": round(random.uniform(29.70, 30.35), 2),
             "uv_index": random.randint(0, 8),
             "visibility": random.randint(5, 10)
@@ -591,6 +594,7 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
             "icon": "unknown",
             "humidity": None,
             "wind_speed": None,
+            "wind_gust": None,
             "pressure": None,
             "uv_index": None,
             "visibility": None

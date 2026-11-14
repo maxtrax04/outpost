@@ -10,6 +10,10 @@
       "unitCode": "wmoUnit:km_h-1",
       "value": 14.8
     },
+    "windGust": {
+      "unitCode": "wmoUnit:km_h-1",
+      "value": 38.9
+    },
     "barometricPressure": {
       "unitCode": "wmoUnit:Pa",
       "value": 91950

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0-beta.9] - 2026-11-13
+
+### Added
+
+- Wind gusts: the Wind reading gets a second line, such as "Gusts 18 mph", when the gusts are stronger than the wind. Every weather provider supplies them (the National Weather Service only reports gusts when there are some). They are never filled in from another source, since a gust from one source beside a wind speed from another could be misleading. `weather.json` has them as `current.wind_gust`, in the same unit as `wind_speed`.
+- For theme authors: the gust line is a `<small class="wind-gust" data-metric="gust">` in the Wind box, and `--wx-gust` gives it as a 0 to 1 value on the same scale as the wind. Restyle it with `.wind-gust`, or hide it. See `docs/themes.md`.
+
 ## [0.6.0-beta.8] - 2026-11-13
 
 ### Added

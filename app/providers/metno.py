@@ -217,6 +217,7 @@ def build_current(timeseries: List[Dict[str, Any]], now: datetime) -> Dict[str, 
     temperature = _number(instant.get("air_temperature"))
     feels_like = _number(instant.get("apparent_air_temperature"))
     wind = _number(instant.get("wind_speed"))
+    gust = _number(instant.get("wind_speed_of_gust"))
     pressure = _number(instant.get("air_pressure_at_sea_level"))
     humidity = _number(instant.get("relative_humidity"))
     uv = _number(instant.get("ultraviolet_index_clear_sky"))
@@ -229,6 +230,7 @@ def build_current(timeseries: List[Dict[str, Any]], now: datetime) -> Dict[str, 
         "icon": icon,
         "humidity": round(humidity) if humidity is not None else None,
         "wind_speed": wind * MS_TO_MPH if wind is not None else None,
+        "wind_gust": gust * MS_TO_MPH if gust is not None else None,
         "pressure": pressure * HPA_TO_INHG if pressure is not None else None,
         "uv_index": round(uv) if uv is not None else None,
         "visibility": None,  # MET Norway does not forecast visibility
