@@ -4,11 +4,16 @@ Open-Meteo provider.
 Docs:  https://open-meteo.com/en/docs
 Terms: free for non-commercial use, no API key. Attribution is required
        (the dashboard credits it from the "sources" block of weather.json).
+       The free tier allows fewer than 10,000 calls a day, and current conditions change every
+       15 minutes, so the same answer is reused for MIN_REQUEST_SECONDS whatever
+       OUTPOST_UPDATE_INTERVAL is (the weather, gap filling, and the fallback all share it).
 
 Uses only the Python standard library.
 """
 
+import copy
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,6 +25,11 @@ SOURCE = "Open-Meteo.com"
 CAPABILITIES = frozenset({"current", "forecast", "uv"})
 TIMEOUT_SECONDS = 15
 FORECAST_DAYS = 5
+# Never ask again for the same place sooner than this (its current conditions are 15-minutely)
+MIN_REQUEST_SECONDS = 15 * 60
+
+# url -> {"expires": unix time, "raw": decoded JSON}
+_cache: Dict[str, Dict[str, Any]] = {}
 
 CURRENT_VARS = [
     "is_day",
@@ -99,7 +109,7 @@ def _round(value: Optional[float], digits: int = 0) -> Optional[float]:
 
 
 def fetch_raw(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
-    """Call the Open-Meteo forecast API and return the decoded JSON."""
+    """The Open-Meteo forecast JSON, asked for at most every MIN_REQUEST_SECONDS per place."""
     params = {
         "latitude": latitude,
         "longitude": longitude,
@@ -112,6 +122,11 @@ def fetch_raw(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
         "forecast_days": FORECAST_DAYS,
     }
     url = f"{API_URL}?{urllib.parse.urlencode(params, safe=',')}"
+    now = time.time()
+    cached = _cache.get(url)
+    if cached and now < cached["expires"]:
+        return copy.deepcopy(cached["raw"])
+
     request = urllib.request.Request(url, headers={"User-Agent": user_agent})
 
     try:
@@ -130,7 +145,8 @@ def fetch_raw(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
     if raw.get("error"):
         raise RuntimeError(f"Open-Meteo error: {raw.get('reason', 'unknown')}")
 
-    return raw
+    _cache[url] = {"expires": now + MIN_REQUEST_SECONDS, "raw": raw}
+    return copy.deepcopy(raw)
 
 
 def _hourly_value(raw: Dict[str, Any], name: str) -> Optional[float]:

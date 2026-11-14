@@ -79,7 +79,19 @@ def read_version() -> str:
 APP_VERSION = read_version()
 
 PROVIDER = get_env("OUTPOST_PROVIDER", "mock").lower()
-UPDATE_INTERVAL = get_int_env("OUTPOST_UPDATE_INTERVAL", 60)
+# The shortest OUTPOST_UPDATE_INTERVAL allowed. Each weather service also has its own, longer
+# minimum (MIN_REQUEST_SECONDS and friends in app/providers); between those, its last answer is reused.
+MIN_UPDATE_INTERVAL = 60
+
+def update_interval_setting(seconds: int) -> int:
+    """OUTPOST_UPDATE_INTERVAL, raised to MIN_UPDATE_INTERVAL if it is shorter."""
+    if seconds < MIN_UPDATE_INTERVAL:
+        print(f"[Outpost] OUTPOST_UPDATE_INTERVAL={seconds} is too short; using {MIN_UPDATE_INTERVAL} seconds",
+              file=sys.stderr, flush=True)
+        return MIN_UPDATE_INTERVAL
+    return seconds
+
+UPDATE_INTERVAL = update_interval_setting(get_int_env("OUTPOST_UPDATE_INTERVAL", 60))
 
 LOCATION_NAME = get_env("OUTPOST_LOCATION_NAME", "Goodsprings, NV")
 LATITUDE = get_float_env("OUTPOST_LATITUDE", 35.8319)
@@ -972,8 +984,22 @@ def update_once() -> None:
 
         write_degraded_or_error(error_message)
 
+def request_limits_text() -> str:
+    """How often each weather service is asked at most, whatever OUTPOST_UPDATE_INTERVAL is."""
+    def minutes(seconds: int) -> str:
+        return f"{max(seconds, UPDATE_INTERVAL) / 60:g} min"
+
+    return ("Weather services are asked at most: "
+            f"Open-Meteo every {minutes(openmeteo.MIN_REQUEST_SECONDS)}; "
+            f"NWS forecast every {minutes(nws.FORECAST_REQUEST_SECONDS)}, "
+            f"observations every {minutes(nws.OBSERVATION_REQUEST_SECONDS)}, "
+            f"alerts every {minutes(nws.ALERTS_REQUEST_SECONDS)}; "
+            "MET Norway when its forecast is due to change; "
+            f"Pirate Weather every {minutes(pirateweather.MIN_CACHE_SECONDS)}")
+
 def run_loop() -> None:
     print(f"[Outpost] Updater loop started. Interval={UPDATE_INTERVAL}s", flush=True)
+    print(f"[Outpost] {request_limits_text()}", flush=True)
 
     while True:
         update_once()

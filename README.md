@@ -91,7 +91,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LATITUDE` | `35.8319` | Latitude in decimal degrees. |
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
-| `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates. |
+| `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
 | `OUTPOST_USER_AGENT` | *(empty)* | Advanced: replaces the whole User-Agent (normally `Outpost/<version> (<contact>; +https://github.com/maxtrax04/outpost)`). |
 | `OUTPOST_FRAME_ANCESTORS` | *(empty)* | Comma-separated list of sites allowed to show Outpost in a frame, such as `http://homeassistant.local:8123` for a Home Assistant webpage card. Empty allows only Outpost itself. See [SECURITY.md](SECURITY.md#security-headers). |
@@ -123,6 +123,19 @@ The defaults point at Goodsprings, NV. Set your own latitude and longitude to se
 The Nordic check is done from your coordinates alone; the US check is the National Weather Service answering that it covers them. To always use one provider, set `OUTPOST_PROVIDER` to it.
 
 The National Weather Service asks every client to identify itself, so set `OUTPOST_CONTACT` to an email address or website (Outpost warns at startup if it is missing). NWS does not publish a UV index, so with `nws` alone that field shows `--`. With `auto`, Outpost uses MET Norway in Norway, Sweden, Finland, Denmark, Iceland, the Faroe Islands, Svalbard, and Jan Mayen, where its forecast is at its best; the National Weather Service in the US; and everywhere else Pirate Weather if `OUTPOST_PIRATEWEATHER_API_KEY` is set, otherwise Open-Meteo. When MET Norway or NWS fails, Pirate Weather takes over at once if you have a key. Otherwise the last good data stays on screen (marked degraded) during a short outage, and once it is stale (three missed updates, at least 5 minutes) Open-Meteo takes over until MET Norway or NWS answers again. The Nordic check uses rough areas around those countries, worked out from your coordinates without asking any service, so near a border set `OUTPOST_PROVIDER` yourself if it picks the wrong one. Anything MET Norway or NWS leaves empty (such as visibility from MET Norway, or UV index and any reading a station is missing from NWS) is filled in from Open-Meteo, and the footer credits both sources. MET Norway requires every request to say what is asking (Outpost always sends its project page) and asks for a contact, so set `OUTPOST_CONTACT`; it also requires credit, which the footer gives; its data is shared under CC BY 4.0. Outpost downloads its forecast only when it has changed (MET Norway says when, about every 30 minutes), whatever `OUTPOST_UPDATE_INTERVAL` is. MET Norway sends a forecast rather than station readings, so "now" is the forecast for this hour, visibility shows `--`, and UV index is for a clear sky. Forecast days follow the container's `TZ` setting, so set it to your time zone. Pirate Weather needs a free API key from [pirateweather.net](https://pirateweather.net): sign up, subscribe the key to the forecast API, and set `OUTPOST_PIRATEWEATHER_API_KEY`. The free tier allows 10,000 calls a month, so Outpost asks at most every 10 minutes (about 4,300 a month) whatever `OUTPOST_UPDATE_INTERVAL` is, and if the quota still runs out it waits for the reset instead of asking again. Its alerts come with the forecast; see [Alerts](#alerts). Open-Meteo is free for non-commercial use and requires attribution, which the dashboard footer provides. Each provider has its own terms of use, attribution requirements, and rate limits. Please review them before running Outpost publicly or commercially.
+
+### Request limits
+
+However short you set `OUTPOST_UPDATE_INTERVAL`, Outpost asks each weather service no more often than this. Between requests, it reuses the service's last answer. The updater lists these limits in its log when it starts.
+
+| Service | Asked at most | Why |
+|---|---|---|
+| Open-Meteo | Every 15 minutes | Its current conditions change every 15 minutes, and the free tier allows fewer than 10,000 calls a day |
+| National Weather Service | Forecast every 15 minutes, station readings every 5, alerts every minute | NWS asks clients to cache; forecasts change about hourly, alerts at any time |
+| MET Norway (weather and warnings) | When MET Norway says the data may have changed (about every 30 minutes for the forecast) | Its terms require following the `Expires` header |
+| Pirate Weather | Every 10 minutes | The free tier allows 10,000 calls a month |
+
+`OUTPOST_UPDATE_INTERVAL` itself is at least 60 seconds; a shorter value is raised to 60, with a warning in the log. A shorter interval than these limits is still useful: alerts and fallbacks are checked on every update.
 
 ## Data and storage
 
