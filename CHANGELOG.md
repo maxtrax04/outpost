@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.2] - 2026-11-16
+
+### Added
+
+- `docs/home-assistant.md`: how to show the dashboard in a Home Assistant Webpage card (and what to do when it stays blank, such as Home Assistant on HTTPS with Outpost on HTTP), and ready-to-paste Home Assistant configuration that reads `weather.json` as sensors (temperature, humidity, wind, pressure, alerts, a severe-alert sensor, and a data-problem sensor) and as a `weather.outpost` entity with the daily forecast for the built-in weather cards.
+
 ## [0.7.0-beta.1] - 2026-11-16
 
 ### Changed
