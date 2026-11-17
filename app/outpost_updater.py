@@ -8,12 +8,14 @@ for the dashboard. On a failed update the last good data is kept, marked degrade
 """
 
 import argparse
+import copy
 import json
 import os
 import random
 import re
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -563,6 +565,47 @@ def location_timezone(data: Optional[Dict[str, Any]] = None) -> Optional[str]:
     """
     return valid_timezone((data or {}).get("timezone")) or valid_timezone(os.environ.get("TZ"))
 
+@dataclass(frozen=True)
+class Location:
+    """A place to fetch the weather for: home (the OUTPOST_* settings) or another place."""
+    latitude: float
+    longitude: float
+    name: str
+
+def home_location() -> Location:
+    """Home: OUTPOST_LATITUDE, OUTPOST_LONGITUDE, and OUTPOST_LOCATION_NAME."""
+    return Location(LATITUDE, LONGITUDE, LOCATION_NAME)
+
+class LocationState:
+    """
+    The last payload written for one place. A failed update falls back on it (write_degraded_or_error),
+    auto decides from its age when to switch to Open-Meteo, and a failed alerts lookup keeps its alerts.
+    Other places keep it in memory; home keeps it in weather.json (HomeState), so it survives restarts.
+    """
+
+    def __init__(self) -> None:
+        self._payload: Optional[Dict[str, Any]] = None
+
+    def read(self) -> Optional[Dict[str, Any]]:
+        return copy.deepcopy(self._payload)
+
+    def write(self, payload: Dict[str, Any]) -> None:
+        self._payload = copy.deepcopy(payload)
+
+class HomeState(LocationState):
+    """Home's last payload: weather.json itself."""
+
+    def read(self) -> Optional[Dict[str, Any]]:
+        try:
+            with DATA_PATH.open("r", encoding="utf-8") as file:
+                previous = json.load(file)
+            return previous if isinstance(previous, dict) else None
+        except Exception:
+            return None
+
+    def write(self, payload: Dict[str, Any]) -> None:
+        write_json(payload)
+
 def build_payload(
     status: str,
     sources: Dict[str, Any],
@@ -571,11 +614,13 @@ def build_payload(
     alerts: List[Dict[str, Any]],
     last_error: Optional[str] = None,
     timezone: Optional[str] = None,
+    location: Optional[Location] = None,
 ) -> Dict[str, Any]:
     """
-    weather.json, in the format described in docs/data-format.md. Readings arrive in the providers'
-    units, unrounded, and are converted to OUTPOST_UNITS and rounded here.
+    weather.json, in the format described in docs/data-format.md, for `location` (home by default).
+    Readings arrive in the providers' units, unrounded, and are converted to OUTPOST_UNITS and rounded here.
     """
+    location = location or home_location()
     readings = units.present({"current": current, "forecast": forecast}, UNITS)
     return {
         "$schema": SCHEMA_URL,
@@ -585,10 +630,10 @@ def build_payload(
         "version": APP_VERSION,
         "provider": PROVIDER,
         "sources": sources,
-        "location": LOCATION_NAME,
+        "location": location.name,
         "coordinates": {
-            "latitude": LATITUDE,
-            "longitude": LONGITUDE
+            "latitude": location.latitude,
+            "longitude": location.longitude
         },
         "timezone": timezone or location_timezone(),
         "generated_at": utc_now(),
@@ -600,7 +645,7 @@ def build_payload(
         "last_error": last_error
     }
 
-def build_error_payload(error_message: str) -> Dict[str, Any]:
+def build_error_payload(error_message: str, location: Optional[Location] = None) -> Dict[str, Any]:
     return build_payload(
         status="error",
         sources={"weather": None, "alerts": None, "fill": None},
@@ -622,6 +667,7 @@ def build_error_payload(error_message: str) -> Dict[str, Any]:
         forecast=[],
         alerts=[],
         last_error=error_message,
+        location=location,
     )
 
 def own_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -635,7 +681,8 @@ def own_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def build_live_payload(provider_name: str, data: Dict[str, Any],
-                       alerts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                       alerts: Optional[Dict[str, Any]] = None,
+                       location: Optional[Location] = None) -> Dict[str, Any]:
     """
     Wrap normalized provider data with Outpost metadata. `alerts` comes from resolve_alerts; without
     it, the provider's own alerts are used.
@@ -655,6 +702,7 @@ def build_live_payload(provider_name: str, data: Dict[str, Any],
         alerts=alerts["alerts"],
         last_error=alerts["error"],
         timezone=location_timezone(data),
+        location=location,
     )
 
 ALERTS_PROVIDER_VALUES = ("auto", "nws", "metno", "pirateweather", "none")
@@ -688,11 +736,10 @@ def warn_alerts_once(key: str, message: str) -> None:
         _warned_alerts.add(key)
         print(f"[Outpost] {message}", file=sys.stderr, flush=True)
 
-def previous_alerts(source_id: str) -> List[Dict[str, Any]]:
-    """The alerts in the last weather.json, if they came from the same source (else none)."""
+def previous_alerts(source_id: str, state: Optional[LocationState] = None) -> List[Dict[str, Any]]:
+    """The alerts in the place's last payload, if they came from the same source (else none)."""
+    previous = (state or HomeState()).read() or {}
     try:
-        with DATA_PATH.open("r", encoding="utf-8") as file:
-            previous = json.load(file)
         if ((previous.get("sources") or {}).get("alerts") or {}).get("id") == source_id:
             return [alert for alert in previous.get("alerts") or [] if isinstance(alert, dict)]
     except Exception:
@@ -701,7 +748,7 @@ def previous_alerts(source_id: str) -> List[Dict[str, Any]]:
 
 NO_ALERTS = {"source": None, "alerts": [], "error": None}
 
-def lookup_alerts(source_id: str, name: str, fetch: Any) -> Dict[str, Any]:
+def lookup_alerts(source_id: str, name: str, fetch: Any, state: Optional[LocationState] = None) -> Dict[str, Any]:
     """
     One separate alerts lookup. A failure keeps the previous alerts from the same source and reports
     the error (shown as degraded), but never fails the weather update. NoCoverageError passes through.
@@ -713,29 +760,35 @@ def lookup_alerts(source_id: str, name: str, fetch: Any) -> Dict[str, Any]:
         raise
     except Exception as error:
         print(f"[Outpost] Alerts lookup failed: {error}", file=sys.stderr, flush=True)
-        return {"source": source, "alerts": previous_alerts(source_id), "error": f"Alerts unavailable: {error}"}
+        return {"source": source, "alerts": previous_alerts(source_id, state), "error": f"Alerts unavailable: {error}"}
     return {"source": source, "alerts": alerts, "error": None}
 
-def nws_alerts() -> Dict[str, Any]:
+def nws_alerts(location: Optional[Location] = None, state: Optional[LocationState] = None) -> Dict[str, Any]:
     """NWS alerts; raises NoCoverageError outside the US (without asking NWS for a Nordic location)."""
-    if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+    location = location or home_location()
+    if regions.in_nordic_countries(location.latitude, location.longitude):
         # Certainly not covered by NWS, so the location is not sent there just to hear that
         raise nws.NoCoverageError("NWS has no data for this location (US only)")
-    result = lookup_alerts("nws", nws.SOURCE, lambda: nws.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT))
+    result = lookup_alerts("nws", nws.SOURCE,
+                           lambda: nws.fetch_alerts(location.latitude, location.longitude, USER_AGENT), state)
     warn_about_user_agent()
     return result
 
-def metno_alerts() -> Dict[str, Any]:
+def metno_alerts(location: Optional[Location] = None, state: Optional[LocationState] = None) -> Dict[str, Any]:
     """MET Norway's warnings (MetAlerts) for a location in Norway."""
-    result = lookup_alerts("metno", metno.ALERTS_SOURCE, lambda: metno.fetch_alerts(LATITUDE, LONGITUDE, USER_AGENT))
+    location = location or home_location()
+    result = lookup_alerts("metno", metno.ALERTS_SOURCE,
+                           lambda: metno.fetch_alerts(location.latitude, location.longitude, USER_AGENT), state)
     warn_about_user_agent("MET Norway")
     return result
 
-def pirateweather_alerts() -> Dict[str, Any]:
+def pirateweather_alerts(location: Optional[Location] = None, state: Optional[LocationState] = None) -> Dict[str, Any]:
+    location = location or home_location()
     return lookup_alerts("pirateweather", pirateweather.SOURCE, lambda: pirateweather.fetch_alerts(
-        LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
+        location.latitude, location.longitude, PIRATEWEATHER_API_KEY, USER_AGENT), state)
 
-def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[Location] = None,
+                   state: Optional[LocationState] = None) -> Dict[str, Any]:
     """
     Where this update's alerts come from (OUTPOST_ALERTS_PROVIDER), as
     {"source": sources.alerts entry or None, "alerts": [...], "error": message or None}.
@@ -744,6 +797,9 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     Alaska, Hawaii, and the territories); else MET Norway's in Norway (the official source there);
     else Pirate Weather's when a key is set; else none.
     """
+    location = location or home_location()
+    state = state or HomeState()
+
     if ALERTS_PROVIDER == "none":
         return NO_ALERTS
 
@@ -752,21 +808,21 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
             warn_alerts_once("pirateweather-key", "OUTPOST_ALERTS_PROVIDER=pirateweather needs "
                              "OUTPOST_PIRATEWEATHER_API_KEY; showing no alerts")
             return NO_ALERTS
-        return pirateweather_alerts()
+        return pirateweather_alerts(location, state)
 
     if ALERTS_PROVIDER == "metno":
-        if not regions.in_norway(LATITUDE, LONGITUDE):
+        if not regions.in_norway(location.latitude, location.longitude):
             warn_alerts_once("metno-coverage", "OUTPOST_ALERTS_PROVIDER=metno, but MET Norway issues warnings "
                              "only for Norway; showing no alerts")
             return NO_ALERTS
-        return metno_alerts()
+        return metno_alerts(location, state)
 
     own = own_alerts(provider_name, data)
     if own["source"] is not None and (ALERTS_PROVIDER == "auto" or provider_name == ALERTS_PROVIDER):
         return own
 
     try:
-        return nws_alerts()
+        return nws_alerts(location, state)
     except nws.NoCoverageError:
         if ALERTS_PROVIDER == "nws":
             warn_alerts_once("nws-coverage", "OUTPOST_ALERTS_PROVIDER=nws, but NWS has no alerts for this "
@@ -774,57 +830,58 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
             return NO_ALERTS
 
     # auto, outside the US
-    if regions.in_norway(LATITUDE, LONGITUDE):
-        return metno_alerts()
+    if regions.in_norway(location.latitude, location.longitude):
+        return metno_alerts(location, state)
     if PIRATEWEATHER_API_KEY:
-        return pirateweather_alerts()
+        return pirateweather_alerts(location, state)
     return NO_ALERTS
 
-def fetch_weather() -> Tuple[str, Dict[str, Any]]:
-    """(provider id, normalized data) from OUTPOST_PROVIDER."""
+def fetch_weather(location: Optional[Location] = None,
+                  state: Optional[LocationState] = None) -> Tuple[str, Dict[str, Any]]:
+    """(provider id, normalized data) from OUTPOST_PROVIDER, for `location` (home by default)."""
+    location = location or home_location()
+    lat, lon = location.latitude, location.longitude
     if PROVIDER == "mock":
         return "mock", mock_data()
     if PROVIDER == "openmeteo":
-        return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+        return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
     if PROVIDER == "nws":
         warn_about_user_agent()
-        return "nws", nws.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+        return "nws", nws.fetch(lat, lon, USER_AGENT)
     if PROVIDER == "metno":
         warn_about_user_agent("MET Norway")
-        return "metno", metno.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+        return "metno", metno.fetch(lat, lon, USER_AGENT)
     if PROVIDER == "pirateweather":
-        return "pirateweather", pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT)
+        return "pirateweather", pirateweather.fetch(lat, lon, PIRATEWEATHER_API_KEY, USER_AGENT)
     if PROVIDER == "auto":
-        return fetch_auto()
+        return fetch_auto(location, state)
     raise RuntimeError(
         f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, pirateweather, or auto."
     )
 
-def fetch_pirateweather() -> Tuple[str, Dict[str, Any]]:
-    return "pirateweather", with_gap_fill(pirateweather.fetch(LATITUDE, LONGITUDE, PIRATEWEATHER_API_KEY, USER_AGENT))
+def fetch_pirateweather(location: Optional[Location] = None) -> Tuple[str, Dict[str, Any]]:
+    location = location or home_location()
+    return "pirateweather", with_gap_fill(pirateweather.fetch(
+        location.latitude, location.longitude, PIRATEWEATHER_API_KEY, USER_AGENT), location)
 
 def read_previous() -> Optional[Dict[str, Any]]:
     """The last weather.json, or None if there is none or it cannot be read."""
-    try:
-        with DATA_PATH.open("r", encoding="utf-8") as file:
-            previous = json.load(file)
-        return previous if isinstance(previous, dict) else None
-    except Exception:
-        return None
+    return HomeState().read()
 
 def stale_after_seconds() -> int:
     """How old data may be before the dashboard calls it stale: three missed updates, at least 5 minutes."""
     return max(300, UPDATE_INTERVAL * 3)
 
-def should_switch_to_open_meteo() -> bool:
+def should_switch_to_open_meteo(state: Optional[LocationState] = None,
+                                location: Optional[Location] = None) -> bool:
     """
     Whether a failed regional specialist should give way to Open-Meteo now. Not during a short outage:
     then the last good data stays, marked degraded, so the dashboard does not flip between sources.
     Yes once that data is older than stale_after_seconds(), when there is no usable data at all, and
     while already on Open-Meteo for this outage (so it does not go back to degraded every few minutes).
     """
-    previous = read_previous()
-    if not previous or not can_keep_previous(previous):
+    previous = (state or HomeState()).read()
+    if not previous or not can_keep_previous(previous, location):
         return True
     if ((previous.get("sources") or {}).get("weather") or {}).get("id") == "openmeteo":
         return True
@@ -834,29 +891,32 @@ def should_switch_to_open_meteo() -> bool:
     except Exception:
         return True
 
-def instead_of(specialist: str, error: Exception) -> Tuple[str, Dict[str, Any]]:
+def instead_of(specialist: str, error: Exception, location: Optional[Location] = None,
+               state: Optional[LocationState] = None) -> Tuple[str, Dict[str, Any]]:
     """
     When the regional specialist (MET Norway or NWS) fails: Pirate Weather, if a key is set; then
     Open-Meteo, once should_switch_to_open_meteo() says so. Until then (or if Open-Meteo fails too) the
     specialist's error stands, so the last good data is kept as degraded.
     """
+    location = location or home_location()
     if PIRATEWEATHER_API_KEY:
         print(f"[Outpost] {specialist} failed ({error}); using Pirate Weather for this update", file=sys.stderr, flush=True)
         try:
-            return fetch_pirateweather()
+            return fetch_pirateweather(location)
         except Exception as pirate_error:
             print(f"[Outpost] Pirate Weather failed too: {pirate_error}", file=sys.stderr, flush=True)
 
-    if not should_switch_to_open_meteo():
+    if not should_switch_to_open_meteo(state, location):
         raise error
     print(f"[Outpost] {specialist} failed ({error}); using Open-Meteo until it is back", file=sys.stderr, flush=True)
     try:
-        return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+        return "openmeteo", openmeteo.fetch(location.latitude, location.longitude, USER_AGENT)
     except Exception as open_meteo_error:
         print(f"[Outpost] Open-Meteo failed too: {open_meteo_error}", file=sys.stderr, flush=True)
         raise error
 
-def fetch_auto() -> Tuple[str, Dict[str, Any]]:
+def fetch_auto(location: Optional[Location] = None,
+               state: Optional[LocationState] = None) -> Tuple[str, Dict[str, Any]]:
     """
     OUTPOST_PROVIDER=auto. The regional specialists first: MET Norway in the Nordic countries and the
     National Weather Service in the US. Everywhere else Pirate Weather when a key is set, and
@@ -864,35 +924,38 @@ def fetch_auto() -> Tuple[str, Dict[str, Any]]:
     key) takes over for that update, and Open-Meteo once the outage outlasts the last good data
     (instead_of). Anything the provider leaves empty is filled from Open-Meteo.
     """
-    if regions.in_nordic_countries(LATITUDE, LONGITUDE):
+    location = location or home_location()
+    lat, lon = location.latitude, location.longitude
+    if regions.in_nordic_countries(lat, lon):
         warn_about_user_agent("MET Norway")
         try:
-            return "metno", with_gap_fill(metno.fetch(LATITUDE, LONGITUDE, USER_AGENT))
+            return "metno", with_gap_fill(metno.fetch(lat, lon, USER_AGENT), location)
         except Exception as error:
-            return instead_of("MET Norway", error)
+            return instead_of("MET Norway", error, location, state)
 
     warn_about_user_agent()
     try:
-        return "nws", with_gap_fill(nws.fetch(LATITUDE, LONGITUDE, USER_AGENT))
+        return "nws", with_gap_fill(nws.fetch(lat, lon, USER_AGENT), location)
     except nws.NoCoverageError:
         pass
     except Exception as error:
-        return instead_of("The National Weather Service", error)
+        return instead_of("The National Weather Service", error, location, state)
 
     if PIRATEWEATHER_API_KEY:
         try:
-            return fetch_pirateweather()
+            return fetch_pirateweather(location)
         except Exception as error:
             print(f"[Outpost] Pirate Weather failed, using Open-Meteo for this update: {error}",
                   file=sys.stderr, flush=True)
-    return "openmeteo", openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+    return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
 
-def can_keep_previous(previous: Dict[str, Any]) -> bool:
+def can_keep_previous(previous: Dict[str, Any], location: Optional[Location] = None) -> bool:
     """
-    True if the last weather.json can be shown again as degraded data: it has a reading, is in the
+    True if the last payload can be shown again as degraded data: it has a reading, is in the
     current format and units, and is for the same provider setting and location. Data from before
     an upgrade or a settings change is not shown, because it would be read or labeled wrongly.
     """
+    location = location or home_location()
     saved_units = previous.get("units")
     return (
         previous.get("schema_version") == SCHEMA_VERSION
@@ -900,39 +963,39 @@ def can_keep_previous(previous: Dict[str, Any]) -> bool:
         and saved_units == units_block()
         and (previous.get("current") or {}).get("temperature") is not None
         and previous.get("provider") == PROVIDER
-        and previous.get("location") == LOCATION_NAME
+        and previous.get("location") == location.name
     )
 
-def write_degraded_or_error(error_message: str) -> None:
+def write_degraded_or_error(error_message: str, location: Optional[Location] = None,
+                            state: Optional[LocationState] = None) -> Dict[str, Any]:
     """
     On a failed update, keep showing the last good data (marked degraded)
     when can_keep_previous allows it. Otherwise write an error payload.
-    generated_at is left alone so the data visibly ages.
+    generated_at is left alone so the data visibly ages. Returns what was written.
     """
-    try:
-        with DATA_PATH.open("r", encoding="utf-8") as file:
-            previous = json.load(file)
+    state = state or HomeState()
+    previous = state.read()
+    if previous is not None and can_keep_previous(previous, location):
+        previous["status"] = "degraded"
+        previous["last_error"] = error_message
+        previous["update_interval_seconds"] = UPDATE_INTERVAL
+        state.write(previous)
+        return previous
 
-        if isinstance(previous, dict) and can_keep_previous(previous):
-            previous["status"] = "degraded"
-            previous["last_error"] = error_message
-            previous["update_interval_seconds"] = UPDATE_INTERVAL
-            write_json(previous)
-            return
-    except Exception:
-        pass
+    payload = build_error_payload(error_message=error_message, location=location)
+    state.write(payload)
+    return payload
 
-    write_json(build_error_payload(error_message=error_message))
-
-def with_gap_fill(data: Dict[str, Any]) -> Dict[str, Any]:
+def with_gap_fill(data: Dict[str, Any], location: Optional[Location] = None) -> Dict[str, Any]:
     """
     Provider data, plus Open-Meteo for anything the provider left empty (such as UV index from NWS,
     or visibility from MET Norway). If Open-Meteo is unavailable, the data is used as-is.
     """
+    location = location or home_location()
 
     if gapfill.has_gaps(data):
         try:
-            backup = openmeteo.fetch(LATITUDE, LONGITUDE, USER_AGENT)
+            backup = openmeteo.fetch(location.latitude, location.longitude, USER_AGENT)
             data, filled = gapfill.fill(data, backup)
             if filled:
                 data["fill"] = source_entry("openmeteo", openmeteo.SOURCE, fields=filled)
@@ -970,16 +1033,27 @@ def warn_about_user_agent(service: str = "The National Weather Service") -> None
             flush=True
         )
 
-def update_once() -> None:
+def update_once(location: Optional[Location] = None,
+                state: Optional[LocationState] = None) -> Dict[str, Any]:
+    """
+    One update for `location` (home by default), saved in `state` (weather.json for home). Returns
+    the payload, or the degraded or error payload when the update failed.
+    """
+    location = location or home_location()
+    state = state or HomeState()
+    # Coordinates are deliberately not logged, because logs get pasted into bug reports
+    where = str(DATA_PATH) if isinstance(state, HomeState) else "another place"
     try:
         print(f"[Outpost] Starting update. Provider={PROVIDER}", flush=True)
 
-        provider_name, data = fetch_weather()
-        payload = build_live_payload(provider_name, data, resolve_alerts(provider_name, data))
+        provider_name, data = fetch_weather(location, state)
+        payload = build_live_payload(provider_name, data, resolve_alerts(provider_name, data, location, state),
+                                     location)
 
-        write_json(payload)
+        state.write(payload)
 
-        print(f"[Outpost] Update complete. Wrote {DATA_PATH}. Status={payload.get('status')}", flush=True)
+        print(f"[Outpost] Update complete. Wrote {where}. Status={payload.get('status')}", flush=True)
+        return payload
 
     except Exception as error:
         error_message = str(error)
@@ -990,7 +1064,7 @@ def update_once() -> None:
             flush=True
         )
 
-        write_degraded_or_error(error_message)
+        return write_degraded_or_error(error_message, location, state)
 
 def request_limits_text() -> str:
     """How often each weather service is asked at most, whatever OUTPOST_UPDATE_INTERVAL is."""

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.3] - 2026-11-16
+
+### Changed
+
+- `docs/api-design.md`: the plan for the 0.7.0 API that lets each screen show another place (location search, "my location"), with the limits that protect your weather services' quotas. Nothing changes on the dashboard yet.
+- Behind the scenes, the updater can fetch the weather for any place, not only home, and keeps each place's last good data separately, so one place's outage never shows another's readings. `weather.json` and the dashboard are unchanged.
+
 ## [0.7.0-beta.2] - 2026-11-16
 
 ### Added
