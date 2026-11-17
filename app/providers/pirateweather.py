@@ -21,6 +21,7 @@ Uses only the Python standard library.
 """
 
 import json
+import math
 import re
 import time
 import urllib.error
@@ -70,6 +71,10 @@ _cache: Dict[str, Dict[str, Any]] = {}
 # No requests before this time (after the monthly quota ran out)
 _blocked_until = 0.0
 _blocked_reason = ""
+# What Pirate Weather last said about this month's quota: {"remaining": calls left, "reset_at": unix time}
+_quota: Dict[str, float] = {}
+# Keep back this much more than home's own need when lending quota to other places (spare_calls)
+QUOTA_MARGIN = 0.10
 
 
 def describe(icon: Optional[str], summary: Any = None) -> Tuple[str, str]:
@@ -94,6 +99,30 @@ def _seconds(value: Any) -> Optional[float]:
         return None
 
 
+def _note_quota(headers: Any, now: float) -> None:
+    """Remember the calls left this month and when they reset (seconds from now), if the answer says."""
+    remaining = _seconds(headers.get("Ratelimit-Remaining"))
+    reset = _seconds(headers.get("Ratelimit-Reset"))
+    if remaining is not None and reset is not None and reset >= 0:
+        _quota.clear()
+        _quota.update({"remaining": remaining, "reset_at": now + reset})
+
+
+def spare_calls(seconds_per_home_call: float, now: Optional[float] = None) -> int:
+    """
+    Calls this month that home won't need: the calls left, minus one call every
+    `seconds_per_home_call` until the reset, plus QUOTA_MARGIN. 0 when Pirate Weather hasn't said
+    yet, or what it said is from before the reset.
+    """
+    now = time.time() if now is None else now
+    if not _quota or _quota["reset_at"] <= now:
+        return 0
+    home_calls = math.ceil((_quota["reset_at"] - now) / max(1.0, seconds_per_home_call))
+    # Rounded first, so float noise (1,440 x 1.1 = 1584.0000000000002) does not add a call
+    reserve = math.ceil(round(home_calls * (1 + QUOTA_MARGIN), 6))
+    return max(0, int(_quota["remaining"]) - reserve)
+
+
 def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
     """The forecast JSON, kept for at least MIN_CACHE_SECONDS."""
     global _blocked_until, _blocked_reason
@@ -116,6 +145,7 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
             raw = json.load(response)
+            _note_quota(response.headers, now)
             _cache[url] = {"expires": now + max(MIN_CACHE_SECONDS, _max_age(response.headers)), "raw": raw}
             return raw
     except urllib.error.HTTPError as error:
@@ -131,6 +161,8 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
             reset = _seconds((error.headers or {}).get("Ratelimit-Reset"))
             wait = min(reset, MAX_QUOTA_WAIT_SECONDS) if reset and reset > 0 else 3600
             _blocked_until = now + wait
+            _quota.clear()
+            _quota.update({"remaining": 0, "reset_at": now + wait})
             _blocked_reason = "Pirate Weather monthly quota reached; waiting for it to reset"
             raise RuntimeError(f"Pirate Weather HTTP 429: monthly quota reached; trying again in {int(wait // 60)} minutes") from error
         raise RuntimeError(f"Pirate Weather HTTP {error.code}: {error.reason}") from error

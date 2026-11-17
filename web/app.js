@@ -1,5 +1,5 @@
-// Outpost front end. Reads /data/weather.json (written by the updater)
-// and renders the HUD. Key names must match outpost_updater.py
+// Outpost front end. Reads the weather from the API, or /data/weather.json without it
+// (OutpostData.fetchWeather), and renders the HUD. Key names must match outpost_updater.py
 // and docs/data-format.md.
 
 const REFRESH_MS = 60 * 1000;          // how often the page re-reads the JSON
@@ -266,11 +266,7 @@ function renderSubtitle(config) {
 
 async function loadWeather(config) {
     try {
-        const response = await fetch(`data/weather.json?cacheBust=${Date.now()}`);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
+        const response = await OutpostData.fetchWeather((url) => fetch(url), Date.now());
         const weather = await response.json();
         // Times are shown as they are at the weather location (see clock.js)
         OutpostClock.setZone(weather.timezone);

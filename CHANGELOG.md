@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.4] - 2026-11-16
+
+### Added
+
+- Outpost's API, the first step toward letting each screen show another place (docs/api-design.md). `/api/weather` gives home's weather (the same as `weather.json`), and `/api/weather?lat=..&lon=..&name=..` the weather for another place, in the same format. `/api/status` says whether other places are allowed. A location search on the dashboard comes in a later beta.
+- `OUTPOST_LOCATION_SEARCH` (default `true`) allows other places; `false` turns them off. `OUTPOST_LOCATION_LIMIT` (default 30) caps the weather fetches an hour for all other places together, and `OUTPOST_LOCATION_PIRATEWEATHER` (default `true`) lets other places use the Pirate Weather key, but only from the quota home won't need before the monthly reset. See "Other places" in the README.
+- Other places cost little. Their coordinates are rounded to about 1 km, so nearby screens share one fetch. Each place is fetched at most every 15 minutes, and only while a screen shows it. When the hourly limit is used up, a place already shown gets its last data again, and a new one is refused. The web server allows each address 5 API requests a second.
+- Other places are kept only in memory. They are never written to `weather.json` or to disk, and API requests (which carry the coordinates) are not logged.
+
+### Changed
+
+- The dashboard reads the weather from the API, and from `data/weather.json` when the page is served without it.
+- One process now runs both the update loop and the API (`app/outpost_server.py`, in place of `outpost_updater.py --loop`), so home and other places share each weather service's request limits.
+
 ## [0.7.0-beta.3] - 2026-11-16
 
 ### Changed
