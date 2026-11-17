@@ -35,13 +35,17 @@
         return Number.isFinite(result) && Math.abs(result) <= limit ? result : null;
     }
 
+    // Coordinates are kept to 2 decimals (about 1 km), as the server rounds them: no more exact a
+    // place than that is stored in the browser or sent anywhere (+ 0 turns -0 into 0)
+    const round = (value) => Math.round(value * 100) / 100 + 0;
+
     // { name, latitude, longitude } from anything that looks like a place, or null
     function validPlace(value) {
         if (!value || typeof value !== "object") return null;
         const latitude = number(value.latitude, 90);
         const longitude = number(value.longitude, 180);
         if (latitude === null || longitude === null) return null;
-        return { name: cleanName(value.name) || DEFAULT_NAME, latitude, longitude };
+        return { name: cleanName(value.name) || DEFAULT_NAME, latitude: round(latitude), longitude: round(longitude) };
     }
 
     // Places within about 1 km are the same place: the server rounds coordinates to 2 decimals

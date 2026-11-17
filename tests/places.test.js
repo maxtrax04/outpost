@@ -34,6 +34,16 @@ test("a place needs coordinates in range; the name is one short line", () => {
     }
 });
 
+test("coordinates are kept to 2 decimals, as the server rounds them", () => {
+    assert.deepStrictEqual(places.validPlace({ name: "Here", latitude: 41.50123, longitude: -101.25678 }),
+        { name: "Here", latitude: 41.5, longitude: -101.26 });
+    assert.ok(Object.is(places.validPlace({ latitude: -0.001, longitude: 0 }).latitude, 0));
+    const storage = new Storage();
+    places.choose({ name: "Here", latitude: 41.50123, longitude: -101.25678 }, storage);
+    assert.ok(!storage.getItem(places.CHOICE_KEY).includes("41.501"));
+    assert.ok(!storage.getItem(places.SAVED_KEY).includes("41.501"));
+});
+
 test("places within about a kilometer are the same place", () => {
     assert.strictEqual(places.key(null), "home");
     assert.strictEqual(places.key(CINDER), "41.50,-101.25");
