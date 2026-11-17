@@ -9,8 +9,8 @@ python3 /app/outpost_community.py || true
 echo "[Outpost] Generating initial weather data..."
 python3 /app/outpost_updater.py || echo "[Outpost] Initial update failed; continuing."
 
-echo "[Outpost] Starting update loop..."
-python3 /app/outpost_updater.py --loop &
+echo "[Outpost] Starting the update loop and the API..."
+python3 /app/outpost_server.py &
 
 echo "[Outpost] Starting nginx..."
 exec nginx -g "daemon off;"

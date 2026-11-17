@@ -107,3 +107,40 @@ test("the reading time is given only when the readings are over an hour old", ()
         assert.strictEqual(data.oldReadingTime(value, now), null);
     }
 });
+
+// A stand-in for window.fetch: answers by address, records what was asked
+function fakeFetch(answers) {
+    const asked = [];
+    const fetchFn = async (url) => {
+        asked.push(url);
+        const answer = answers[url.split("?")[0]];
+        if (answer instanceof Error) throw answer;
+        return { ok: answer === 200, status: answer };
+    };
+    return { fetchFn, asked };
+}
+
+test("the weather is read from the API first", async () => {
+    const { fetchFn, asked } = fakeFetch({ "api/weather": 200, "data/weather.json": 200 });
+    const response = await data.fetchWeather(fetchFn, 42);
+    assert.strictEqual(response.ok, true);
+    assert.deepStrictEqual(asked, ["api/weather?cacheBust=42"]);
+});
+
+test("without the API, the weather is read from weather.json", async () => {
+    for (const api of [404, 502, new TypeError("Failed to fetch")]) {
+        const { fetchFn, asked } = fakeFetch({ "api/weather": api, "data/weather.json": 200 });
+        const response = await data.fetchWeather(fetchFn, 7);
+        assert.strictEqual(response.ok, true);
+        assert.deepStrictEqual(asked, ["api/weather?cacheBust=7", "data/weather.json?cacheBust=7"]);
+    }
+});
+
+test("when neither works, the last error is thrown", async () => {
+    const { fetchFn } = fakeFetch({ "api/weather": 502, "data/weather.json": 404 });
+    await assert.rejects(data.fetchWeather(fetchFn, 1), /HTTP 404/);
+});
+
+test("the weather addresses are relative, for a path prefix", () => {
+    for (const url of data.WEATHER_URLS) assert.ok(!url.startsWith("/"), url);
+});

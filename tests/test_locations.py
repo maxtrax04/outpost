@@ -26,7 +26,7 @@ class LocationTests(UpdaterTestCase):
 
     def test_home_is_the_settings(self):
         with mock.patch.object(u, "LATITUDE", 1.5), mock.patch.object(u, "LONGITUDE", 2.5):
-            self.assertEqual(u.home_location(), u.Location(1.5, 2.5, "Test Site"))
+            self.assertEqual(u.home_location(), u.Location(1.5, 2.5, "Test Site", home=True))
 
     def test_another_place_is_not_written_to_weather_json(self):
         state = u.LocationState()

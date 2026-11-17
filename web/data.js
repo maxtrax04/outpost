@@ -84,6 +84,27 @@
         return age > OLD_READING_MS ? time : null;
     }
 
+    // Where the weather is read from, in order: the API (app/outpost_server.py), then data/weather.json
+    // for a page served without it (an older proxy setup or a plain file server). Relative, so they
+    // also work under a path prefix.
+    const WEATHER_URLS = ["api/weather", "data/weather.json"];
+
+    // The first answer that works, from WEATHER_URLS; throws the last error if none does.
+    // fetchFn is window.fetch (passed in, so tests can replace it); now keeps answers out of caches.
+    async function fetchWeather(fetchFn, now) {
+        let lastError = new Error("no weather address");
+        for (const url of WEATHER_URLS) {
+            try {
+                const response = await fetchFn(`${url}?cacheBust=${now}`);
+                if (response.ok) return response;
+                lastError = new Error(`HTTP ${response.status}`);
+            } catch (error) {
+                lastError = error;
+            }
+        }
+        throw lastError;
+    }
+
     // Alerts sources whose empty list can also mean "this country is not covered" (Pirate Weather's alerts
     // cover only the countries on the WMO alert hub), so "none" is said as "none reported by" them
     const UNCERTAIN_ALERTS_SOURCES = ["pirateweather"];
@@ -96,8 +117,8 @@
     }
 
     const api = {
-        SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, units, sourceText, alertsSupported, uncertainAlertsSource,
-        gustText, compass, windText, dewPointText, oldReadingTime,
+        SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, WEATHER_URLS, units, sourceText, alertsSupported,
+        uncertainAlertsSource, gustText, compass, windText, dewPointText, oldReadingTime, fetchWeather,
     };
 
     root.OutpostData = api;

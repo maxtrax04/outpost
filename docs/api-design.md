@@ -1,6 +1,6 @@
 # API design note
 
-Status: **proposal** for [#29](https://github.com/maxtrax04/outpost/issues/29). Location search ([#30](https://github.com/maxtrax04/outpost/issues/30))
+Status: steps 1 and 2 built (0.7.0-beta.3 and beta.4); design for [#29](https://github.com/maxtrax04/outpost/issues/29). Location search ([#30](https://github.com/maxtrax04/outpost/issues/30))
 and "my location" ([#31](https://github.com/maxtrax04/outpost/issues/31)) are built on it, and the map ([#32](https://github.com/maxtrax04/outpost/issues/32)) can use it later.
 This page will be replaced by user docs (`docs/api.md`) once the API is built.
 

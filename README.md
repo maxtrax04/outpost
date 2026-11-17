@@ -93,6 +93,9 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LOCATION_NAME` | `Goodsprings, NV` | Name shown at the top of the dashboard. |
 | `OUTPOST_LATITUDE` | `35.8319` | Latitude in decimal degrees. |
 | `OUTPOST_LONGITUDE` | `-115.4328` | Longitude in decimal degrees. |
+| `OUTPOST_LOCATION_SEARCH` | `true` | Whether screens may show places other than home. See [Other places](#other-places). |
+| `OUTPOST_LOCATION_LIMIT` | `30` | Weather fetches an hour for places other than home, all of them together (0 or more). See [Other places](#other-places). |
+| `OUTPOST_LOCATION_PIRATEWEATHER` | `true` | Whether other places may use the Pirate Weather key, only from the quota home won't need before the monthly reset. `false` keeps it for home. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
@@ -139,6 +142,18 @@ However short you set `OUTPOST_UPDATE_INTERVAL`, Outpost asks each weather servi
 | Pirate Weather | Every 10 minutes | The free tier allows 10,000 calls a month |
 
 `OUTPOST_UPDATE_INTERVAL` itself is at least 60 seconds; a shorter value is raised to 60, with a warning in the log. A shorter interval than these limits is still useful: alerts and fallbacks are checked on every update.
+
+### Other places
+
+Besides home, a screen can show the weather somewhere else. Outpost fetches it for that screen through its own API (`/api/weather?lat=..&lon=..&name=..`), so the screen still talks only to Outpost. A location search on the dashboard is coming in a later beta. Because anyone who can open the dashboard can ask for other places, Outpost limits what that costs:
+
+- Coordinates are rounded to 2 decimals (about 1 km), so nearby screens share one fetch.
+- A place is fetched only while a screen shows it, and at most every 15 minutes (or `OUTPOST_UPDATE_INTERVAL`, if longer). A place nobody has looked at for an hour is forgotten. Other places are kept only in memory: not in `weather.json`, on disk, or in the log.
+- `OUTPOST_LOCATION_LIMIT` (30 by default) caps the weather fetches an hour for all other places together. When it is used up, a place already shown gets its last data again, and a new one is refused until the hour has passed. Home is never limited.
+- With a Pirate Weather key, other places use it only while Pirate Weather reports calls to spare after what home needs until the monthly reset, plus 10%. Otherwise they use Open-Meteo (and, outside the US and Norway, have no alerts). `OUTPOST_LOCATION_PIRATEWEATHER=false` keeps the key for home.
+- The web server allows each address 5 API requests a second.
+
+`OUTPOST_LOCATION_SEARCH=false` turns other places off. If Outpost can be reached from the internet, turn it off or put Outpost behind a reverse proxy with a login.
 
 ## Data and storage
 

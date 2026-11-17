@@ -221,6 +221,29 @@ def env_flag(name: str, default: bool) -> bool:
         return default
     return value.strip().lower() in ("1", "true", "yes", "on")
 
+# Other places (docs/api-design.md): whether viewers may choose them, how many weather fetches an
+# hour they may cause between them, and whether they may use the Pirate Weather key's spare quota
+LOCATION_SEARCH = env_flag("OUTPOST_LOCATION_SEARCH", True)
+DEFAULT_LOCATION_LIMIT = 30
+
+def location_limit_setting(value: Optional[str]) -> int:
+    """OUTPOST_LOCATION_LIMIT: weather fetches an hour for places other than home, 0 or more (default 30)."""
+    value = (value or "").strip()
+    if not value:
+        return DEFAULT_LOCATION_LIMIT
+    try:
+        limit = int(value)
+        if limit >= 0:
+            return limit
+    except ValueError:
+        pass
+    print(f"[Outpost] OUTPOST_LOCATION_LIMIT must be a whole number, 0 or more, got \"{value}\"; "
+          f"using {DEFAULT_LOCATION_LIMIT}", file=sys.stderr, flush=True)
+    return DEFAULT_LOCATION_LIMIT
+
+LOCATION_LIMIT = location_limit_setting(os.getenv("OUTPOST_LOCATION_LIMIT"))
+LOCATION_PIRATEWEATHER = env_flag("OUTPOST_LOCATION_PIRATEWEATHER", True)
+
 EFFECTS_VALUES = ("full", "reduced")
 
 def effects_setting() -> str:
@@ -571,10 +594,25 @@ class Location:
     latitude: float
     longitude: float
     name: str
+    home: bool = False
 
 def home_location() -> Location:
     """Home: OUTPOST_LATITUDE, OUTPOST_LONGITUDE, and OUTPOST_LOCATION_NAME."""
-    return Location(LATITUDE, LONGITUDE, LOCATION_NAME)
+    return Location(LATITUDE, LONGITUDE, LOCATION_NAME, home=True)
+
+def pirate_key(location: Optional[Location] = None) -> str:
+    """
+    The Pirate Weather key to use for `location`, or "" for none. Home always gets the key. Another
+    place gets it only with OUTPOST_LOCATION_PIRATEWEATHER, and only while Pirate Weather reports
+    calls to spare after keeping back what home needs until the monthly reset (spare_calls).
+    """
+    location = location or home_location()
+    if location.home or not PIRATEWEATHER_API_KEY:
+        return PIRATEWEATHER_API_KEY
+    if not LOCATION_PIRATEWEATHER:
+        return ""
+    seconds_per_home_call = max(UPDATE_INTERVAL, pirateweather.MIN_CACHE_SECONDS)
+    return PIRATEWEATHER_API_KEY if pirateweather.spare_calls(seconds_per_home_call) > 0 else ""
 
 class LocationState:
     """
@@ -785,7 +823,7 @@ def metno_alerts(location: Optional[Location] = None, state: Optional[LocationSt
 def pirateweather_alerts(location: Optional[Location] = None, state: Optional[LocationState] = None) -> Dict[str, Any]:
     location = location or home_location()
     return lookup_alerts("pirateweather", pirateweather.SOURCE, lambda: pirateweather.fetch_alerts(
-        location.latitude, location.longitude, PIRATEWEATHER_API_KEY, USER_AGENT), state)
+        location.latitude, location.longitude, pirate_key(location), USER_AGENT), state)
 
 def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[Location] = None,
                    state: Optional[LocationState] = None) -> Dict[str, Any]:
@@ -804,9 +842,10 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
         return NO_ALERTS
 
     if ALERTS_PROVIDER == "pirateweather":
-        if not PIRATEWEATHER_API_KEY:
-            warn_alerts_once("pirateweather-key", "OUTPOST_ALERTS_PROVIDER=pirateweather needs "
-                             "OUTPOST_PIRATEWEATHER_API_KEY; showing no alerts")
+        if not pirate_key(location):
+            if location.home:
+                warn_alerts_once("pirateweather-key", "OUTPOST_ALERTS_PROVIDER=pirateweather needs "
+                                 "OUTPOST_PIRATEWEATHER_API_KEY; showing no alerts")
             return NO_ALERTS
         return pirateweather_alerts(location, state)
 
@@ -832,7 +871,7 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
     # auto, outside the US
     if regions.in_norway(location.latitude, location.longitude):
         return metno_alerts(location, state)
-    if PIRATEWEATHER_API_KEY:
+    if pirate_key(location):
         return pirateweather_alerts(location, state)
     return NO_ALERTS
 
@@ -852,7 +891,11 @@ def fetch_weather(location: Optional[Location] = None,
         warn_about_user_agent("MET Norway")
         return "metno", metno.fetch(lat, lon, USER_AGENT)
     if PROVIDER == "pirateweather":
-        return "pirateweather", pirateweather.fetch(lat, lon, PIRATEWEATHER_API_KEY, USER_AGENT)
+        key = pirate_key(location)
+        if not key and not location.home:
+            # No spare quota for another place: Open-Meteo instead, so home's quota lasts the month
+            return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
+        return "pirateweather", pirateweather.fetch(lat, lon, key, USER_AGENT)
     if PROVIDER == "auto":
         return fetch_auto(location, state)
     raise RuntimeError(
@@ -862,7 +905,7 @@ def fetch_weather(location: Optional[Location] = None,
 def fetch_pirateweather(location: Optional[Location] = None) -> Tuple[str, Dict[str, Any]]:
     location = location or home_location()
     return "pirateweather", with_gap_fill(pirateweather.fetch(
-        location.latitude, location.longitude, PIRATEWEATHER_API_KEY, USER_AGENT), location)
+        location.latitude, location.longitude, pirate_key(location), USER_AGENT), location)
 
 def read_previous() -> Optional[Dict[str, Any]]:
     """The last weather.json, or None if there is none or it cannot be read."""
@@ -899,7 +942,7 @@ def instead_of(specialist: str, error: Exception, location: Optional[Location] =
     specialist's error stands, so the last good data is kept as degraded.
     """
     location = location or home_location()
-    if PIRATEWEATHER_API_KEY:
+    if pirate_key(location):
         print(f"[Outpost] {specialist} failed ({error}); using Pirate Weather for this update", file=sys.stderr, flush=True)
         try:
             return fetch_pirateweather(location)
@@ -941,7 +984,7 @@ def fetch_auto(location: Optional[Location] = None,
     except Exception as error:
         return instead_of("The National Weather Service", error, location, state)
 
-    if PIRATEWEATHER_API_KEY:
+    if pirate_key(location):
         try:
             return fetch_pirateweather(location)
         except Exception as error:
