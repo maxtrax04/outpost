@@ -144,3 +144,29 @@ test("when neither works, the last error is thrown", async () => {
 test("the weather addresses are relative, for a path prefix", () => {
     for (const url of data.WEATHER_URLS) assert.ok(!url.startsWith("/"), url);
 });
+
+test("another place is asked of the API alone, never weather.json", async () => {
+    const asked = [];
+    const fetchFn = async (url) => {
+        asked.push(url);
+        return { ok: true, status: 200 };
+    };
+    await data.fetchWeather(fetchFn, 5, "api/weather?lat=1&lon=2&name=Here");
+    assert.deepStrictEqual(asked, ["api/weather?lat=1&lon=2&name=Here&cacheBust=5"]);
+});
+
+test("a refused place gives the API's own message", async () => {
+    const asked = [];
+    const refused = async (url) => {
+        asked.push(url);
+        return { ok: false, status: 429, json: async () => ({ error: "location_limit", message: "Too many places" }) };
+    };
+    await assert.rejects(data.fetchWeather(refused, 5, "api/weather?lat=1&lon=2"),
+        (error) => error.status === 429 && error.apiMessage === "Too many places" && error.message === "Too many places");
+    assert.strictEqual(asked.length, 1);
+
+    // nginx's own pages are not JSON
+    const page = async () => ({ ok: false, status: 502, json: async () => { throw new SyntaxError("not JSON"); } });
+    await assert.rejects(data.fetchWeather(page, 5, "api/weather?lat=1&lon=2"),
+        (error) => error.status === 502 && error.apiMessage === "" && error.message === "HTTP 502");
+});

@@ -1,6 +1,6 @@
 // Outpost front end. Reads the weather from the API, or /data/weather.json without it
-// (OutpostData.fetchWeather), and renders the HUD. Key names must match outpost_updater.py
-// and docs/data-format.md.
+// (OutpostData.fetchWeather), for home or the place chosen with the location search (places.js),
+// and renders the HUD. Key names must match outpost_updater.py and docs/data-format.md.
 
 const REFRESH_MS = 60 * 1000;          // how often the page re-reads the JSON
 const MIN_STALE_MS = 5 * 60 * 1000;    // never warn sooner than this
@@ -264,10 +264,57 @@ function renderSubtitle(config) {
     element.hidden = text.trim() === "";
 }
 
-async function loadWeather(config) {
+// ---- Which place --------------------------------------------------------
+// Home, or another place chosen in this browser or pinned in the address (places.js). Location
+// search is offered only when /api/status says the server has it on.
+
+let locationSearch = false;
+let homeName = "";
+let shownPlace = null;      // OutpostPlaces.key of the place whose weather is on the screen
+let weatherRequest = 0;     // so an older answer never replaces a newer choice
+
+async function loadApiStatus() {
     try {
-        const response = await OutpostData.fetchWeather((url) => fetch(url), Date.now());
+        const response = await fetch(`api/status?cacheBust=${Date.now()}`);
+        if (response.ok) {
+            const status = await response.json();
+            locationSearch = Boolean(status && status.location_search === true);
+        } else if (response.status === 404) {
+            locationSearch = false; // served without the API
+        }
+    } catch (error) {
+        // Keep what was known; the API may be restarting
+    }
+}
+
+// Blank readings while another place's weather is on its way, so one place's readings never
+// show under another's name
+function showLoading(place) {
+    setText("location", place ? place.name : (homeName || "Loading..."));
+    for (const id of ["temperature", "feelsLike", "humidity", "wind", "pressure", "uv", "visibility", "lastUpdated"]) {
+        setText(id, "--");
+    }
+    for (const id of ["dewPoint", "windGust", "readingTime"]) setNote(id, "");
+    setText("condition", "Loading...");
+    setIcon(document.getElementById("currentIcon"), "unknown", "Loading");
+    OutpostGauges.applyCurrent({}, document);
+    document.getElementById("forecastContainer").replaceChildren();
+}
+
+async function loadWeather(config, place) {
+    const request = ++weatherRequest;
+    const placeKey = OutpostPlaces.key(place);
+    if (shownPlace !== null && shownPlace !== placeKey) {
+        showLoading(place);
+        shownPlace = null;
+    }
+    try {
+        const placeUrl = place ? OutpostPlaces.weatherUrl(place) : "";
+        const response = await OutpostData.fetchWeather((url) => fetch(url), Date.now(), placeUrl);
         const weather = await response.json();
+        if (request !== weatherRequest) return; // another place was chosen meanwhile
+        shownPlace = placeKey;
+        if (!place && weather.location) homeName = weather.location;
         // Times are shown as they are at the weather location (see clock.js)
         OutpostClock.setZone(weather.timezone);
         const current = weather.current || {};
@@ -305,8 +352,11 @@ async function loadWeather(config) {
         renderForecast(weather.forecast, units.system);
         renderAlertsSection(weather, config);
     } catch (error) {
+        if (request !== weatherRequest) return;
         console.error("Unable to load Outpost data:", error);
-        setText("condition", "Local data unavailable");
+        if (place) setText("location", place.name);
+        // The API's own words when it gave a reason ("Too many places looked up...")
+        setText("condition", error.apiMessage || (place ? "Weather for this place is unavailable" : "Local data unavailable"));
         setText("status", "OFFLINE");
         setSignal("offline");
         setBanner(true);
@@ -378,16 +428,20 @@ function applyDim(config) {
 }
 
 async function refresh() {
-    const config = await loadConfig();
-    applyDim(config);
+    const [config] = await Promise.all([loadConfig(), loadApiStatus()]);
+    const { place } = OutpostPlaces.current(undefined, undefined, locationSearch);
+    // Night dimming, sunrise, and sunset follow the place shown
+    const here = place ? { ...config, latitude: place.latitude, longitude: place.longitude } : config;
+    applyDim(here);
     OutpostEffects.apply(config);
     OutpostClock.apply(config);
     await applyTheme(config);
-    renderThemeSwitcher(config);
+    renderThemeSwitcher(config, locationSearch);
     // Weather first: it says which time zone the times below are shown in
-    await loadWeather(config);
+    await loadWeather(config, place);
+    OutpostPlacePanel.configure({ on: locationSearch, homeName });
     renderSubtitle(config);
-    renderSun(config);
+    renderSun(here);
     OutpostFit.start();
 }
 

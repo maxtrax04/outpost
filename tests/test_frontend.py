@@ -25,6 +25,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             ids |= set(re.findall(r'getElementById\("([A-Za-z0-9_-]+)"\)', text))
             ids |= set(re.findall(r'setText\("([A-Za-z0-9_-]+)"', text))
+            ids |= set(re.findall(r'byId\("([A-Za-z0-9_-]+)"\)', text))
         return ids
 
     def test_every_id_used_by_the_script_exists_in_the_page(self):
@@ -34,7 +35,22 @@ class FrontEndConsistencyTests(unittest.TestCase):
 
     def test_scripts_are_loaded_in_the_right_order(self):
         scripts = re.findall(r'<script src="([^"]+)"', self.html)
-        self.assertEqual(scripts, ["dim.js", "effects.js", "fit.js", "clock.js", "themes.js", "gauges.js", "data.js", "app.js"])
+        self.assertEqual(scripts, ["dim.js", "effects.js", "fit.js", "clock.js", "themes.js", "gauges.js", "data.js",
+                                   "places.js", "place-panel.js", "app.js"])
+
+    def test_what_the_script_reads_from_the_api_is_sent_by_the_server(self):
+        server = read("app/outpost_server.py")
+        for text in ('"location_search"', '"/api/status"', '"/api/weather"', '"/api/places"', '"places"', '"message"'):
+            with self.subTest(text=text):
+                self.assertIn(text, server)
+        for field in ('"name"', '"region"', '"country"', '"latitude"', '"longitude"'):
+            with self.subTest(field=field):
+                self.assertIn(field, read("app/providers/geocoding.py"))
+
+    def test_the_options_panel_is_a_dialog_with_a_search_box(self):
+        self.assertIn('id="themePanel" class="theme-panel" role="dialog"', self.html)
+        self.assertNotIn("menuitem", self.html + read("web/themes.js"))
+        self.assertRegex(self.html, r'<input id="placeQuery"[^>]*maxlength="100"')
 
     def test_every_script_file_exists(self):
         for name in re.findall(r'<script src="([^"]+)"', self.html):

@@ -76,7 +76,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_PIRATEWEATHER_API_KEY` | *(empty)* | Your free [Pirate Weather](https://pirateweather.net) API key, for `pirateweather`, or for `auto` to use Pirate Weather outside the Nordic countries and the US (and as a fallback there). Keep it private; it is only sent to Pirate Weather. |
 | `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own; else NWS in the US; else MET Norway in Norway; else Pirate Weather when you have a key), `nws`, `metno`, `pirateweather`, or `none`. See [Alerts](#alerts). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
-| `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen theme switcher button. Set `false` for a kiosk display. |
+| `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen button for the panel with the location search, themes, and display options. Set `false` for a kiosk display. |
 | `OUTPOST_COMMUNITY_THEMES` | (empty) | Community themes to download when the container starts, as `username/theme` separated by commas. See [Community themes](#community-themes). |
 | `OUTPOST_COMMUNITY_THEMES_REF` | `main` | Which version of the community themes to download: a branch, tag, or commit. |
 | `OUTPOST_EFFECTS` | `full` | `reduced` turns off scanlines, glow, and animation for everyone. See [Reduced effects](#reduced-effects). |
@@ -145,7 +145,11 @@ However short you set `OUTPOST_UPDATE_INTERVAL`, Outpost asks each weather servi
 
 ### Other places
 
-Besides home, a screen can show the weather somewhere else. Outpost fetches it for that screen through its own API (`/api/weather?lat=..&lon=..&name=..`), so the screen still talks only to Outpost. A location search on the dashboard is coming in a later beta. Because anyone who can open the dashboard can ask for other places, Outpost limits what that costs:
+Besides home, a screen can show the weather somewhere else. Open the panel with the button in the bottom-left corner, type a place name under LOCATION, and pick a result. Searches go to [Open-Meteo's geocoding service](https://open-meteo.com/en/docs/geocoding-api) (through Outpost, which keeps each search for a day and sends at most one a second). The chosen place and the places chosen before are kept in that browser only, never on the server. Choose Home to go back, or `x` to forget a place.
+
+To pin one screen to a place, add it to the address: `http://outpost.local:8088/?lat=41.5&lon=-101.25&name=Cinder%20Flats`. That screen then shows that place whatever is chosen in the panel.
+
+Outpost fetches the weather for that screen through its own API (`/api/weather?lat=..&lon=..&name=..`), so the screen still talks only to Outpost. The night dimming, sunrise, and sunset follow the place shown. Because anyone who can open the dashboard can ask for other places, Outpost limits what that costs:
 
 - Coordinates are rounded to 2 decimals (about 1 km), so nearby screens share one fetch.
 - A place is fetched only while a screen shows it, and at most every 15 minutes (or `OUTPOST_UPDATE_INTERVAL`, if longer). A place nobody has looked at for an hour is forgotten. Other places are kept only in memory: not in `weather.json`, on disk, or in the log.
@@ -153,7 +157,7 @@ Besides home, a screen can show the weather somewhere else. Outpost fetches it f
 - With a Pirate Weather key, other places use it only while Pirate Weather reports calls to spare after what home needs until the monthly reset, plus 10%. Otherwise they use Open-Meteo (and, outside the US and Norway, have no alerts). `OUTPOST_LOCATION_PIRATEWEATHER=false` keeps the key for home.
 - The web server allows each address 5 API requests a second.
 
-`OUTPOST_LOCATION_SEARCH=false` turns other places off. If Outpost can be reached from the internet, turn it off or put Outpost behind a reverse proxy with a login.
+`OUTPOST_LOCATION_SEARCH=false` turns other places off: the search leaves the panel, and pinned addresses are refused too, since anyone can edit an address. `OUTPOST_THEME_SWITCHER=false` removes the panel, search included, from every screen. If Outpost can be reached from the internet, turn it off or put Outpost behind a reverse proxy with a login.
 
 ## Data and storage
 

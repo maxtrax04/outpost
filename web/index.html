@@ -67,8 +67,8 @@
         </footer>
     </main>
 
-    <button id="themeButton" class="theme-button" type="button" aria-label="Change theme"
-            aria-haspopup="true" aria-expanded="false" hidden>
+    <button id="themeButton" class="theme-button" type="button" aria-label="Location, theme, and display options"
+            aria-haspopup="dialog" aria-expanded="false" hidden>
         <svg viewBox="0 0 64 64" width="26" height="26" fill="none" stroke="currentColor" stroke-width="4"
              stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
             <path d="M22 8H42L56 22V42L42 56H22L8 42V22Z"/>
@@ -76,11 +76,22 @@
         </svg>
     </button>
 
-    <div id="themePanel" class="theme-panel" role="menu" aria-label="Theme and display options" hidden>
+    <div id="themePanel" class="theme-panel" role="dialog" aria-label="Location, theme, and display options" hidden>
+        <div id="placeSection" class="place-section" hidden>
+            <div class="theme-panel-title">LOCATION</div>
+            <div id="placeList" role="radiogroup" aria-label="Location"></div>
+            <form id="placeSearch" class="place-search" role="search">
+                <input id="placeQuery" class="place-query" type="search" name="q" maxlength="100" autocomplete="off"
+                       spellcheck="false" enterkeyhint="search" placeholder="Search for a place" aria-label="Search for a place">
+                <button class="place-go" type="submit">Find</button>
+            </form>
+            <div id="placeNote" class="theme-note" aria-live="polite"></div>
+            <div id="placeResults" class="place-results" role="list" aria-label="Places found"></div>
+        </div>
         <div class="theme-panel-title">THEME</div>
-        <div id="themeList"></div>
-        <button id="effectsToggle" class="theme-option effects-toggle" type="button" role="menuitemcheckbox" aria-checked="false" hidden>Reduced effects</button>
-        <button id="clockToggle" class="theme-option theme-check" type="button" role="menuitemcheckbox" aria-checked="false" hidden>24-hour clock</button>
+        <div id="themeList" role="radiogroup" aria-label="Theme"></div>
+        <button id="effectsToggle" class="theme-option effects-toggle" type="button" role="checkbox" aria-checked="false" hidden>Reduced effects</button>
+        <button id="clockToggle" class="theme-option theme-check" type="button" role="checkbox" aria-checked="false" hidden>24-hour clock</button>
         <button id="themeReset" class="theme-reset" type="button" hidden>Use server default</button>
         <div id="themeNote" class="theme-note"></div>
     </div>
@@ -97,6 +108,8 @@
     <script src="themes.js"></script>
     <script src="gauges.js"></script>
     <script src="data.js"></script>
+    <script src="places.js"></script>
+    <script src="place-panel.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

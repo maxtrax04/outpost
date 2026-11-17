@@ -89,9 +89,32 @@
     // also work under a path prefix.
     const WEATHER_URLS = ["api/weather", "data/weather.json"];
 
+    // An Error for an API answer that is not OK, with the API's own message when it sent one
+    // ({"error": ..., "message": ...}); error.apiMessage is "" when it did not
+    async function apiError(response) {
+        let message = "";
+        try {
+            const body = await response.json();
+            message = body && typeof body.message === "string" ? body.message.trim() : "";
+        } catch (error) {
+            // Not JSON (nginx's own 429 or 502 page, say)
+        }
+        const error = new Error(message || `HTTP ${response.status}`);
+        error.status = response.status;
+        error.apiMessage = message;
+        return error;
+    }
+
     // The first answer that works, from WEATHER_URLS; throws the last error if none does.
     // fetchFn is window.fetch (passed in, so tests can replace it); now keeps answers out of caches.
-    async function fetchWeather(fetchFn, now) {
+    // placeUrl is another place's address (OutpostPlaces.weatherUrl): it is asked for alone, since
+    // falling back to data/weather.json would show home under the other place's name.
+    async function fetchWeather(fetchFn, now, placeUrl) {
+        if (placeUrl) {
+            const response = await fetchFn(`${placeUrl}&cacheBust=${now}`);
+            if (response.ok) return response;
+            throw await apiError(response);
+        }
         let lastError = new Error("no weather address");
         for (const url of WEATHER_URLS) {
             try {
@@ -118,7 +141,7 @@
 
     const api = {
         SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, WEATHER_URLS, units, sourceText, alertsSupported,
-        uncertainAlertsSource, gustText, compass, windText, dewPointText, oldReadingTime, fetchWeather,
+        uncertainAlertsSource, gustText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
     };
 
     root.OutpostData = api;

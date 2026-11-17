@@ -158,6 +158,7 @@ function themePanelOpen() {
 
 function openThemePanel() {
     buildThemeList();
+    OutpostPlacePanel.build();
     document.getElementById("themePanel").hidden = false;
     document.getElementById("themeButton").setAttribute("aria-expanded", "true");
     const selected = document.querySelector('.theme-option[aria-checked="true"]');
@@ -191,7 +192,7 @@ function buildThemeList() {
         const option = document.createElement("button");
         option.type = "button";
         option.className = "theme-option";
-        option.setAttribute("role", "menuitemradio");
+        option.setAttribute("role", "radio");
         option.setAttribute("aria-checked", String(theme.id === wanted));
         option.textContent = theme.name || theme.id;
         option.addEventListener("click", () => selectTheme(theme.id));
@@ -271,7 +272,9 @@ function wireThemeSwitcher() {
     });
 
     document.addEventListener("click", (event) => {
-        if (themePanelOpen() && !panel.contains(event.target) && !button.contains(event.target)) {
+        // The path as it was when clicked: a button inside the panel may be gone by now (a list redrawn)
+        const path = event.composedPath();
+        if (themePanelOpen() && !path.includes(panel) && !path.includes(button)) {
             closeThemePanel();
         }
     });
@@ -286,13 +289,14 @@ function wireThemeSwitcher() {
     themeSwitcherWired = true;
 }
 
-// Shows the switcher button when the server allows it and there is more than one theme
-function renderThemeSwitcher(config) {
+// Shows the panel's button when the server allows it (OUTPOST_THEME_SWITCHER) and there is
+// something to choose: more than one theme, or another place (placesOn: location search is on)
+function renderThemeSwitcher(config, placesOn) {
     themeConfig = config || {};
 
     const button = document.getElementById("themeButton");
     const allowed = !(themeConfig.ui && themeConfig.ui.theme_switcher === false);
-    const enabled = allowed && availableThemes(themeConfig).length > 1;
+    const enabled = allowed && (availableThemes(themeConfig).length > 1 || Boolean(placesOn));
 
     button.hidden = !enabled;
 
