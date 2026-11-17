@@ -79,8 +79,9 @@ async function checkTheme(browser, theme, name, viewport) {
     if (!endsWithNumberAnd(state.temperature, unitLabels.temperature)) {
         problems.push(`the temperature reads "${state.temperature}", expected a number and ${unitLabels.temperature}`);
     }
-    if (!endsWithNumberAnd(state.wind, unitLabels.speed)) {
-        problems.push(`the wind reads "${state.wind}", expected a number and ${unitLabels.speed}`);
+    // "Calm" when the wind is 0, which the mock data picks now and then
+    if (state.wind.trim() !== "Calm" && !endsWithNumberAnd(state.wind, unitLabels.speed)) {
+        problems.push(`the wind reads "${state.wind}", expected "Calm" or a number and ${unitLabels.speed}`);
     }
     if (!state.source || state.source === "--") problems.push("the footer names no data source");
     // The header shows the logo or the text title (the theme's --title-logo), never both or neither
