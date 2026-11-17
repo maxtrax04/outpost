@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.1] - 2026-11-16
+
+### Changed
+
+- The README shows the latest release and the license as badges beside the CI status.
+
 ## [0.6.0] - 2026-11-14
 
 Data model and providers: a versioned `weather.json` format, metric units, two new weather providers (MET Norway and Pirate Weather), alerts from a separate source (the National Weather Service with Open-Meteo, MET Norway's warnings for Norway, and Pirate Weather's worldwide alerts), smarter automatic provider choice, times in the location's time zone, wind gusts, wind direction, dew point, and limits on how often each weather service is asked. **If another tool reads `weather.json`**, its field names changed; see "Upgrading from 0.5.0" below.
