@@ -1,7 +1,8 @@
 # weather.json format
 
 Outpost's updater writes the weather to `/data/weather.json`, and the dashboard reads it from
-`http://<outpost>/data/weather.json`. Other tools can read it too, such as a Home Assistant REST sensor.
+`http://<outpost>/data/weather.json`. Other tools can read it too, such as a Home Assistant REST sensor
+(see [home-assistant.md](home-assistant.md)).
 This page describes format version 1, used since Outpost 0.6.0. The same rules are in a
 machine-readable [JSON Schema](schema/weather-v1.json).
 

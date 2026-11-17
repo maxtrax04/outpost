@@ -21,6 +21,7 @@ A self-hosted dashboard platform for weather, alerts, sensors, power monitoring,
 - Normalized weather data format, so the display doesn't care which provider supplied it
 - Built-in health check (including stale-data detection)
 - Warning banner when data is old, degraded, or unavailable
+- Works with Home Assistant: a Webpage card for the dashboard, and sensors and a weather entity from its data ([how](docs/home-assistant.md))
 - Themes: seven built in (from green-phosphor terminals to a 1950s television and black-on-white for ePaper), more from the [community](https://github.com/maxtrax04/outpost-themes), or your own, with no rebuild
 
 ## Quick start
@@ -150,6 +151,8 @@ curl http://localhost:8088/data/weather.json
 ```
 
 Every field is described in [docs/data-format.md](docs/data-format.md), with a [JSON Schema](docs/schema/weather-v1.json). The file has a `schema_version`, which goes up only when a change would break a tool that reads it.
+
+
 
 ## Running on unRAID
 
