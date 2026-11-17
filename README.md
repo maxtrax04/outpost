@@ -3,6 +3,8 @@
 # Outpost
 
 [![CI](https://github.com/maxtrax04/outpost/actions/workflows/ci.yml/badge.svg)](https://github.com/maxtrax04/outpost/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/maxtrax04/outpost)](https://github.com/maxtrax04/outpost/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/maxtrax04/outpost)](LICENSE)
 
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
