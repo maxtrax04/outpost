@@ -201,6 +201,18 @@ class HttpTests(unittest.TestCase):
             self.assertEqual(self.get("/api/weather")[0], 200)  # home still works
         self.assertEqual(self.updates.calls, [])
 
+    def test_place_search(self):
+        found = [{"name": "Cinder Flats", "region": "", "country": "Exampleland", "latitude": 1.0,
+                  "longitude": 2.0, "timezone": ""}]
+        with mock.patch.object(s.geocoding, "search", return_value=found) as search:
+            status, headers, body = self.get("/api/places?q=Cinder%20Flats")
+        self.assertEqual((status, body["places"]), (200, found))
+        self.assertEqual(search.call_args.args[0], "Cinder Flats")
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertEqual(self.get("/api/places?q=x")[0], 400)
+        with mock.patch.object(u, "LOCATION_SEARCH", False):
+            self.assertEqual(self.get("/api/places?q=Cinder")[0], 403)
+
     def test_the_limit_answers_429(self):
         for lat in range(5):
             self.assertEqual(self.get(f"/api/weather?lat={lat}&lon=0")[0], 200)
@@ -246,6 +258,16 @@ class ServerSetupTests(unittest.TestCase):
         # Viewers' coordinates are in the request addresses
         self.assertIn("access_log off;", block)
         self.assertIn("error_log /var/log/nginx/error.log crit;", block)
+
+    def test_the_access_log_leaves_out_query_strings_and_referers(self):
+        # A pinned screen's address (/?lat=..&lon=..) carries a place
+        conf = (ROOT / "nginx" / "default.conf").read_text(encoding="utf-8")
+        log_format = conf[conf.index("log_format outpost"):]
+        log_format = log_format[:log_format.index(";")]
+        self.assertIn("$uri", log_format)
+        for variable in ("$request ", "$request_uri", "$args", "$query_string", "$http_referer"):
+            self.assertNotIn(variable, log_format)
+        self.assertIn("access_log /var/log/nginx/access.log outpost;", conf)
 
     def test_places_refresh_no_more_often_than_open_meteo_allows(self):
         self.assertGreaterEqual(s.PLACE_REFRESH_SECONDS, u.openmeteo.MIN_REQUEST_SECONDS)

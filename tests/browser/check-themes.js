@@ -213,6 +213,64 @@ async function checkClock(browser) {
     return problems;
 }
 
+async function checkLocation(browser) {
+    // Location search (web/places.js, web/place-panel.js): a place pinned in the address, searching,
+    // remembering the choice, and going back to home. On by default (OUTPOST_LOCATION_SEARCH).
+    const problems = [];
+    const status = await (await fetch(`${BASE}/api/status`)).json();
+    if (status.location_search !== true) return [`/api/status says ${JSON.stringify(status)}; location search should be on by default`];
+
+    const page = await browser.newPage({ viewport: VIEWPORTS.phone });
+    page.on("pageerror", (error) => problems.push(`script error: ${error.message}`));
+    page.on("console", (message) => {
+        if (message.type() === "error") problems.push(`console error: ${message.text()}`);
+    });
+    const shows = (name) => waitFor(page, (expected) => document.getElementById("location").textContent === expected
+        && /\d/.test(document.getElementById("temperature").textContent), name, 5000);
+    const location = () => page.evaluate(() => document.getElementById("location").textContent);
+
+    await page.goto(`${BASE}/?lat=-30&lon=135&name=Dry%20Hollow`, { waitUntil: "networkidle" });
+    if (!await shows("Dry Hollow")) problems.push(`a place pinned in the address showed "${await location()}"`);
+
+    // The geocoding answer is made up here, so the check needs no internet
+    await page.route("**/api/places?*", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+            places: [{ name: "Cinder Flats", region: "North Province", country: "Exampleland", latitude: 41.5,
+                longitude: -101.25, timezone: "America/Chicago" }],
+            source: { id: "openmeteo", name: "Open-Meteo.com" },
+        }),
+    }));
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    await waitFor(page, () => /\d/.test(document.getElementById("temperature").textContent), null, 3000);
+    const home = await location();
+
+    await page.click("#themeButton");
+    if (await page.isHidden("#placeSection")) {
+        problems.push("the panel has no location search");
+        await page.close();
+        return problems;
+    }
+    await page.fill("#placeQuery", "Cinder");
+    await page.press("#placeQuery", "Enter");
+    try {
+        await page.click(".place-result", { timeout: 3000 });
+        if (!await shows("Cinder Flats, North Province")) problems.push(`a place chosen from the search showed "${await location()}"`);
+    } catch (error) {
+        problems.push(`the search showed no results (${(await page.textContent("#placeNote")) || "no note"})`);
+    }
+
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    if (!await shows("Cinder Flats, North Province")) problems.push(`the chosen place was not remembered after a reload ("${await location()}")`);
+
+    await page.click("#themeButton");
+    if (await page.locator(".place-forget").count() !== 1) problems.push("the chosen place is not in the saved list");
+    await page.click(".place-option >> nth=0"); // Home
+    if (!await shows(home)) problems.push(`choosing Home showed "${await location()}", expected "${home}"`);
+    await page.close();
+    return problems;
+}
+
 async function checkFraming(browser) {
     // A page on another site must not be able to show the dashboard in a frame
     const page = await browser.newPage();
@@ -250,6 +308,7 @@ async function checkFraming(browser) {
     report("switching themes with the on-screen switcher", await checkSwitching(browser, themes));
     report("reduced effects (device setting, address, and checkbox)", await checkReducedEffects(browser));
     report("12/24-hour clock (language, address, and checkbox)", await checkClock(browser));
+    report("location search (address, search, saved choice, home)", await checkLocation(browser));
     report("embedding from another site is blocked", await checkFraming(browser));
 
     await browser.close();

@@ -9,11 +9,12 @@ The update loop writes /data/weather.json for home every OUTPOST_UPDATE_INTERVAL
   GET /api/status                       {"api_version": 1, "version": ..., "location_search": true}
   GET /api/weather                      home: the same as weather.json
   GET /api/weather?lat=..&lon=..&name=..  another place, in the same format
+  GET /api/places?q=..                  places matching a name, for the search box (Open-Meteo geocoding)
 
 One process, so the providers' response caches and request minimums are shared by home and other
 places. Other places are fetched only when a screen asks, at most every PLACE_REFRESH_SECONDS each,
-and at most OUTPOST_LOCATION_LIMIT fetches an hour between them. Nothing about them is written to
-disk or logged.
+and at most OUTPOST_LOCATION_LIMIT fetches an hour between them. Nothing about them, or about what
+was searched for, is written to disk or logged.
 
 Uses only the Python standard library.
 """
@@ -31,7 +32,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 
 import outpost_updater as u
-from providers import openmeteo
+from providers import geocoding, openmeteo
 
 API_VERSION = 1
 HOST = "127.0.0.1"
@@ -166,6 +167,23 @@ def weather(query: Dict[str, Any], places: Places) -> Dict[str, Any]:
     return payload
 
 
+def search_places(query: Dict[str, Any]) -> Dict[str, Any]:
+    """Places matching ?q=, for the search box."""
+    if not u.LOCATION_SEARCH:
+        raise ApiError(403, "location_search_off", "Choosing another place is turned off (OUTPOST_LOCATION_SEARCH)")
+    text = geocoding.clean_query((query.get("q") or [""])[0])
+    if not geocoding.MIN_QUERY_LENGTH <= len(text) <= geocoding.MAX_QUERY_LENGTH:
+        raise ApiError(400, "bad_query", f"Search for {geocoding.MIN_QUERY_LENGTH} to "
+                                         f"{geocoding.MAX_QUERY_LENGTH} characters")
+    try:
+        places = geocoding.search(text, u.USER_AGENT)
+    except RuntimeError as error:
+        # The error never includes the search text
+        print(f"[Outpost] {error}", file=sys.stderr, flush=True)
+        raise ApiError(502, "search_failed", "Place search is not available right now; try again later")
+    return {"places": places, "source": geocoding.SOURCE}
+
+
 def make_handler(places: Places) -> type:
     class Handler(BaseHTTPRequestHandler):
         server_version = "Outpost"
@@ -179,6 +197,8 @@ def make_handler(places: Places) -> type:
                     self.send_json(200, status())
                 elif parts.path == "/api/weather":
                     self.send_json(200, weather(query, places))
+                elif parts.path == "/api/places":
+                    self.send_json(200, search_places(query))
                 else:
                     raise ApiError(404, "not_found", "No such API address")
             except ApiError as error:

@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.5] - 2026-11-17
+
+### Added
+
+- Location search (#30). Under LOCATION in the panel (the button in the bottom-left corner), type a place name and pick a result, and that screen shows the weather there. Home and the places chosen before stay in the list, kept in that browser only; `x` forgets one. Night dimming, sunrise, and sunset follow the place shown.
+- `?lat=..&lon=..&name=..` in the address pins one screen to a place, for example a wall screen showing a second home. With `OUTPOST_LOCATION_SEARCH=false` it is refused.
+- `/api/places?q=..` searches for places by name with Open-Meteo's geocoding service, which needs no key. Each search is kept for a day, at most one a second is sent, and what was searched for is never logged.
+
+### Changed
+
+- The panel button now also appears when there is only one theme, if location search is on. `OUTPOST_THEME_SWITCHER=false` still removes it, search included.
+- While another place's weather loads, the readings are blanked, so one place's readings never show under another's name. When the server refuses a place (over the hourly limit, or search turned off), the screen says why.
+- The web server's access log no longer records query strings or the Referer header, since a pinned screen's address carries a place.
+
 ## [0.7.0-beta.4] - 2026-11-16
 
 ### Added
