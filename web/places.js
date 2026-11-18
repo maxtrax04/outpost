@@ -127,7 +127,9 @@
         let stored = write(storage, CHOICE_KEY, chosen);
         let list = savedPlaces(storage);
         if (chosen) {
-            list = [chosen].concat(list.filter((other) => !samePlace(other, chosen))).slice(0, MAX_SAVED);
+            // One entry per place, and one "My location" (the latest position replaces the last)
+            const replaced = (other) => samePlace(other, chosen) || (isMyLocation(chosen) && isMyLocation(other));
+            list = [chosen].concat(list.filter((other) => !replaced(other))).slice(0, MAX_SAVED);
             stored = write(storage, SAVED_KEY, list) && stored;
         }
         session = stored ? { choice: undefined, saved: undefined } : { choice: chosen, saved: list };
@@ -179,6 +181,39 @@
         return changed;
     }
 
+    // ---- My location (#31) ----
+    // The browser's position becomes a place like any search result, rounded to about 1 km, so no
+    // more exact a position is stored or sent. It is asked for once per tap, never watched.
+    const MY_LOCATION_NAME = "My location";
+    const GEOLOCATION_OPTIONS = { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 };
+
+    function fromPosition(position) {
+        const coords = position && position.coords;
+        return coords ? validPlace({ name: MY_LOCATION_NAME, latitude: coords.latitude, longitude: coords.longitude }) : null;
+    }
+
+    function isMyLocation(place) {
+        return Boolean(place) && place.name === MY_LOCATION_NAME;
+    }
+
+    // Why the location could not be used, for the panel. secure is window.isSecureContext: browsers
+    // share their location only with HTTPS pages (and localhost).
+    function locationProblem(error, secure) {
+        if (secure === false) {
+            return "Browsers share their location only with HTTPS pages. Search for a place instead.";
+        }
+        switch (error && error.code) {
+            case 1: // PERMISSION_DENIED (also inside a frame that is not allowed to ask)
+                return "Location is blocked for this page. Allow it in the browser's site settings, or search for a place.";
+            case 2: // POSITION_UNAVAILABLE
+                return "This device could not find its location. Search for a place instead.";
+            case 3: // TIMEOUT
+                return "Finding the location took too long. Try again, or search for a place.";
+            default:
+                return "This browser cannot share its location. Search for a place instead.";
+        }
+    }
+
     // Only for tests: forget a choice kept because storage was blocked
     function resetSession() {
         session = { choice: undefined, saved: undefined };
@@ -187,7 +222,8 @@
     const api = {
         CHOICE_KEY, SAVED_KEY, MAX_SAVED, MAX_NAME_LENGTH, DEFAULT_NAME, cleanName, validPlace, key, samePlace,
         resultName, resultDetail, fromAddress, savedPlaces, savedChoice, choose, forget, current, weatherUrl,
-        searchUrl, removeFromAddress, resetSession,
+        searchUrl, removeFromAddress, resetSession, MY_LOCATION_NAME, GEOLOCATION_OPTIONS, fromPosition,
+        isMyLocation, locationProblem,
     };
 
     root.OutpostPlaces = api;

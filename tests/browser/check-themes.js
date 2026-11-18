@@ -271,6 +271,42 @@ async function checkLocation(browser) {
     return problems;
 }
 
+async function checkMyLocation(browser) {
+    // "Use my location" (#31). Browsers share a location only with HTTPS pages and localhost, so
+    // OUTPOST_URL must be one of those (CI uses localhost); otherwise the panel says HTTPS is needed.
+    const problems = [];
+    const position = { latitude: 41.50123, longitude: -101.25678 };
+
+    let context = await browser.newContext({ viewport: VIEWPORTS.phone, geolocation: position, permissions: ["geolocation"] });
+    let page = await context.newPage();
+    page.on("pageerror", (error) => problems.push(`script error: ${error.message}`));
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    await page.click("#themeButton");
+    if (await page.isHidden("#myLocation")) {
+        problems.push("there is no Use my location button");
+    } else {
+        await page.click("#myLocation");
+        const shown = await waitFor(page, () => document.getElementById("location").textContent === "My location"
+            && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
+        if (!shown) problems.push(`Use my location showed "${await page.textContent("#location")}" (${await page.textContent("#placeNote")})`);
+        const stored = await page.evaluate(() => window.localStorage.getItem("outpost.place") || "");
+        if (stored.includes("41.501") || !stored.includes("41.5")) problems.push(`my location was stored as ${stored}, not rounded to 2 decimals`);
+    }
+    await context.close();
+
+    // Refused: the panel says so instead of failing silently
+    context = await browser.newContext({ viewport: VIEWPORTS.phone, permissions: [] });
+    page = await context.newPage();
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    await page.click("#themeButton");
+    await page.click("#myLocation");
+    if (!await waitFor(page, () => /blocked|could not|too long/.test(document.getElementById("placeNote").textContent), null, 20000)) {
+        problems.push(`a refused location said "${await page.textContent("#placeNote")}"`);
+    }
+    await context.close();
+    return problems;
+}
+
 async function checkFraming(browser) {
     // A page on another site must not be able to show the dashboard in a frame
     const page = await browser.newPage();
@@ -309,6 +345,7 @@ async function checkFraming(browser) {
     report("reduced effects (device setting, address, and checkbox)", await checkReducedEffects(browser));
     report("12/24-hour clock (language, address, and checkbox)", await checkClock(browser));
     report("location search (address, search, saved choice, home)", await checkLocation(browser));
+    report("my location (allowed and refused)", await checkMyLocation(browser));
     report("embedding from another site is blocked", await checkFraming(browser));
 
     await browser.close();

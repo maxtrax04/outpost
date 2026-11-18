@@ -153,3 +153,43 @@ test("choosing a place takes the pinned one out of the address", () => {
     assert.ok(!places.removeFromAddress(win));
     assert.strictEqual(calls.length, 1);
 });
+
+test("my location becomes a place rounded to about a kilometer", () => {
+    const place = places.fromPosition({ coords: { latitude: 41.501234, longitude: -101.256789, accuracy: 20 } });
+    assert.deepStrictEqual(place, { name: places.MY_LOCATION_NAME, latitude: 41.5, longitude: -101.26 });
+    assert.ok(places.isMyLocation(place));
+    assert.ok(!places.isMyLocation(CINDER));
+    assert.ok(!places.isMyLocation(null));
+    assert.strictEqual(places.fromPosition(null), null);
+    assert.strictEqual(places.fromPosition({ coords: { latitude: NaN, longitude: 0 } }), null);
+});
+
+test("the browser is asked once, not precisely, and may answer from the last 10 minutes", () => {
+    assert.deepStrictEqual(places.GEOLOCATION_OPTIONS, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+});
+
+test("a new position replaces the saved my location", () => {
+    const storage = new Storage();
+    places.choose(CINDER, storage);
+    places.choose(places.fromPosition({ coords: { latitude: 10, longitude: 20 } }), storage);
+    places.choose(places.fromPosition({ coords: { latitude: 11, longitude: 21 } }), storage);
+    assert.deepStrictEqual(places.savedPlaces(storage).map((place) => [place.name, place.latitude]),
+        [[places.MY_LOCATION_NAME, 11], ["Cinder Flats, North Province", 41.5]]);
+});
+
+test("each reason the location cannot be used has its own words, and points to the search", () => {
+    const texts = [
+        places.locationProblem(null, false),
+        places.locationProblem({ code: 1 }, true),
+        places.locationProblem({ code: 2 }, true),
+        places.locationProblem({ code: 3 }, true),
+        places.locationProblem(null, true),
+    ];
+    assert.match(texts[0], /HTTPS/);
+    assert.match(texts[1], /blocked/);
+    assert.match(texts[3], /too long/);
+    assert.strictEqual(new Set(texts).size, texts.length);
+    for (const text of texts) assert.match(text, /search for a place/i);
+    // Plain HTTP wins over whatever the browser said
+    assert.strictEqual(places.locationProblem({ code: 1 }, false), texts[0]);
+});

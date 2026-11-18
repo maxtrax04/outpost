@@ -159,6 +159,28 @@ Outpost fetches the weather for that screen through its own API (`/api/weather?l
 
 `OUTPOST_LOCATION_SEARCH=false` turns other places off: the search leaves the panel, and pinned addresses are refused too, since anyone can edit an address. `OUTPOST_THEME_SWITCHER=false` removes the panel, search included, from every screen. If Outpost can be reached from the internet, turn it off or put Outpost behind a reverse proxy with a login.
 
+### My location
+
+On a phone or laptop, **Use my location** in the panel asks the browser where the device is, once, and shows the weather there as "My location". It is saved with the other places; tap the button again to update it, since Outpost does not follow the device around. If the browser refuses (permission denied, no position found, or it took too long), the panel says why and the search still works.
+
+Browsers share a location only with HTTPS pages (and `http://localhost`), so on a plain `http://outpost.local:8088` address the button says "(needs HTTPS)". To use it, put Outpost behind a reverse proxy with a certificate. Outpost needs nothing special for this: its paths are relative and the API is under `/api/`. Some ways:
+
+- **Caddy**, which gets a certificate on its own:
+
+  ```
+  outpost.example.com {
+      reverse_proxy 192.168.1.20:8088
+  }
+  ```
+
+  For a name that only exists on your home network, use Caddy's DNS challenge, or `tls internal` (then each device has to trust Caddy's local certificate authority).
+- **Tailscale**: `tailscale serve --bg 8088` on the machine running Outpost gives it an `https://<machine>.<tailnet>.ts.net` address for the devices on your tailnet.
+- **A proxy you already run** (Nginx Proxy Manager, Traefik, SWAG on unRAID): add a host that points to port 8088, with a certificate.
+
+Inside another page's frame, such as Home Assistant's Webpage card, browsers don't share a location; search for the place instead.
+
+Privacy: the browser may ask your device's location service to work out the position. Outpost rounds it to 2 decimals (about 1 km) in the browser before it is stored or sent anywhere. From there it is treated like any searched place: kept in that browser, sent to Outpost and on to the weather services, and never logged or written to disk on the server.
+
 ## Data and storage
 
 The updater writes normalized weather data to `/data/weather.json` inside the container, and the web server serves it to the dashboard. Mount `/data` as a volume (Compose does this with `./data`) so data survives restarts.
