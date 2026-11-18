@@ -30,3 +30,11 @@ the tile server you configure:
 
 - Map data © OpenStreetMap contributors, available under the Open Database License (ODbL),
   https://www.openstreetmap.org/copyright. The map shows this credit in its bottom-right corner.
+
+Rain radar on the map (on with the map unless `OUTPOST_MAP_RADAR=false`) comes from:
+
+- In the US, NOAA's Multi-Radar/Multi-Sensor (MRMS) base reflectivity mosaic, from the National Centers for
+  Environmental Prediction's map server (opengeo.ncep.noaa.gov). As work of the US government it is in the
+  public domain; the map credits "NOAA" next to the OpenStreetMap credit.
+- Elsewhere, RainViewer (rainviewer.com), whose free radar API is for personal and educational use and must be
+  credited; the map credits "RainViewer" with a link.

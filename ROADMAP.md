@@ -73,7 +73,7 @@ A small API that enables location search, browser location, a weather map, and H
 - [x] Design a small HTTP API to replace the file-based flow
 - [x] Location search and saved locations
 - [x] Use the browser's location (requires HTTPS)
-- [ ] Optional weather map and radar
+- [x] Optional weather map and radar
 - [x] Home Assistant: document the iframe card and REST sensor
 - [ ] Home Assistant add-on
 - [ ] Sensor and power-monitoring panels

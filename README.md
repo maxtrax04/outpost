@@ -99,6 +99,8 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_MAP` | `false` | Show a map of the place shown, drawn from OpenStreetMap. Needs `OUTPOST_CONTACT` with the default tile server. See [Map](#map). |
 | `OUTPOST_MAP_ZOOM` | `7` | How close the map is: 4 (a large region) to 12 (a town). |
 | `OUTPOST_MAP_TILES` | *(OpenStreetMap)* | Another server for the map's vector tiles, such as `https://tiles.example.org/{z}/{x}/{y}.mvt`. It must use the Shortbread schema. |
+| `OUTPOST_MAP_RADAR` | `true` | Rain radar on the map: NOAA in the US, RainViewer elsewhere. See [Map](#map). |
+| `OUTPOST_MAP_RADAR_LOOP` | `false` | Play the past 2 hours of radar as a loop instead of showing the latest frame (never on ePaper or with reduced effects). |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
@@ -186,11 +188,22 @@ Privacy: the browser may ask your device's location service to work out the posi
 
 ## Map
 
-Set `OUTPOST_MAP=true` for a map panel under the forecast, centered on the place shown (home, a searched place, or "my location") and marked with a ring. It is a fixed picture, not a map you pan, so it suits wall displays and ePaper too. Rain radar on the map is coming in a later beta.
+Set `OUTPOST_MAP=true` for a map panel under the forecast, centered on the place shown (home, a searched place, or "my location") and marked with a ring. It is a fixed picture, not a map you pan, so it suits wall displays and ePaper too. Rain radar is drawn on top (see [Radar](#radar)).
 
 The map is drawn from [OpenStreetMap](https://www.openstreetmap.org)'s vector tiles, in the active theme's colors and font: land, water, main roads, borders, and place names. Outpost fetches the tiles and keeps them for as long as the tile server says (it then checks for changes, which costs almost nothing), so screens never contact OpenStreetMap themselves. Only tiles a screen shows are fetched, at `OUTPOST_MAP_ZOOM` only.
 
 OpenStreetMap asks a server that fetches and keeps its tiles for a way to reach its operator, so with the default tile server the map stays off until `OUTPOST_CONTACT` is set (Outpost says so at startup). Its tiles are free, and their [usage policy](https://operations.osmfoundation.org/policies/vector/) allows normal viewing like this. If you run your own tile server with the same Shortbread schema, point `OUTPOST_MAP_TILES` at it.
+
+### Radar
+
+With the map on, rain radar is drawn over it, with the time of the frame in the top-left corner (`OUTPOST_MAP_RADAR=false` leaves it off):
+
+- **In the US** (the lower 48 states, Alaska, Hawaii, Guam, and Puerto Rico), it comes from NOAA's [MRMS](https://www.nssl.noaa.gov/projects/mrms/) radar mosaic, which is new every 2 minutes and works at every zoom.
+- **Elsewhere**, from [RainViewer](https://www.rainviewer.com/), which is new every 10 minutes. Its free radar stops at zoom 7, so at a closer `OUTPOST_MAP_ZOOM` it is drawn larger and looks softer. RainViewer's free radar is for personal and educational use, which a home dashboard is.
+
+Which one is used is worked out from the place's coordinates alone, with rough boxes, so a place close to the US border can get the other one. Outpost fetches the radar and keeps it, so screens never contact NOAA or RainViewer, and every screen showing the same area shares one copy.
+
+The latest frame is shown, and it is updated every couple of minutes. `OUTPOST_MAP_RADAR_LOOP=true` plays the past 2 hours instead, a frame every 10 minutes. ePaper (the `ink` theme) and [reduced effects](#reduced-effects) always get the latest frame alone, since an animation would make an ePaper panel flash. On ePaper, each new frame is a redraw, every 2 to 10 minutes.
 
 A theme can choose the map's colors with `--map-land`, `--map-water`, `--map-road`, `--map-border`, `--map-label`, `--map-halo`, and `--map-marker`; see [docs/themes.md](docs/themes.md#map-colors). Without them, the map follows the theme's own colors.
 

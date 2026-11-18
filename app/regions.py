@@ -9,7 +9,7 @@ OUTPOST_PROVIDER can always name a provider directly.
 Uses only the Python standard library.
 """
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 # (south, north, west, east) in decimal degrees
 Box = Tuple[float, float, float, float]
@@ -84,3 +84,36 @@ def in_norway(latitude: float, longitude: float) -> bool:
     if any(_inside(latitude, longitude, box) for box in NORWAY_ISLANDS):
         return True
     return _inside_outline(latitude, longitude, NORWAY_OUTLINE)
+
+
+# NOAA's radar mosaic (MRMS), by the area each of its maps covers: the lower 48 states, Alaska,
+# Hawaii, Guam and the Northern Mariana Islands, and Puerto Rico with the US Virgin Islands. The
+# lower 48 box also takes in southern Canada, whose radars the mosaic includes near the border.
+NOAA_RADAR_AREAS: List[Tuple[str, Box]] = [
+    ("conus", (24.4, 49.5, -125.0, -66.9)),
+    ("alaska", (51.0, 71.6, -180.0, -141.0)),
+    ("alaska", (54.5, 60.0, -141.0, -129.9)),     # The panhandle
+    ("hawaii", (18.5, 22.5, -161.0, -154.5)),
+    ("guam", (12.5, 20.8, 143.5, 146.5)),
+    ("carib", (17.5, 18.9, -68.0, -64.2)),
+]
+
+# Parts of the lower 48 box beyond the mosaic's radars: northern Mexico, and the Bahamas
+NOT_NOAA_RADAR: List[Box] = [
+    (24.4, 32.5, -125.0, -114.8),    # Baja California
+    (24.4, 31.3, -114.8, -106.6),    # Sonora and Chihuahua, south of Arizona and New Mexico
+    (24.4, 29.0, -106.6, -101.0),    # Chihuahua and Coahuila, south of the Rio Grande
+    (24.4, 27.0, -101.0, -99.4),     # Coahuila and Nuevo León (Monterrey)
+    (24.4, 25.8, -99.4, -97.5),      # Tamaulipas
+    (24.4, 27.3, -79.3, -72.0),      # The Bahamas
+]
+
+
+def noaa_radar_area(latitude: float, longitude: float) -> Optional[str]:
+    """The NOAA radar map that covers a location ("conus", "alaska", "hawaii", "guam", "carib"), or None."""
+    if any(_inside(latitude, longitude, box) for box in NOT_NOAA_RADAR):
+        return None
+    for name, box in NOAA_RADAR_AREAS:
+        if _inside(latitude, longitude, box):
+            return name
+    return None

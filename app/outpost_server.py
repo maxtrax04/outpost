@@ -10,6 +10,8 @@ The update loop writes /data/weather.json for home every OUTPOST_UPDATE_INTERVAL
   GET /api/weather                      home: the same as weather.json
   GET /api/weather?lat=..&lon=..&name=..  another place, in the same format
   GET /api/places?q=..                  places matching a name, for the search box (Open-Meteo geocoding)
+  GET /api/radar[?lat=..&lon=..]        the map's radar frames for home or another place (outpost_radar.py)
+  GET /tiles/radar/...                  a radar tile, through nginx's radar cache
 
 One process, so the providers' response caches and request minimums are shared by home and other
 places. Other places are fetched only when a screen asks, at most every PLACE_REFRESH_SECONDS each,
@@ -31,6 +33,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 
+import outpost_map
+import outpost_radar
 import outpost_updater as u
 from providers import geocoding, openmeteo
 
@@ -184,13 +188,38 @@ def search_places(query: Dict[str, Any]) -> Dict[str, Any]:
     return {"places": places, "source": geocoding.SOURCE}
 
 
-def make_handler(places: Places) -> type:
+def radar_frames(query: Dict[str, Any], radar: Optional[outpost_radar.Radar]) -> Dict[str, Any]:
+    """The radar frames for home, or (with location search on) for ?lat=&lon=."""
+    if radar is None:
+        raise ApiError(404, "radar_off", "The map's radar is off (OUTPOST_MAP, OUTPOST_MAP_RADAR)")
+    if "lat" in query or "lon" in query:
+        if not u.LOCATION_SEARCH:
+            raise ApiError(403, "location_search_off", "Choosing another place is turned off (OUTPOST_LOCATION_SEARCH)")
+        latitude, longitude = coordinate(query, "lat", 90), coordinate(query, "lon", 180)
+    else:
+        latitude, longitude = u.LATITUDE, u.LONGITUDE
+    try:
+        return radar.answer(latitude, longitude)
+    except outpost_radar.RadarError as error:
+        print(f"[Outpost] Radar: {error}", file=sys.stderr, flush=True)
+        raise ApiError(502, "radar_unavailable", "Radar is not available right now; try again later")
+
+
+def make_radar() -> Optional[outpost_radar.Radar]:
+    map_settings = outpost_map.settings(contact=u.CONTACT)
+    return outpost_radar.Radar(map_settings["zoom"], u.USER_AGENT) if map_settings["radar"] else None
+
+
+def make_handler(places: Places, radar: Optional[outpost_radar.Radar] = None) -> type:
     class Handler(BaseHTTPRequestHandler):
         server_version = "Outpost"
         sys_version = ""
 
         def do_GET(self) -> None:
             parts = urlsplit(self.path)
+            if parts.path.startswith("/tiles/radar/"):
+                self.send_tile(parts.path)
+                return
             query = parse_qs(parts.query, keep_blank_values=True, max_num_fields=20)
             try:
                 if parts.path == "/api/status":
@@ -199,6 +228,8 @@ def make_handler(places: Places) -> type:
                     self.send_json(200, weather(query, places))
                 elif parts.path == "/api/places":
                     self.send_json(200, search_places(query))
+                elif parts.path == "/api/radar":
+                    self.send_json(200, radar_frames(query, radar))
                 else:
                     raise ApiError(404, "not_found", "No such API address")
             except ApiError as error:
@@ -209,6 +240,32 @@ def make_handler(places: Places) -> type:
 
         # The same headers without the body
         do_HEAD = do_GET
+
+        def send_tile(self, path: str) -> None:
+            try:
+                if radar is None:
+                    raise outpost_radar.RadarNotFound("the radar is off")
+                body = radar.tile(path)
+            except outpost_radar.RadarError as error:
+                if not isinstance(error, outpost_radar.RadarNotFound):
+                    # Never the address: it says which place a screen shows
+                    print(f"[Outpost] Radar tile: {error}", file=sys.stderr, flush=True)
+                self.send_bytes(error.status, b"", "text/plain; charset=utf-8", "no-store")
+            except Exception as error:  # never let one request take the server down
+                print(f"[Outpost] Radar tile error: {type(error).__name__}", file=sys.stderr, flush=True)
+                self.send_bytes(500, b"", "text/plain; charset=utf-8", "no-store")
+            else:
+                # A frame never changes, so nginx and browsers can keep its tiles while it can be shown
+                self.send_bytes(200, body, "image/png", f"public, max-age={outpost_radar.FRAME_KEEP_SECONDS}")
+
+        def send_bytes(self, code: int, data: bytes, kind: str, cache: str) -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", kind)
+            self.send_header("Cache-Control", cache)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(data)
 
         def send_json(self, code: int, body: Dict[str, Any]) -> None:
             data = json.dumps(body).encode("utf-8")
@@ -227,8 +284,9 @@ def make_handler(places: Places) -> type:
     return Handler
 
 
-def make_server(places: Places, host: str = HOST, port: int = PORT) -> ThreadingHTTPServer:
-    server = ThreadingHTTPServer((host, port), make_handler(places))
+def make_server(places: Places, host: str = HOST, port: int = PORT,
+                radar: Optional[outpost_radar.Radar] = None) -> ThreadingHTTPServer:
+    server = ThreadingHTTPServer((host, port), make_handler(places, radar))
     server.daemon_threads = True
     return server
 
@@ -238,7 +296,7 @@ def main() -> None:
     u.write_config()
     threading.Thread(target=u.run_loop, name="home-updates", daemon=True).start()
 
-    server = make_server(Places(u.LOCATION_LIMIT))
+    server = make_server(Places(u.LOCATION_LIMIT), radar=make_radar())
     if u.LOCATION_SEARCH:
         search = (f"other places on, at most {u.LOCATION_LIMIT} weather fetches an hour between them, "
                   f"each at most every {PLACE_REFRESH_SECONDS // 60} min")

@@ -139,8 +139,15 @@
 
     // Draws decoded tiles ([{ left, top, data }]) on a 2D context of width x height (CSS pixels).
     // colors: { land, water, road, border, label, halo, marker }; font: a CSS font-family.
+    // The radar goes between the two layers: drawBase under it, drawOverlay on top.
     function draw(context, tiles, options) {
-        const { width, height, zoom, colors, font } = options;
+        drawBase(context, tiles, options);
+        return drawOverlay(context, tiles, options);
+    }
+
+    // The map under the radar: land, water, rivers, streets, and borders
+    function drawBase(context, tiles, options) {
+        const { width, height, zoom, colors } = options;
         context.save();
         context.fillStyle = colors.land;
         context.fillRect(0, 0, width, height);
@@ -196,6 +203,15 @@
             });
         }
         context.setLineDash([]);
+        context.restore();
+    }
+
+    // What goes over the radar: the place shown, and place names. Returns how many were named.
+    function drawOverlay(context, tiles, options) {
+        const { width, height, zoom, colors, font } = options;
+        context.save();
+        context.lineJoin = "round";
+        context.lineCap = "round";
 
         // The place shown: a ring at the center
         context.strokeStyle = colors.marker;
@@ -319,18 +335,72 @@
         if (!tiles.some((tile) => tile.data)) return "failed";
 
         const ratio = Math.min(root.devicePixelRatio || 1, 3);
-        canvas.width = Math.round(width * ratio);
-        canvas.height = Math.round(height * ratio);
-        const context = canvas.getContext("2d");
-        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        const pixelWidth = Math.round(width * ratio);
+        const pixelHeight = Math.round(height * ratio);
         const font = getComputedStyle(canvas).fontFamily || "sans-serif";
-        draw(context, tiles, { width, height, zoom, colors: themeColors(canvas.closest(".panel") || document.body), font });
+        const drawOptions = { width, height, zoom, colors: themeColors(canvas.closest(".panel") || document.body), font };
+        const base = layerCanvas(pixelWidth, pixelHeight);
+        const overlay = layerCanvas(pixelWidth, pixelHeight);
+        for (const [layer, drawLayer] of [[base, drawBase], [overlay, drawOverlay]]) {
+            const context = layer.getContext("2d");
+            context.setTransform(ratio, 0, 0, ratio, 0, 0);
+            drawLayer(context, tiles, drawOptions);
+        }
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+        // The same place and size (a theme change) keeps the radar; anything else needs it drawn again
+        const viewKey = [place.latitude.toFixed(4), place.longitude.toFixed(4), zoom, width, height, ratio].join("|");
+        const radar = shown && shown.canvas === canvas && shown.view.key === viewKey ? shown.radar : null;
+        shown = { canvas, base, overlay, radar, view: { place: { ...place }, zoom, width, height, ratio, key: viewKey } };
+        compose();
         shownKey = tiles.every((tile) => tile.data) ? key : ""; // try a missing tile again next time
         return "drawn";
     }
 
-    const api = { TILE_SIZE, LAYERS, STREETS, PLACES, worldPixel, tilesFor, streetStyle, borderStyle, placeStyle, insideView,
-        sortLabels, placeLabels, draw, show };
+    // ---- Layers --------------------------------------------------------------------
+    // The base map and its names are drawn once into layers of their own, so a new radar frame
+    // (or a loop of them) only puts the three layers together again.
+
+    const RADAR_OPACITY = 0.75;
+    let shown = null; // { canvas, base, overlay, radar, view }
+
+    function layerCanvas(width, height) {
+        const layer = document.createElement("canvas");
+        layer.width = width;
+        layer.height = height;
+        return layer;
+    }
+
+    function compose() {
+        if (!shown) return;
+        const { canvas, base, overlay, radar } = shown;
+        const context = canvas.getContext("2d");
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(base, 0, 0);
+        if (radar) {
+            context.globalAlpha = RADAR_OPACITY;
+            context.drawImage(radar, 0, 0, canvas.width, canvas.height);
+            context.globalAlpha = 1;
+        }
+        context.drawImage(overlay, 0, 0);
+    }
+
+    // The map's place, zoom, and size (CSS pixels, and device pixels per CSS pixel), with a key
+    // that changes when any of them does; null before the map is drawn
+    function view() {
+        return shown ? { ...shown.view, place: { ...shown.view.place } } : null;
+    }
+
+    // Shows a radar layer (a canvas the size of the map, in device pixels), or none
+    function setRadar(layer) {
+        if (!shown) return;
+        shown.radar = layer || null;
+        compose();
+    }
+
+    const api = { TILE_SIZE, LAYERS, STREETS, PLACES, RADAR_OPACITY, worldPixel, tilesFor, streetStyle, borderStyle,
+        placeStyle, insideView, sortLabels, placeLabels, draw, drawBase, drawOverlay, show, view, setRadar };
 
     root.OutpostMap = api;
 

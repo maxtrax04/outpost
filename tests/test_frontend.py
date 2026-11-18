@@ -36,7 +36,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
     def test_scripts_are_loaded_in_the_right_order(self):
         scripts = re.findall(r'<script src="([^"]+)"', self.html)
         self.assertEqual(scripts, ["dim.js", "effects.js", "fit.js", "clock.js", "themes.js", "gauges.js", "data.js",
-                                   "places.js", "place-panel.js", "mvt.js", "map.js", "app.js"])
+                                   "places.js", "place-panel.js", "mvt.js", "map.js", "radar.js", "app.js"])
 
     def test_what_the_script_reads_from_the_api_is_sent_by_the_server(self):
         server = read("app/outpost_server.py")
@@ -46,6 +46,20 @@ class FrontEndConsistencyTests(unittest.TestCase):
         for field in ('"name"', '"region"', '"country"', '"latitude"', '"longitude"'):
             with self.subTest(field=field):
                 self.assertIn(field, read("app/providers/geocoding.py"))
+
+    def test_what_the_radar_reads_is_sent_by_the_server(self):
+        radar_js = read("web/radar.js")
+        radar_py = read("app/outpost_radar.py")
+        for field in ("frames", "tiles", "time", "zoom", "credit", "credit_url", "source"):
+            with self.subTest(field=field):
+                self.assertIn(f"answer.{field}" if field not in ("tiles", "time") else f"frame.{field}", radar_js)
+                self.assertIn(f'"{field}"', radar_py)
+        self.assertIn('"api/radar"', radar_js)
+        self.assertIn('"/api/radar"', read("app/outpost_server.py"))
+        for key in ("radar", "radar_loop"):
+            with self.subTest(key=key):
+                self.assertIn(f'"{key}"', read("app/outpost_map.py"))
+                self.assertIn(f".{key}", radar_js)
 
     def test_the_options_panel_is_a_dialog_with_a_search_box(self):
         self.assertIn('id="themePanel" class="theme-panel" role="dialog"', self.html)

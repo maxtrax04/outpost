@@ -307,6 +307,35 @@ async function checkMyLocation(browser) {
     return problems;
 }
 
+// A one-pixel PNG of one color, for a made-up radar tile
+function pixelPng([red, green, blue, alpha]) {
+    const zlib = require("zlib");
+    const crcTable = Array.from({ length: 256 }, (_, n) => {
+        let c = n;
+        for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        return c >>> 0;
+    });
+    const crc = (bytes) => {
+        let c = 0xffffffff;
+        for (const byte of bytes) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+        return (c ^ 0xffffffff) >>> 0;
+    };
+    const chunk = (type, data) => {
+        const length = Buffer.alloc(4);
+        length.writeUInt32BE(data.length);
+        const body = Buffer.concat([Buffer.from(type), data]);
+        const check = Buffer.alloc(4);
+        check.writeUInt32BE(crc(body));
+        return Buffer.concat([length, body, check]);
+    };
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(1, 0);
+    header.writeUInt32BE(1, 4);
+    header.set([8, 6, 0, 0, 0], 8); // 8-bit RGBA
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", header),
+        chunk("IDAT", zlib.deflateSync(Buffer.from([0, red, green, blue, alpha]))), chunk("IEND", Buffer.alloc(0))]);
+}
+
 async function checkMap(browser) {
     // The map panel (web/map.js). Off by default, so the panel is hidden; then turned on in this
     // page only, with a made-up tile (mvt-fixture.js), so the check never asks OpenStreetMap.
@@ -327,12 +356,21 @@ async function checkMap(browser) {
     await page.route("**/data/config.json*", async (route) => {
         const response = await route.fetch();
         const body = await response.json();
-        body.map = { ...body.map, enabled: true, zoom: 7 };
+        body.map = { ...body.map, enabled: true, zoom: 7, radar: true, radar_loop: false };
         await route.fulfill({ response, json: body });
     });
     await page.route("**/tiles/base/7/*/*.mvt", (route) => {
         tilesAsked += 1;
         route.fulfill({ contentType: "application/vnd.mapbox-vector-tile", body: Buffer.from(sampleTile()) });
+    });
+    // The radar: one made-up frame whose tiles are solid red
+    let radarTilesAsked = 0;
+    await page.route("**/api/radar*", (route) => route.fulfill({ json: { source: "noaa", credit: "NOAA",
+        credit_url: "https://www.nssl.noaa.gov/projects/mrms/", zoom: 7,
+        frames: [{ time: "2027-01-15T10:00:00Z", tiles: "tiles/radar/noaa/conus/20270115T100000Z/{z}/{x}/{y}.png" }] } }));
+    await page.route("**/tiles/radar/noaa/conus/20270115T100000Z/7/*/*.png", (route) => {
+        radarTilesAsked += 1;
+        route.fulfill({ contentType: "image/png", body: pixelPng([255, 0, 0, 255]) });
     });
     await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
     if (!await waitFor(page, () => !document.getElementById("mapPanel").hidden
@@ -350,10 +388,29 @@ async function checkMap(browser) {
         if (colors < 2) problems.push("the map canvas is one flat color");
         if (tilesAsked === 0) problems.push("no tiles were asked for");
         if (!(await page.textContent("#mapCredit")).includes("OpenStreetMap")) problems.push("the map does not credit OpenStreetMap");
+
+        if (!await waitFor(page, () => !document.getElementById("radarCredit").hidden, null, 5000)) {
+            problems.push("the radar was not shown");
+        } else {
+            if (radarTilesAsked === 0) problems.push("no radar tiles were asked for");
+            if ((await page.textContent("#radarCredit")) !== "Radar: NOAA") problems.push("the radar does not credit NOAA");
+            if (!/^RADAR \d/.test(await page.textContent("#radarTime"))) problems.push("the radar's time is not shown");
+            // Red radar, drawn see-through over the map, away from the names at the center
+            const red = await page.evaluate(() => {
+                const canvas = document.getElementById("mapCanvas");
+                const [r, g, b] = canvas.getContext("2d").getImageData(5, Math.round(canvas.height / 2), 1, 1).data;
+                return r > 150 && r > g + 60 && r > b + 60;
+            });
+            if (!red) problems.push("the radar was not drawn on the map");
+        }
     }
     // Without the route, the real server refuses other zooms and answers 404 while the map is off
     const status = (await fetch(`${BASE}/tiles/base/7/0/0.mvt`)).status;
     if (status !== 404) problems.push(`with the map off, /tiles/ answered ${status}, expected 404`);
+    const radarStatus = (await fetch(`${BASE}/tiles/radar/rainviewer/abc123/7/0/0.png`)).status;
+    if (radarStatus !== 404) problems.push(`with the map off, /tiles/radar/ answered ${radarStatus}, expected 404`);
+    const radarApi = await fetch(`${BASE}/api/radar`);
+    if (radarApi.status !== 404) problems.push(`with the map off, /api/radar answered ${radarApi.status}, expected 404`);
     await page.close();
     return problems;
 }
