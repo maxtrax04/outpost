@@ -96,6 +96,9 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_LOCATION_SEARCH` | `true` | Whether screens may show places other than home. See [Other places](#other-places). |
 | `OUTPOST_LOCATION_LIMIT` | `30` | Weather fetches an hour for places other than home, all of them together (0 or more). See [Other places](#other-places). |
 | `OUTPOST_LOCATION_PIRATEWEATHER` | `true` | Whether other places may use the Pirate Weather key, only from the quota home won't need before the monthly reset. `false` keeps it for home. |
+| `OUTPOST_MAP` | `false` | Show a map of the place shown, drawn from OpenStreetMap. Needs `OUTPOST_CONTACT` with the default tile server. See [Map](#map). |
+| `OUTPOST_MAP_ZOOM` | `7` | How close the map is: 4 (a large region) to 12 (a town). |
+| `OUTPOST_MAP_TILES` | *(OpenStreetMap)* | Another server for the map's vector tiles, such as `https://tiles.example.org/{z}/{x}/{y}.mvt`. It must use the Shortbread schema. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
@@ -180,6 +183,16 @@ Browsers share a location only with HTTPS pages (and `http://localhost`), so on 
 Inside another page's frame, such as Home Assistant's Webpage card, browsers don't share a location; search for the place instead.
 
 Privacy: the browser may ask your device's location service to work out the position. Outpost rounds it to 2 decimals (about 1 km) in the browser before it is stored or sent anywhere. From there it is treated like any searched place: kept in that browser, sent to Outpost and on to the weather services, and never logged or written to disk on the server.
+
+## Map
+
+Set `OUTPOST_MAP=true` for a map panel under the forecast, centered on the place shown (home, a searched place, or "my location") and marked with a ring. It is a fixed picture, not a map you pan, so it suits wall displays and ePaper too. Rain radar on the map is coming in a later beta.
+
+The map is drawn from [OpenStreetMap](https://www.openstreetmap.org)'s vector tiles, in the active theme's colors and font: land, water, main roads, borders, and place names. Outpost fetches the tiles and keeps them for as long as the tile server says (it then checks for changes, which costs almost nothing), so screens never contact OpenStreetMap themselves. Only tiles a screen shows are fetched, at `OUTPOST_MAP_ZOOM` only.
+
+OpenStreetMap asks a server that fetches and keeps its tiles for a way to reach its operator, so with the default tile server the map stays off until `OUTPOST_CONTACT` is set (Outpost says so at startup). Its tiles are free, and their [usage policy](https://operations.osmfoundation.org/policies/vector/) allows normal viewing like this. If you run your own tile server with the same Shortbread schema, point `OUTPOST_MAP_TILES` at it.
+
+A theme can choose the map's colors with `--map-land`, `--map-water`, `--map-road`, `--map-border`, `--map-label`, `--map-halo`, and `--map-marker`; see [docs/themes.md](docs/themes.md#map-colors). Without them, the map follows the theme's own colors.
 
 ## Data and storage
 

@@ -22,3 +22,11 @@ Weather data is provided by the services you configure and remains subject to th
 - Open-Meteo.com
 - MET Norway (met.no), shared under the Creative Commons 4.0 BY International license
 - Pirate Weather (pirateweather.net)
+
+## Map data
+
+The map panel (off unless `OUTPOST_MAP=true`) draws vector tiles from the OpenStreetMap Foundation, or from
+the tile server you configure:
+
+- Map data © OpenStreetMap contributors, available under the Open Database License (ODbL),
+  https://www.openstreetmap.org/copyright. The map shows this credit in its bottom-right corner.

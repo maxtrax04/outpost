@@ -55,6 +55,15 @@
             <div id="forecastContainer" class="forecast"></div>
         </section>
 
+        <section id="mapPanel" class="panel map-panel" data-panel="map" hidden>
+            <h2>MAP</h2>
+            <div class="map-frame">
+                <canvas id="mapCanvas" class="map-canvas" role="img" aria-label="Map of the place shown"></canvas>
+                <a id="mapCredit" class="map-credit" target="_blank" rel="noopener">© OpenStreetMap</a>
+                <div id="mapNote" class="map-note" hidden></div>
+            </div>
+        </section>
+
         <section id="alertsPanel" class="panel" data-panel="alerts" hidden>
             <h2>ALERTS</h2>
             <div id="alerts">LOADING...</div>
@@ -111,6 +120,8 @@
     <script src="data.js"></script>
     <script src="places.js"></script>
     <script src="place-panel.js"></script>
+    <script src="mvt.js"></script>
+    <script src="map.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -161,6 +161,22 @@ the first colon in the file's opening comment, so `/* Retro CRT: green phosphor 
 | `--title-logo` | `1` shows the Outpost logo as the title, `0` shows the word OUTPOST in `--font-display` |
 | `--title-spacing` | Letter spacing of the text title (when `--title-logo` is `0`) |
 
+### Map colors
+
+The map panel (`OUTPOST_MAP`) is drawn on a canvas in these colors, with place names in `--font-body`.
+Any CSS color works, including `color-mix()`. A theme that sets none gets the defaults shown, worked out
+from its own colors.
+
+| Token | What it colors | Default |
+|---|---|---|
+| `--map-land` | Land (the background) | `var(--bg)` |
+| `--map-water` | Sea, lakes, and rivers | `color-mix(in srgb, var(--text) 16%, var(--bg))` |
+| `--map-road` | Main roads | `color-mix(in srgb, var(--accent) 55%, var(--bg))` |
+| `--map-border` | Country borders (solid) and state borders (dashed) | `var(--text-dim)` |
+| `--map-label` | Place names | `var(--text)` |
+| `--map-halo` | The outline that keeps place names readable over roads | `var(--bg)` |
+| `--map-marker` | The ring on the place shown | `var(--accent)` |
+
 ### Logo
 
 The header shows the Outpost logo, tinted with `--text` and glowing with `--icon-glow`, when a theme sets

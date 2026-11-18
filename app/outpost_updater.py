@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
+import outpost_map
 import regions
 import units
 from providers import gapfill, metno, nws, openmeteo, pirateweather
@@ -423,7 +424,8 @@ def write_config() -> None:
             "longitude": LONGITUDE,
             "dim": build_dim_config(),
             "ui": build_ui_config(),
-            "themes": list_themes()
+            "themes": list_themes(),
+            "map": outpost_map.config(outpost_map.settings(contact=CONTACT))
         },
         DATA_PATH.with_name("config.json")
     )

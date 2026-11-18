@@ -32,7 +32,9 @@ class ThemeTests(unittest.TestCase):
     def setUp(self):
         css = (ROOT / "web" / "style.css").read_text(encoding="utf-8")
         root_block = re.search(r":root\s*\{(.*?)\n\}", css, re.S).group(1)
-        self.required = tokens_in(root_block) - {"--icon", "--dim"}
+        # The map's colors are optional: style.css works them out from the theme's own colors
+        self.optional = {token for token in tokens_in(root_block) if token.startswith("--map-")}
+        self.required = tokens_in(root_block) - {"--icon", "--dim"} - self.optional
         # Built-in themes and the example themes meant to be mounted get the same checks
         self.themes = sorted(THEME_DIR.glob("*/theme.css")) + sorted(EXAMPLE_DIR.glob("*/theme.css"))
 
@@ -76,6 +78,16 @@ class ThemeTests(unittest.TestCase):
         for token in sorted(self.required):
             with self.subTest(token=token):
                 self.assertIn(f"`{token}`", docs)
+
+    def test_the_optional_map_colors_are_documented_with_their_defaults(self):
+        docs = (ROOT / "docs" / "themes.md").read_text(encoding="utf-8")
+        css = (ROOT / "web" / "style.css").read_text(encoding="utf-8")
+        self.assertEqual(len(self.optional), 7)
+        for token in sorted(self.optional):
+            with self.subTest(token=token):
+                default = re.search(rf"{token}\s*:\s*([^;]+);", css).group(1).strip()
+                self.assertIn(f"| `{token}` |", docs)
+                self.assertIn(f"`{default}`", docs)
 
     def test_title_logo_is_on_or_off(self):
         # style.css multiplies sizes by it, so anything but 0 or 1 would shrink or blow up the title
