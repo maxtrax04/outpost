@@ -3,6 +3,9 @@ name: Release
 # Publishes the Docker image to GitHub's container registry (ghcr.io).
 #   - Pushing a tag like v0.3.0 publishes 0.3.0, 0.3, and latest, then creates a GitHub Release.
 #   - Pushing to main publishes the "edge" tag for early testers.
+#   - A version tag also publishes the Home Assistant add-on (homeassistant/) to maxtrax04/outpost-addon:
+#     betas to its beta branch, released versions to its main and beta branches. This needs the
+#     ADDON_REPO_TOKEN secret (a token that can push to that repository); without it, the step is skipped.
 on:
   push:
     branches: [main]
@@ -101,7 +104,11 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          # Plus the labels Home Assistant's Supervisor looks for on an add-on's image
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            io.hass.type=addon
+            io.hass.version=${{ steps.meta.outputs.version }}
           provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -183,4 +190,59 @@ jobs:
                 echo "$tag is now a draft"
                 ;;
             esac
+          done
+
+  addon:
+    name: Publish the Home Assistant add-on
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check for the add-on repository's token
+        id: token
+        env:
+          ADDON_REPO_TOKEN: ${{ secrets.ADDON_REPO_TOKEN }}
+        run: |
+          if [ -z "$ADDON_REPO_TOKEN" ]; then
+            echo "::notice::ADDON_REPO_TOKEN is not set, so the Home Assistant add-on was not published"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.skip != 'true'
+        with:
+          repository: ${{ github.repository_owner }}/outpost-addon
+          token: ${{ secrets.ADDON_REPO_TOKEN }}
+          path: addon-repo
+          fetch-depth: 0
+
+      - name: Publish to the beta branch, and to main for a released version
+        if: steps.token.outputs.skip != 'true'
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          branches="beta"
+          if [[ "$version" != *-* ]]; then
+            branches="main beta"
+          fi
+          cd addon-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for branch in $branches; do
+            if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+              git checkout -q -B "$branch" "origin/$branch"
+            else
+              git checkout -q --orphan "$branch"
+            fi
+            python3 ../scripts/publish_addon.py "$version" .
+            git add -A
+            if git diff --cached --quiet; then
+              echo "The add-on on $branch is already $version"
+            else
+              git commit -q -m "Outpost $version"
+              git push -q origin "$branch"
+              echo "Published the add-on $version to $branch"
+            fi
           done

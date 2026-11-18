@@ -1,0 +1,108 @@
+configuration:
+  provider:
+    name: Weather source
+    description: "auto picks the best source for the place: MET Norway in the Nordic countries, the National Weather Service in the US, Pirate Weather elsewhere with a key, otherwise Open-Meteo."
+  pirateweather_api_key:
+    name: Pirate Weather API key
+    description: A free key from pirateweather.net, for Pirate Weather (and auto outside the Nordic countries and the US).
+  alerts_provider:
+    name: Alerts source
+    description: Where official weather alerts come from. auto uses the weather source's own, or the best official one for the place.
+  contact:
+    name: Contact
+    description: An email address or website for the User-Agent. MET Norway asks for it, and the map's default tiles need it.
+  location_name:
+    name: Location name
+    description: The name shown at the top. Empty uses Home Assistant's home name.
+  latitude:
+    name: Latitude
+    description: Empty uses Home Assistant's home location. Set both latitude and longitude to show somewhere else.
+  longitude:
+    name: Longitude
+    description: Empty uses Home Assistant's home location.
+  timezone:
+    name: Time zone
+    description: An IANA name such as Europe/Oslo. Empty uses Home Assistant's.
+  units:
+    name: Units
+    description: imperial (°F, mph, inHg, miles) or metric (°C, km/h, hPa, km). Empty follows Home Assistant's unit system.
+  update_interval:
+    name: Update interval
+    description: Seconds between weather updates (at least 60; default 1800).
+  location_search:
+    name: Location search
+    description: Lets viewers search for other places, or use their device's location, from the panel on screen.
+  location_limit:
+    name: Other places per hour
+    description: At most this many weather fetches an hour for other places (default 30; 0 turns them off).
+  location_pirateweather:
+    name: Pirate Weather for other places
+    description: Use spare Pirate Weather calls for other places (default on).
+  map:
+    name: Map
+    description: A map of the place shown, with rain radar, under the forecast.
+  map_zoom:
+    name: Map zoom
+    description: 4 (a large region) to 12 (a town); default 7.
+  map_tiles:
+    name: Map tiles
+    description: Another vector tile server with the Shortbread schema. Empty uses OpenStreetMap's, which needs Contact.
+  map_radar:
+    name: Radar
+    description: Rain radar on the map (default on).
+  map_radar_loop:
+    name: Radar loop
+    description: Play the past 2 hours of radar instead of the latest frame (never on ePaper or with reduced effects).
+  theme:
+    name: Theme
+    description: retro-crt (default), amber-terminal, command-center, modern-dark, field-station, atomic-broadcast, ink, or a community or custom theme.
+  theme_switcher:
+    name: On-screen panel
+    description: The button for the panel with location search, themes, and display options (default on).
+  community_themes:
+    name: Community themes
+    description: Themes to download from maxtrax04/outpost-themes, as username/theme separated by commas.
+  community_themes_ref:
+    name: Community themes version
+    description: A branch, tag, or commit of the community themes (default main).
+  effects:
+    name: Effects
+    description: full, or reduced (no scanlines, glow, or animation) for everyone.
+  effects_toggle:
+    name: Reduced effects checkbox
+    description: Lets each screen turn effects off for itself (default on).
+  clock:
+    name: Clock
+    description: 12, 24, or auto (follows the browser's language).
+  clock_toggle:
+    name: 24-hour clock checkbox
+    description: Lets each screen choose for itself (default on).
+  subtitle:
+    name: Subtitle
+    description: A line under the title. {date} and {time} are replaced with the current date and time.
+  alerts_always_show:
+    name: Always show alerts panel
+    description: Show the alerts panel even when there are no alerts.
+  auto_dim:
+    name: Night dimming
+    description: Dim the dashboard at night (default on).
+  dim_level:
+    name: Night brightness
+    description: 0.05 (very dark) to 1 (no dimming); default 0.35.
+  dim_mode:
+    name: Dimming mode
+    description: sun (after sunset) or schedule (between the times below).
+  dim_start:
+    name: Dim from
+    description: HH:MM, with the schedule mode.
+  dim_end:
+    name: Dim until
+    description: HH:MM, with the schedule mode.
+  frame_ancestors:
+    name: Sites that may frame it
+    description: Only needed to show Outpost's own port in a frame elsewhere. The Outpost panel in Home Assistant works without it.
+  user_agent:
+    name: User-Agent
+    description: Replaces the User-Agent sent to weather services. Usually left empty; use Contact instead.
+network:
+  80/tcp: Outpost on its own port, for wall tablets not logged in to Home Assistant (not needed for the panel)

@@ -9,11 +9,12 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 - JS tests: `TZ=UTC node --test` (finds `tests/*.test.js`)
 
 ## Layout
-- `app/`: updater, `outpost_server.py` (runs the update loop and the API on 127.0.0.1:8081, behind nginx at `/api/`), map settings and tile cache snippet (`outpost_map.py`), map radar (`outpost_radar.py`), health check, community theme download (`outpost_community.py`, run once by `start.sh`), `start.sh`, `providers/{openmeteo,nws,metno,pirateweather,gapfill,geocoding}.py`, `units.py`, `regions.py` (offline region checks for auto)
+- `app/`: updater, `outpost_server.py` (runs the update loop and the API on 127.0.0.1:8081, behind nginx at `/api/`), map settings and tile cache snippet (`outpost_map.py`), map radar (`outpost_radar.py`), Home Assistant add-on mode (`outpost_addon.py`: /data/options.json and Home Assistant's config to settings, ingress listener), health check, community theme download (`outpost_community.py`, run once by `start.sh`), `start.sh`, `providers/{openmeteo,nws,metno,pirateweather,gapfill,geocoding}.py`, `units.py`, `regions.py` (offline region checks for auto)
 - `web/`: `index.html`, `style.css`, `app.js`, `dim.js`, `effects.js`, `fit.js`, `clock.js`, `themes.js`, `gauges.js`, `data.js` (reads weather.json), `places.js` and `place-panel.js` (location search), `mvt.js`, `map.js`, and `radar.js` (map panel), `manifest.webmanifest`, `themes/<name>/theme.css` (one folder per theme, since 0.5.0)
 - `assets/`: `icons/` (13 original SVGs), `logo/` (original logo: mark, wordmark, lockup), `app/` (favicon and PWA icons, built from the logo by `scripts/build-app-icons.js`), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations; `tests/browser/check-themes.js` (Playwright, run by CI against the container)
 - `docs/`: `data-format.md` and `schema/weather-v<N>.json` (the weather.json format; a new file per schema_version), `themes.md`, `releasing.md`, `github-workflow.md`
+- `homeassistant/`: the Home Assistant add-on (`repository.yaml`, `outpost/config.json`, DOCS, translations, icon and logo from `scripts/build-app-icons.js`); the release workflow copies it to maxtrax04/outpost-addon with `scripts/publish_addon.py` (betas to its `beta` branch, releases to `main`; needs the ADDON_REPO_TOKEN secret)
 - `design/`: design working files (logo concepts, Illustrator masters); git-ignored
 - `nginx/default.conf`: web server config; custom themes are mounted at `/config/themes` and win over `web/themes/`
 - `examples/themes/`: example themes to mount (not built into the image)

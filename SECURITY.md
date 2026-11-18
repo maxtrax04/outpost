@@ -76,5 +76,6 @@ and only for the sites it needs:
   on, and for radar only frames Outpost has listed, so Outpost is not an open tile proxy.
 - **Browser location:** no CSP change. If Outpost ever sends a `Permissions-Policy` header, it must allow
   `geolocation=(self)`.
-- **Home Assistant add-on:** Home Assistant shows add-ons in a frame on its own address, so the add-on build
-  will set `frame-ancestors` to include it automatically.
+- **Home Assistant add-on:** no change. Home Assistant shows the add-on's panel in a frame through its
+  ingress proxy, on Home Assistant's own address, which `frame-ancestors 'self'` already allows. The
+  ingress port (8099) answers only the Supervisor's proxy (172.30.32.2), as Home Assistant asks.

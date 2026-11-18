@@ -1,0 +1,70 @@
+# Outpost add-on
+
+Outpost is a self-hosted weather dashboard for wall displays and phones. This add-on runs it inside
+Home Assistant and adds an **Outpost** panel to the sidebar.
+
+The add-on is experimental: it has not yet been tried on every kind of Home Assistant installation.
+Please report problems at https://github.com/maxtrax04/outpost/issues.
+
+## Installation
+
+1. In Home Assistant, go to **Settings > Add-ons > Add-on store**, open the menu (⋮) in the top-right
+   corner, and choose **Repositories**.
+2. Add `https://github.com/maxtrax04/outpost-addon` and close the dialog.
+3. Find **Outpost** in the store, install it, and start it.
+4. Open **Outpost** in the sidebar (turn on **Show in sidebar** on the add-on's page if it isn't there).
+
+To try beta versions before they are released, add `https://github.com/maxtrax04/outpost-addon#beta`
+instead. Beta versions may have problems that the released version doesn't.
+
+## Location, time zone, and units
+
+Unless you set them in the add-on's options, Outpost uses Home Assistant's own home location, home name,
+time zone, and unit system (metric or US customary), read when the add-on starts. To show somewhere
+else, set both **Latitude** and **Longitude**.
+
+## Options
+
+Each option is one of Outpost's settings, described in full in the README:
+https://github.com/maxtrax04/outpost#settings. The option `map_zoom` is the setting `OUTPOST_MAP_ZOOM`,
+and so on; **Time zone** is `TZ`. Empty options use Outpost's defaults. Changes take effect when the
+add-on restarts.
+
+Some options worth knowing:
+
+- **Weather source**: `auto` picks the best one for your location. **Contact** (an email address or
+  website) is needed for MET Norway and the National Weather Service, which `auto` uses in the Nordic
+  countries and the US.
+- **Map**: a map of the place shown, with rain radar. With OpenStreetMap's tiles (the default) it needs
+  **Contact** too.
+- **Location search**: lets viewers look at the weather somewhere else from the panel on screen. Turn it
+  off if only home should be shown.
+
+## Wall tablets and other screens
+
+The sidebar panel works for anyone logged in to Home Assistant. A wall tablet or a phone that isn't
+logged in can open Outpost on its own port instead:
+
+1. On the add-on's **Configuration** tab, under **Network**, enter a port, such as `8088`.
+2. Restart the add-on and open `http://homeassistant.local:8088` (your Home Assistant's address, with
+   that port) on the screen.
+
+Anyone on your network can then open it, as with Outpost on its own.
+
+## Your own themes
+
+Put a theme folder (with its `theme.css`) in the add-on's configuration folder, under `themes/`. With the
+Samba or File editor add-ons, that folder is `addon_configs/<id>_outpost/themes/`. Then choose it as
+**Theme**, or in the panel on screen. See https://github.com/maxtrax04/outpost/blob/main/docs/themes.md.
+
+## Sensors and the weather entity
+
+Outpost's readings can also become Home Assistant sensors and a weather entity; see
+https://github.com/maxtrax04/outpost/blob/main/docs/home-assistant.md. With the add-on, give it a port as
+above, and use `http://homeassistant.local:<port>` as Outpost's address there.
+
+## Privacy
+
+Outpost sends your location only to the weather services you choose (and, with the map, the map and
+radar tiles it shows), and does not log it. The add-on reads Home Assistant's configuration only for
+the location, time zone, and units, once at startup.

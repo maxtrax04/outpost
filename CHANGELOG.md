@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.9] - 2026-11-17
+
+### Added
+
+- A Home Assistant add-on (#34, experimental), in `homeassistant/` and published to [maxtrax04/outpost-addon](https://github.com/maxtrax04/outpost-addon) by the release workflow: beta versions on its `beta` branch, released versions on `main`. It runs the same image, adds an Outpost panel to Home Assistant's sidebar (ingress), and uses Home Assistant's home location, name, time zone, and units unless they are set in its options. Each option is one of Outpost's settings.
+- In the add-on, a wall tablet that isn't logged in to Home Assistant can open Outpost on a port of its own, which is off until you set one. Custom themes go in the add-on's configuration folder.
+- The image carries the labels Home Assistant looks for on an add-on (`io.hass.type`, `io.hass.version`).
+
 ## [0.7.0-beta.8] - 2026-11-17
 
 ### Added
