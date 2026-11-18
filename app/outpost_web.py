@@ -104,6 +104,19 @@ def write_headers(path: Path = HEADERS_PATH, setting: Optional[str] = None) -> s
     return frame_ancestors
 
 
+def write_map_snippet() -> str:
+    """The map's tile cache (app/outpost_map.py), with the container's settings."""
+    import outpost_map
+    from outpost_updater import CONTACT, USER_AGENT
+
+    settings = outpost_map.settings(contact=CONTACT)
+    for problem in settings["problems"]:
+        print(f"[Outpost] {problem}", file=sys.stderr, flush=True)
+    outpost_map.write_snippet(settings, USER_AGENT)
+    return outpost_map.summary(settings)
+
+
 if __name__ == "__main__":
     used = write_headers(setting=os.getenv("OUTPOST_FRAME_ANCESTORS"))
-    print(f"[Outpost] Security headers written. Pages may be framed by: {used}", flush=True)
+    map_state = write_map_snippet()
+    print(f"[Outpost] Web server settings written. Pages may be framed by: {used}; {map_state}", flush=True)

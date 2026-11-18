@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.7] - 2026-11-17
+
+### Added
+
+- A map panel (#32, step 1 of docs/map-design.md). `OUTPOST_MAP=true` shows a fixed map under the forecast, centered on the place shown and marked with a ring, drawn from OpenStreetMap's vector tiles in the theme's colors and font: land, water, main roads, borders, and place names. It needs no map library and no WebGL, so it also works on slow tablets and ePaper. Rain radar on the map comes in a later beta.
+- Outpost fetches the map's tiles itself and keeps them as long as the tile server says, so screens never contact OpenStreetMap. Only the tiles a screen shows are fetched, at one zoom (`OUTPOST_MAP_ZOOM`, 4 to 12, default 7), and tile requests are not logged.
+- With OpenStreetMap's tiles, the map needs `OUTPOST_CONTACT`, as their usage policy asks of a server that keeps tiles. `OUTPOST_MAP_TILES` points it at another tile server with the same Shortbread schema.
+- Themes can set the map's colors with `--map-land`, `--map-water`, `--map-road`, `--map-border`, `--map-label`, `--map-halo`, and `--map-marker` (docs/themes.md). Without them, the map follows the theme's own colors.
+
 ## [0.7.0-beta.6] - 2026-11-17
 
 ### Added

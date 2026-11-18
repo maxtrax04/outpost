@@ -307,6 +307,57 @@ async function checkMyLocation(browser) {
     return problems;
 }
 
+async function checkMap(browser) {
+    // The map panel (web/map.js). Off by default, so the panel is hidden; then turned on in this
+    // page only, with a made-up tile (mvt-fixture.js), so the check never asks OpenStreetMap.
+    const problems = [];
+    const { sampleTile } = require("./mvt-fixture.js");
+    const page = await browser.newPage({ viewport: VIEWPORTS.wide });
+    page.on("pageerror", (error) => problems.push(`script error: ${error.message}`));
+    page.on("console", (message) => {
+        if (message.type() === "error") problems.push(`console error: ${message.text()}`);
+    });
+
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    const config = await (await fetch(`${BASE}/data/config.json`)).json();
+    if (!config.map || config.map.enabled) problems.push(`config.json map block is ${JSON.stringify(config.map)}, expected the map off by default`);
+    if (!await page.isHidden("#mapPanel")) problems.push("the map panel shows although the map is off");
+
+    let tilesAsked = 0;
+    await page.route("**/data/config.json*", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.map = { ...body.map, enabled: true, zoom: 7 };
+        await route.fulfill({ response, json: body });
+    });
+    await page.route("**/tiles/base/7/*/*.mvt", (route) => {
+        tilesAsked += 1;
+        route.fulfill({ contentType: "application/vnd.mapbox-vector-tile", body: Buffer.from(sampleTile()) });
+    });
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    if (!await waitFor(page, () => !document.getElementById("mapPanel").hidden
+        && document.getElementById("mapCanvas").width > 0, null, 5000)) {
+        problems.push("the map panel did not draw once the map was on");
+    } else {
+        // Something besides the land color was drawn
+        const colors = await page.evaluate(() => {
+            const canvas = document.getElementById("mapCanvas");
+            const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+            const seen = new Set();
+            for (let index = 0; index < data.length && seen.size < 5; index += 4 * 97) seen.add(`${data[index]},${data[index + 1]},${data[index + 2]}`);
+            return seen.size;
+        });
+        if (colors < 2) problems.push("the map canvas is one flat color");
+        if (tilesAsked === 0) problems.push("no tiles were asked for");
+        if (!(await page.textContent("#mapCredit")).includes("OpenStreetMap")) problems.push("the map does not credit OpenStreetMap");
+    }
+    // Without the route, the real server refuses other zooms and answers 404 while the map is off
+    const status = (await fetch(`${BASE}/tiles/base/7/0/0.mvt`)).status;
+    if (status !== 404) problems.push(`with the map off, /tiles/ answered ${status}, expected 404`);
+    await page.close();
+    return problems;
+}
+
 async function checkFraming(browser) {
     // A page on another site must not be able to show the dashboard in a frame
     const page = await browser.newPage();
@@ -346,6 +397,7 @@ async function checkFraming(browser) {
     report("12/24-hour clock (language, address, and checkbox)", await checkClock(browser));
     report("location search (address, search, saved choice, home)", await checkLocation(browser));
     report("my location (allowed and refused)", await checkMyLocation(browser));
+    report("map panel (off by default; drawn when on)", await checkMap(browser));
     report("embedding from another site is blocked", await checkFraming(browser));
 
     await browser.close();

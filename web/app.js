@@ -427,6 +427,63 @@ function applyDim(config) {
     }
 }
 
+// ---- Map (OUTPOST_MAP, web/map.js) ----------------------------------------
+// Drawn only when the place, zoom, size, or theme changes, never on the minute refresh alone.
+
+let mapArgs = null;
+let mapWatchers = false;
+
+async function drawMap() {
+    if (!mapArgs) return;
+    const { map, place } = mapArgs;
+    const note = document.getElementById("mapNote");
+    const result = await OutpostMap.show(document.getElementById("mapCanvas"), place, Number(map.zoom) || 7);
+    if (result === "failed") {
+        note.textContent = "Map unavailable right now";
+        note.hidden = false;
+    } else if (result === "drawn") {
+        note.hidden = true;
+    }
+}
+
+function watchMap() {
+    if (mapWatchers) return;
+    mapWatchers = true;
+    let timer = null;
+    const later = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => drawMap().catch((error) => console.error("Map:", error)), 250);
+    };
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(later).observe(document.getElementById("mapCanvas"));
+    // A theme change brings new colors and a new font
+    new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-effects"] });
+}
+
+function renderMap(config, here) {
+    const map = config.map || {};
+    const panel = document.getElementById("mapPanel");
+    panel.hidden = !map.enabled;
+    if (!map.enabled) {
+        mapArgs = null;
+        return;
+    }
+    const credit = document.getElementById("mapCredit");
+    if (map.attribution) credit.textContent = map.attribution;
+    if (typeof map.attribution_url === "string" && /^https:\/\//.test(map.attribution_url)) credit.href = map.attribution_url;
+    document.getElementById("mapCanvas").setAttribute("aria-label", `Map of ${document.getElementById("location").textContent}`);
+
+    const place = OutpostDim.coordinates(here);
+    if (!place) {
+        const note = document.getElementById("mapNote");
+        note.textContent = "No coordinates for the map";
+        note.hidden = false;
+        return;
+    }
+    mapArgs = { map, place };
+    watchMap();
+    drawMap().catch((error) => console.error("Map:", error));
+}
+
 async function refresh() {
     const [config] = await Promise.all([loadConfig(), loadApiStatus()]);
     const { place } = OutpostPlaces.current(undefined, undefined, locationSearch);
@@ -442,6 +499,7 @@ async function refresh() {
     OutpostPlacePanel.configure({ on: locationSearch, homeName });
     renderSubtitle(config);
     renderSun(here);
+    renderMap(config, here);
     OutpostFit.start();
 }
 

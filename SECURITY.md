@@ -71,8 +71,9 @@ stricter one wins. Remove the proxy's copy if embedding stops working.
 Later features will need the policy to allow a little more. Each will be added only when that feature is,
 and only for the sites it needs:
 
-- **Weather map and radar:** `img-src` (and possibly `connect-src`) for the map tile and radar servers the
-  map uses. Tiles fetched through Outpost's own server instead would need no exception.
+- **Weather map and radar:** none needed. The map's tiles (and, later, its radar) are fetched through
+  Outpost's own nginx (`/tiles/`), so the page still loads everything from Outpost. Only the zoom the map
+  draws is passed on, so Outpost is not an open tile proxy.
 - **Browser location:** no CSP change. If Outpost ever sends a `Permissions-Policy` header, it must allow
   `geolocation=(self)`.
 - **Home Assistant add-on:** Home Assistant shows add-ons in a frame on its own address, so the add-on build
