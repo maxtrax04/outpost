@@ -1,5 +1,5 @@
 // The LOCATION part of the options panel (index.html #placeSection): home, the places chosen before,
-// and the search box. Shown only when the server has location search on (/api/status).
+// "Use my location", and the search box. Shown only when the server has location search on (/api/status).
 // The choices themselves are kept by places.js; app.js shows the chosen place's weather.
 
 (function (root) {
@@ -99,7 +99,37 @@
         for (const place of saved) {
             list.appendChild(row(place, place.name, Boolean(shown) && OutpostPlaces.samePlace(place, shown), true));
         }
+
+        // My location: only where the browser has it at all. Over plain HTTP the browser refuses, so
+        // the button says so up front, and a tap explains.
+        const mine = byId("myLocation");
+        mine.hidden = !("geolocation" in navigator);
+        mine.textContent = root.isSecureContext ? "Use my location" : "Use my location (needs HTTPS)";
+
         if (!byId("placeNote").textContent) note("");
+    }
+
+    function useMyLocation() {
+        const button = byId("myLocation");
+        if (!root.isSecureContext || !("geolocation" in navigator)) {
+            note(OutpostPlaces.locationProblem(null, root.isSecureContext));
+            return;
+        }
+        button.disabled = true;
+        note("Asking the browser for this device's location...");
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                button.disabled = false;
+                const place = OutpostPlaces.fromPosition(position);
+                if (place) select(place);
+                else note(OutpostPlaces.locationProblem(null, true));
+            },
+            (error) => {
+                button.disabled = false;
+                note(OutpostPlaces.locationProblem(error, true));
+            },
+            OutpostPlaces.GEOLOCATION_OPTIONS
+        );
     }
 
     function showResults(places, text) {
@@ -154,6 +184,7 @@
             event.preventDefault();
             search(true);
         });
+        byId("myLocation").addEventListener("click", useMyLocation);
         byId("placeQuery").addEventListener("input", () => {
             clearTimeout(timer);
             timer = setTimeout(() => search(false), SEARCH_PAUSE_MS);

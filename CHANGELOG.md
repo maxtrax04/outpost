@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.6] - 2026-11-17
+
+### Added
+
+- "Use my location" in the panel (#31). On a phone or laptop it asks the browser once where the device is, then shows the weather there as "My location", saved with the other places. Tap it again to update it. The position is rounded to about 1 km in the browser before it is stored or sent.
+- When the browser refuses (permission denied, no position, or too slow), the panel says why, and the search still works. Over plain HTTP, the button says it needs HTTPS, since browsers share a location only with HTTPS pages.
+- README "My location": using it over HTTPS with Caddy, Tailscale, or a reverse proxy you already run, and what happens to the position.
+
 ## [0.7.0-beta.5] - 2026-11-17
 
 ### Added

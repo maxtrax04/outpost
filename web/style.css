@@ -444,6 +444,9 @@ footer {
 .place-forget:hover,
 .place-forget:focus-visible { color: var(--text); border-color: var(--border); outline: none; }
 
+.my-location { margin-top: 4px; color: var(--accent); }
+.my-location::before { content: "@ "; }
+.my-location:disabled { opacity: 0.6; cursor: progress; }
 .place-search { display: flex; gap: 6px; margin-top: 8px; }
 .place-query {
     flex: 1;
