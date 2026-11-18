@@ -140,7 +140,7 @@ class NginxIncludesTheHeadersTests(unittest.TestCase):
                     self.assertIn(include, block)
 
     def test_headers_are_written_at_build_and_at_startup(self):
-        self.assertIn("RUN python3 /app/outpost_web.py && nginx -t", (ROOT / "Dockerfile").read_text(encoding="utf-8"))
+        self.assertRegex((ROOT / "Dockerfile").read_text(encoding="utf-8"), r"RUN python3 /app/outpost_web.py && .*nginx -t")
         start = (ROOT / "app" / "start.sh").read_text(encoding="utf-8")
         self.assertLess(start.index("outpost_web.py"), start.index("exec nginx"))
 

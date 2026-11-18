@@ -88,3 +88,10 @@ and publish it, or run `gh release edit v0.5.0-beta.1 --draft=false`.
   Test with `docker logout ghcr.io` followed by `docker pull ghcr.io/maxtrax04/outpost:<version>`.
 - If publishing fails with a permission error, check Settings, then Actions, then General, then
   Workflow permissions in the repository.
+- **The Home Assistant add-on** is published by the release workflow's last job into
+  [maxtrax04/outpost-addon](https://github.com/maxtrax04/outpost-addon), from `homeassistant/` here, by
+  `scripts/publish_addon.py`: every version tag to its `beta` branch, and released versions to `main` too.
+  It needs a repository secret, `ADDON_REPO_TOKEN`: a fine-grained personal access token with **Contents:
+  Read and write** on the outpost-addon repository only. Without the secret, the job is skipped with a
+  notice, and the rest of the release is unaffected. Change the add-on in `homeassistant/` here, never in
+  outpost-addon, whose files are replaced on every release.

@@ -1,14 +1,33 @@
 # Home Assistant
 
-Outpost works with [Home Assistant](https://www.home-assistant.io) today, with no add-on or custom
-integration:
+Outpost works with [Home Assistant](https://www.home-assistant.io) in two ways, and they can be combined:
 
+- **[The add-on](#the-add-on)** runs Outpost inside Home Assistant (Home Assistant OS or Supervised), with
+  an Outpost panel in the sidebar.
 - **[Show the dashboard](#show-the-dashboard)** on a Home Assistant dashboard, with a Webpage card.
 - **[Use the readings](#use-the-readings)** in Home Assistant, from Outpost's `weather.json`, as sensors and as
   a weather entity for automations, history graphs, and the built-in weather cards.
 
 The examples use `http://outpost.local:8088` for Outpost and `http://homeassistant.local:8123` for Home
 Assistant. Use your own addresses. They were checked with Home Assistant 2026.11.
+
+## The add-on
+
+The add-on (experimental) runs Outpost in Home Assistant itself, from the same image as the Docker setup:
+
+1. Go to **Settings > Add-ons > Add-on store**, open the menu (⋮), choose **Repositories**, and add
+   `https://github.com/maxtrax04/outpost-addon` (or `https://github.com/maxtrax04/outpost-addon#beta` for
+   beta versions).
+2. Install **Outpost**, start it, and open **Outpost** in the sidebar.
+
+It uses Home Assistant's home location, name, time zone, and units unless you set others in its options.
+Each option is one of Outpost's [settings](../README.md#settings) (`map_zoom` is `OUTPOST_MAP_ZOOM`, and so
+on). Your own themes go in the add-on's configuration folder, under `themes/`.
+
+The sidebar panel is for people logged in to Home Assistant. For a wall tablet, give the add-on a port on
+its **Network** settings and open that port on the tablet; then the rest of this page works with that
+address too. The add-on's [documentation](https://github.com/maxtrax04/outpost/blob/main/homeassistant/outpost/DOCS.md)
+has the details.
 
 ## Show the dashboard
 
@@ -236,5 +255,5 @@ Humidity is always `%`, and wind direction always `°`.
 
 ## Coming later
 
-A Home Assistant add-on that runs Outpost inside Home Assistant is planned
-([#34](https://github.com/maxtrax04/outpost/issues/34)).
+A custom integration, so Outpost's readings show up in Home Assistant without the YAML above, is being
+considered ([#100](https://github.com/maxtrax04/outpost/issues/100)).

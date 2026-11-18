@@ -1,4 +1,5 @@
-// Rebuilds the favicon, home-screen icons, and README banner from assets/logo/, and a GitHub social
+// Rebuilds the favicon, home-screen icons, README banner, and the Home Assistant add-on's icon and logo
+// (homeassistant/outpost/) from assets/logo/, and a GitHub social
 // preview image in design/ (upload that one by hand under Settings > General > Social preview).
 //
 // Run it after changing assets/logo/mark.svg or lockup.svg. It needs Playwright, so like the browser
@@ -42,6 +43,16 @@ const banner = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 72">
 </svg>
 `;
 
+// The Home Assistant add-on store's logo: about 250 x 100, the lockup on the dark plate
+const storeLogo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 100">
+  <title>Outpost</title>
+  <rect width="250" height="100" rx="8" fill="${BG}"/>
+  <g fill="${FG}" transform="translate(22 16)">
+  ${shapes("lockup")}
+  </g>
+</svg>
+`;
+
 (async () => {
     const write = (file, text) => {
         fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -52,11 +63,11 @@ const banner = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 72">
     write(path.join(ROOT, "docs", "images", "logo-banner.svg"), banner);
 
     const browser = await chromium.launch();
-    const png = async (svg, size, name) => {
-        const page = await browser.newPage({ viewport: { width: size, height: size } });
-        await page.setContent(`<body style="margin:0">${svg.replace("<svg ", `<svg width="${size}" height="${size}" style="display:block" `)}</body>`);
-        const file = path.join(ROOT, "assets", "app", name);
-        await page.screenshot({ path: file });
+    const png = async (svg, size, name, height = size) => {
+        const page = await browser.newPage({ viewport: { width: size, height } });
+        await page.setContent(`<body style="margin:0">${svg.replace("<svg ", `<svg width="${size}" height="${height}" style="display:block" `)}</body>`);
+        const file = name.includes("/") ? path.join(ROOT, name) : path.join(ROOT, "assets", "app", name);
+        await page.screenshot({ path: file, omitBackground: true });
         console.log(`wrote ${path.relative(ROOT, file)}`);
         await page.close();
     };
@@ -66,6 +77,9 @@ const banner = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 72">
     await png(squareIcon(0.8), 180, "apple-touch-icon.png");
     // Android may crop a maskable icon to a circle: keep the plate inside the centre 80%
     await png(squareIcon(0.7), 512, "icon-maskable-512.png");
+    // The Home Assistant add-on store: a 128 x 128 icon and a 250 x 100 logo
+    await png(squareIcon(0.8, 12), 128, "homeassistant/outpost/icon.png");
+    await png(storeLogo, 250, "homeassistant/outpost/logo.png", 100);
 
     const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
     await page.setContent(`<body style="margin:0;height:640px;background:${BG};color:${FG};display:grid;place-items:center">
