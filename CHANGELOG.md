@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.8] - 2026-11-17
+
+### Added
+
+- Rain radar on the map (#32, step 2 of docs/map-design.md), on whenever the map is (`OUTPOST_MAP_RADAR=false` turns it off). In the US (the lower 48 states, Alaska, Hawaii, Guam, and Puerto Rico) it comes from NOAA's MRMS radar mosaic, new every 2 minutes; elsewhere from RainViewer, new every 10 minutes, which stops at zoom 7 and is drawn larger above that. It is drawn under the place names, with the frame's time in the top-left corner and its source credited next to OpenStreetMap.
+- `OUTPOST_MAP_RADAR_LOOP=true` plays the past 2 hours of radar, a frame every 10 minutes, instead of the latest frame. ePaper (the `ink` theme) and reduced effects always get the latest frame alone.
+- Outpost fetches the radar and keeps it, so screens never contact NOAA or RainViewer, and screens showing the same area share one copy. Radar requests are not logged.
+- `GET /api/radar` lists the radar frames for home or, with location search on, another place (docs/api-design.md).
+
 ## [0.7.0-beta.7] - 2026-11-17
 
 ### Added

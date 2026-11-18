@@ -1,7 +1,7 @@
 # Map design note
 
 Status: design for [#32](https://github.com/maxtrax04/outpost/issues/32), decided 2026-11-17. Step 1 (the base map) is
-built in 0.7.0-beta.7. This page will be folded into the README once the map is finished.
+built in 0.7.0-beta.7, step 2 (radar) in 0.7.0-beta.8. The README's "Map" section is the user guide.
 
 ## What
 
@@ -57,7 +57,19 @@ still starts without internet.
 - **Elsewhere**, [RainViewer](https://www.rainviewer.com/api.html): free, no key, the past 2 hours in
   10-minute steps, zoom 7 at most (drawn larger above that), one color scheme, and
   "for personal and educational use", which a self-hosted home dashboard is. It must be credited.
-- Both go through Outpost and are cached too.
+- Both go through Outpost and are cached too. nginx cannot work out a WMS bounding box (NOAA's
+  GeoServer has no tile cache open to the public), so radar tiles go to the Outpost server
+  (`app/outpost_radar.py`), which fetches them and says to keep them for 3 hours: a tile names its
+  frame, so it never changes. nginx caches them (`outpost_radar_cache`, 50 MB).
+- `/api/radar` lists the frames for a place: the latest, and before it one every 10 minutes over the
+  past 2 hours. The server fetches a tile only for a frame it has listed in the last 3 hours, at the
+  map's zoom, at most 300 a minute between all screens. Lists are kept for 2 minutes and used while
+  a service is down.
+- Which service covers a place is worked out offline from rough boxes (`regions.noaa_radar_area`):
+  the lower 48 states (which also takes in southern Canada, whose radars the mosaic includes),
+  Alaska, Hawaii, Guam, and Puerto Rico, without northern Mexico and the Bahamas.
+- The radar is drawn between the base map and its names, at 75% opacity. The base map and the names
+  are drawn once into layers of their own, so a loop only puts three layers together for each frame.
 - The latest frame is shown. `OUTPOST_MAP_RADAR_LOOP=true` plays the past 2 hours as a loop instead,
   except on ePaper and with reduced effects. `OUTPOST_MAP_RADAR=false` leaves the radar off.
 
@@ -75,8 +87,8 @@ including community themes, gets a matching map.
 | `OUTPOST_MAP` | `false` | Show the map panel. |
 | `OUTPOST_MAP_ZOOM` | `7` | 4 (a large region) to 12 (a town). Radar is sharpest at 7 or less. |
 | `OUTPOST_MAP_TILES` | `https://vector.openstreetmap.org/shortbread_v1/{z}/{x}/{y}.mvt` | Where vector tiles come from. Must use the Shortbread schema. |
-| `OUTPOST_MAP_RADAR` | `true` | Rain radar on the map (step 2). |
-| `OUTPOST_MAP_RADAR_LOOP` | `false` | Play the past 2 hours instead of the latest frame (step 2). |
+| `OUTPOST_MAP_RADAR` | `true` | Rain radar on the map. |
+| `OUTPOST_MAP_RADAR_LOOP` | `false` | Play the past 2 hours instead of the latest frame. |
 
 ## Plan
 

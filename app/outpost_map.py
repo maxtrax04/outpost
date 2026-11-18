@@ -12,6 +12,9 @@ Only the tiles at OUTPOST_MAP_ZOOM are passed on, so Outpost is never an open ti
 tile server's name is looked up when a tile is asked for, not when nginx starts, so the dashboard
 still starts without internet.
 
+With OUTPOST_MAP_RADAR (on by default), radar tiles at /tiles/radar/... go to the Outpost server
+(app/outpost_radar.py), which fetches them from NOAA or RainViewer, and nginx caches them too.
+
 Uses only the Python standard library.
 """
 
@@ -102,7 +105,10 @@ def settings(env: Optional[Mapping[str, str]] = None, contact: str = "") -> Dict
         problems.append(f"The map is off: {tiles['host']} asks Outpost to say how to reach you, so set "
                         f"OUTPOST_CONTACT (an email address or website), or set OUTPOST_MAP_TILES to another tile server")
         enabled = False
-    return {"enabled": enabled, "zoom": zoom, "tiles": tiles, "problems": problems}
+    radar = enabled and flag(env.get("OUTPOST_MAP_RADAR"), True)
+    radar_loop = radar and flag(env.get("OUTPOST_MAP_RADAR_LOOP"), False)
+    return {"enabled": enabled, "zoom": zoom, "tiles": tiles, "radar": radar, "radar_loop": radar_loop,
+            "problems": problems}
 
 
 def config(map_settings: Dict[str, Any]) -> Dict[str, Any]:
@@ -112,6 +118,8 @@ def config(map_settings: Dict[str, Any]) -> Dict[str, Any]:
         "zoom": map_settings["zoom"],
         "attribution": ATTRIBUTION,
         "attribution_url": ATTRIBUTION_URL,
+        "radar": map_settings["radar"],
+        "radar_loop": map_settings["radar_loop"],
     }
 
 
@@ -187,7 +195,39 @@ def nginx_snippet(map_settings: Dict[str, Any], user_agent: str, servers: List[s
         "}",
         "",
     ]
+    if map_settings["radar"]:
+        lines += radar_snippet()
     return "\n".join(lines)
+
+
+# /tiles/radar/noaa/<area>/<frame>/{z}/{x}/{y}.png or /tiles/radar/rainviewer/<frame>/{z}/{x}/{y}.png
+RADAR_TILE_PATTERN = (r"^/tiles/radar/(?:noaa/(?:conus|alaska|hawaii|guam|carib)|rainviewer)/[A-Za-z0-9]{1,40}"
+                      r"/[0-9]{1,2}/[0-9]{1,5}/[0-9]{1,5}\.png$")
+
+
+def radar_snippet() -> List[str]:
+    """
+    Radar tiles: the Outpost server fetches them (it works out NOAA's map area for each tile, and
+    accepts only frames it has listed and the map's zoom), and nginx keeps them. A frame never
+    changes, so the server says to keep its tiles for hours.
+    """
+    return [
+        "# Radar tiles (app/outpost_radar.py): fetched by the Outpost server, cached here.",
+        f'location ~ "{RADAR_TILE_PATTERN}" {{',
+        "    access_log off;",
+        "    error_log /var/log/nginx/error.log crit;",
+        "    # A radar loop asks for a hundred or more tiles at once: they wait their turn, not refused",
+        "    limit_req zone=outpost_radar_rate burst=300;",
+        "    limit_req_status 429;",
+        "    proxy_pass http://127.0.0.1:8081;",
+        "    proxy_cache outpost_radar_cache;",
+        "    proxy_cache_valid 200 3h;",
+        "    proxy_cache_lock on;",
+        "    proxy_cache_use_stale error timeout updating;",
+        "    include /etc/nginx/outpost/security-headers.conf;",
+        "}",
+        "",
+    ]
 
 
 def write_snippet(map_settings: Dict[str, Any], user_agent: str, path: Path = SNIPPET_PATH,
@@ -207,4 +247,8 @@ def write_snippet(map_settings: Dict[str, Any], user_agent: str, path: Path = SN
 def summary(map_settings: Dict[str, Any]) -> str:
     if not map_settings["enabled"]:
         return "map off"
-    return f"map on (zoom {map_settings['zoom']}, tiles from {map_settings['tiles']['host']})"
+    if not map_settings["radar"]:
+        radar = "no radar"
+    else:
+        radar = "radar loop" if map_settings["radar_loop"] else "radar"
+    return f"map on (zoom {map_settings['zoom']}, tiles from {map_settings['tiles']['host']}, {radar})"

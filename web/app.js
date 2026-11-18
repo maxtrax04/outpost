@@ -441,8 +441,39 @@ async function drawMap() {
     if (result === "failed") {
         note.textContent = "Map unavailable right now";
         note.hidden = false;
-    } else if (result === "drawn") {
-        note.hidden = true;
+        return;
+    }
+    if (result === "drawn") note.hidden = true;
+    await updateRadar();
+}
+
+function showRadarTime(frame) {
+    const label = document.getElementById("radarTime");
+    label.textContent = `RADAR ${OutpostClock.time(frame.time)}`;
+    label.hidden = false;
+}
+
+// The radar's frame (or loop) and credit; asks for new frames every couple of minutes, from the
+// minute refresh. ePaper (the ink theme) and reduced effects get the latest frame alone.
+async function updateRadar() {
+    if (!mapArgs) return;
+    const root = document.documentElement;
+    const result = await OutpostRadar.update({ map: mapArgs.map, place: mapArgs.chosen, effects: root.dataset.effects,
+        theme: root.dataset.theme, onFrame: showRadarTime });
+    if (result.status === "stale") return;
+    const label = document.getElementById("radarTime");
+    const credit = document.getElementById("radarCredit");
+    if (result.status === "unavailable") {
+        label.textContent = "RADAR UNAVAILABLE";
+        label.hidden = false;
+    } else if (result.status === "off") {
+        label.hidden = true;
+    }
+    credit.hidden = result.status !== "shown" || !result.credit;
+    if (result.status === "shown") {
+        credit.textContent = `Radar: ${result.credit}`;
+        if (result.creditUrl) credit.href = result.creditUrl;
+        else credit.removeAttribute("href");
     }
 }
 
@@ -459,12 +490,14 @@ function watchMap() {
     new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-effects"] });
 }
 
-function renderMap(config, here) {
+// chosen: the place picked in the panel (null for home), for the radar's address
+function renderMap(config, here, chosen) {
     const map = config.map || {};
     const panel = document.getElementById("mapPanel");
     panel.hidden = !map.enabled;
     if (!map.enabled) {
         mapArgs = null;
+        OutpostRadar.stop();
         return;
     }
     const credit = document.getElementById("mapCredit");
@@ -479,7 +512,7 @@ function renderMap(config, here) {
         note.hidden = false;
         return;
     }
-    mapArgs = { map, place };
+    mapArgs = { map, place, chosen: chosen || null };
     watchMap();
     drawMap().catch((error) => console.error("Map:", error));
 }
@@ -499,7 +532,7 @@ async function refresh() {
     OutpostPlacePanel.configure({ on: locationSearch, homeName });
     renderSubtitle(config);
     renderSun(here);
-    renderMap(config, here);
+    renderMap(config, here, place);
     OutpostFit.start();
 }
 

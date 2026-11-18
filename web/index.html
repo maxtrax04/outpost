@@ -59,7 +59,11 @@
             <h2>MAP</h2>
             <div class="map-frame">
                 <canvas id="mapCanvas" class="map-canvas" role="img" aria-label="Map of the place shown"></canvas>
-                <a id="mapCredit" class="map-credit" target="_blank" rel="noopener">© OpenStreetMap</a>
+                <div id="radarTime" class="map-radar-time" hidden></div>
+                <div class="map-credits">
+                    <a id="radarCredit" class="map-credit" target="_blank" rel="noopener" hidden>Radar</a>
+                    <a id="mapCredit" class="map-credit" target="_blank" rel="noopener">© OpenStreetMap</a>
+                </div>
                 <div id="mapNote" class="map-note" hidden></div>
             </div>
         </section>
@@ -122,6 +126,7 @@
     <script src="place-panel.js"></script>
     <script src="mvt.js"></script>
     <script src="map.js"></script>
+    <script src="radar.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

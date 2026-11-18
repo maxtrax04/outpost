@@ -122,6 +122,14 @@ no key and is already credited in the footer. Nominatim (OpenStreetMap) was cons
 policy rules out search-as-you-type, and it allows 1 request a second for everyone. The search box
 therefore searches when the viewer presses Enter or pauses typing, not on every key.
 
+### `GET /api/radar[?lat=..&lon=..]`
+
+The map's radar (#32, `app/outpost_radar.py`): which service covers the place (NOAA in the US, RainViewer
+elsewhere), its credit, the zoom its tiles come at, and the past 2 hours of frames, oldest first, each with
+a tile address under `tiles/radar/`. Without `lat` and `lon` it is home's; with them, it needs location
+search on, like `/api/weather`. 404 `radar_off` when the map or its radar is off, 502 `radar_unavailable`
+when the service cannot be reached and no recent list is kept.
+
 ### `GET /api/status`
 
 `{"location_search": true}` and the API version, so the dashboard knows whether to show the search box
@@ -156,7 +164,8 @@ and that the API exists at all.
 - Authentication. Outpost is meant for a home network. With search on and Outpost exposed to the
   internet, the limits above bound the cost, but anyone can use them; the README will recommend a
   reverse proxy with authentication, or `OUTPOST_LOCATION_SEARCH=false`.
-- Map tiles (#32). They will go through nginx's own proxy cache, not this server.
+- Map tiles (#32). They go through nginx's own proxy cache, not this server. Radar tiles are fetched by this
+  server (each NOAA tile needs its square worked out) and cached by nginx.
 
 ## Plan
 

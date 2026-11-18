@@ -58,7 +58,19 @@ class SettingTests(unittest.TestCase):
     def test_config_for_the_dashboard(self):
         self.assertEqual(m.config(on(OUTPOST_MAP_ZOOM="9")), {
             "enabled": True, "zoom": 9, "attribution": "© OpenStreetMap",
-            "attribution_url": "https://www.openstreetmap.org/copyright"})
+            "attribution_url": "https://www.openstreetmap.org/copyright", "radar": True, "radar_loop": False})
+
+    def test_radar_is_on_with_the_map_and_the_loop_is_off(self):
+        self.assertEqual((on()["radar"], on()["radar_loop"]), (True, False))
+        self.assertEqual((on(OUTPOST_MAP_RADAR_LOOP="true")["radar"], on(OUTPOST_MAP_RADAR_LOOP="true")["radar_loop"]),
+                         (True, True))
+        self.assertEqual((on(OUTPOST_MAP_RADAR="false", OUTPOST_MAP_RADAR_LOOP="true")["radar"],
+                          on(OUTPOST_MAP_RADAR="false", OUTPOST_MAP_RADAR_LOOP="true")["radar_loop"]), (False, False))
+        # No map, no radar
+        off = m.settings({"OUTPOST_MAP_RADAR": "true", "OUTPOST_MAP_RADAR_LOOP": "true"}, contact="maps@example.org")
+        self.assertEqual((off["radar"], off["radar_loop"]), (False, False))
+        self.assertIn("radar loop", m.summary(on(OUTPOST_MAP_RADAR_LOOP="1")))
+        self.assertIn("no radar", m.summary(on(OUTPOST_MAP_RADAR="off")))
 
     def test_config_json_has_the_map(self):
         with tempfile.TemporaryDirectory() as folder, \
