@@ -176,6 +176,8 @@ class AddonFolderTests(unittest.TestCase):
         self.assertEqual(self.config["ingress_port"], a.INGRESS_PORT)
         self.assertTrue(self.config["ingress"])
         self.assertTrue(self.config["homeassistant_api"])
+        # The panel is for every Home Assistant user, not only administrators
+        self.assertIs(self.config["panel_admin"], False)
         # The direct port is offered but off
         self.assertEqual(self.config["ports"], {"80/tcp": None})
         for name in ("README.md", "DOCS.md", "icon.png", "logo.png", "translations/en.yaml"):
