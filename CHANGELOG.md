@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.11] - 2026-11-18
+
+### Fixed
+
+- The add-on's switches show Outpost's defaults. Night dimming and the other settings that are on by default showed as off in Home Assistant while they were on, and could not be turned off from the switch; each switch now starts at its real default and saves either way.
+
 ## [0.7.0-beta.10] - 2026-11-18
 
 ### Fixed
