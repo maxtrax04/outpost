@@ -179,6 +179,23 @@ class ResponsiveLayoutTests(unittest.TestCase):
         self.assertIn("env(safe-area-inset-top)", self.css)
         self.assertIn("100dvh", self.css)
 
+    def test_every_built_in_theme_fits_the_screen(self):
+        # Tablets and wall screens get the screen layout in every built-in theme, in both
+        # orientations (the browser check measures it); no theme turns it off for portrait
+        for theme in sorted(path for path in (ROOT / "web" / "themes").iterdir() if (path / "theme.css").is_file()):
+            css = (theme / "theme.css").read_text(encoding="utf-8")
+            with self.subTest(theme=theme.name):
+                self.assertRegex(css, r":root \{[^}]*--fit-screen: 1;")
+                self.assertNotRegex(css, r"--fit-screen: 0")
+
+    def test_the_screen_layout_lets_themes_win(self):
+        layout = self.css[self.css.index("/* ---- Screen layout"):]
+        selectors = re.findall(r"(?m)^\s*([^{}@/\n][^{}\n]*?)\s*\{", layout)
+        self.assertTrue(selectors)
+        for selector in selectors:
+            with self.subTest(selector=selector):
+                self.assertTrue(selector.startswith(":where(:root[data-fit=\"on\"])"), selector)
+
     def test_touch_targets_are_at_least_44px(self):
         self.assertRegex(self.css, r"\.theme-button \{[^}]*width: 44px;[^}]*height: 44px;")
         self.assertRegex(self.css, r"\.theme-reset \{[^}]*min-height: 44px;|\.theme-option,\s*\.theme-reset \{[^}]*min-height: 44px;")

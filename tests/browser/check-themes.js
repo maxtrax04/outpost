@@ -415,8 +415,9 @@ async function checkMap(browser) {
     return problems;
 }
 
-// Tablets (landscape and portrait): every theme fits the screen without scrolling, even with the
-// map and an alert shown (the tallest page), and nothing sticks out past the right edge
+// Tablets (landscape and portrait): every theme that fits the screen (--fit-screen: 1, as all the
+// built-in ones do) fits without scrolling, even with the map and an alert shown (the tallest page),
+// and nothing sticks out past the right edge
 const TABLETS = { "tablet landscape": { width: 1024, height: 768 }, "tablet portrait": { width: 768, height: 1024 } };
 async function checkScreenFit(browser, theme) {
     const { sampleTile } = require("./mvt-fixture.js");
@@ -448,6 +449,12 @@ async function checkScreenFit(browser, theme) {
             && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
         if (!shown) problems.push(`${name}: the map and the alert were not shown`);
         await page.waitForTimeout(500); // fit.js measures on the next frame, and again when fonts load
+        const fits = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--fit-screen").trim() === "1");
+        if (!fits) {
+            // A theme that doesn't fit the screen (such as a custom one) scrolls, as it means to
+            await page.close();
+            continue;
+        }
         const state = await page.evaluate(() => {
             const html = document.documentElement;
             // Content inside something that clips it (such as a news crawl sliding in) doesn't count
