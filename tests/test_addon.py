@@ -213,6 +213,20 @@ class AddonFolderTests(unittest.TestCase):
         for port in self.config["ports"]:
             self.assertIn(f"  {port}: ", translations)
 
+    def test_switches_show_outposts_defaults(self):
+        # Home Assistant shows an optional switch with no value as off, so a switch whose setting
+        # defaults to on would look off while it is on: every switch is required and has the
+        # default from the README's settings table
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        switches = [option for option, kind in self.config["schema"].items() if kind.startswith("bool")]
+        self.assertIn("auto_dim", switches)
+        for option in switches:
+            with self.subTest(option=option):
+                self.assertEqual(self.config["schema"][option], "bool")
+                name = a.setting_name(option)
+                default = re.search(rf"(?m)^\| `{name}` \| `(true|false)` \|", readme).group(1)
+                self.assertIs(self.config["options"][option], default == "true")
+
     def test_list_options_match_what_outpost_accepts(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         for option in ("provider", "alerts_provider", "units", "effects", "dim_mode"):
