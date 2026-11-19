@@ -131,6 +131,23 @@ class RunTests(unittest.TestCase):
         for secret in ("12.3456", "45.6789", "secret-token"):
             self.assertNotIn(secret, said)
 
+    def test_the_log_lists_the_options_without_their_private_values(self):
+        self.options.write_text(json.dumps({
+            "provider": "auto", "auto_dim": False, "clock_toggle": True, "community_themes": "someone/theme",
+            "contact": "me@example.com", "pirateweather_api_key": "key-1234", "latitude": 12.3456, "subtitle": "",
+        }))
+        _, said = self.run_addon({})
+        line = next(line for line in said.splitlines() if "Add-on options:" in line)
+        self.assertIn("provider auto, auto_dim off, clock_toggle on, community_themes set, contact set, "
+                      "pirateweather_api_key set, latitude set", line)
+        self.assertNotIn("subtitle", line)
+        for private in ("someone", "example.com", "key-1234", "12.3456"):
+            self.assertNotIn(private, said)
+
+    def test_options_summary_with_nothing_set(self):
+        self.assertEqual(a.options_summary({}), "none")
+        self.assertEqual(a.options_summary({"theme": "", "../x": True}), "none")
+
     @unittest.skipUnless(shutil.which("bash"), "needs bash")
     def test_start_sh_reads_back_exactly_what_was_set(self):
         subtitle = "It's $HOME \"here\" `date` \\ and\nmore"

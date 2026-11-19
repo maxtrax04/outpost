@@ -322,11 +322,19 @@ main:has(> #alertsPanel:not([hidden])) {
     gap: 0.4em 2em;
 }
 
+/* Fitted to a landscape screen (see "Screen layout" in style.css): the crawl is pinned outside the
+   page, so it takes no column. The map runs down beside the whole forecast, and without the map the
+   page is one column. */
+@media (orientation: landscape) {
+    :root[data-fit="on"]:not([data-effects="reduced"]) main > #mapPanel { grid-row-end: 6; }
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]) { display: block; }
+}
+
 /* ---- Smaller screens: a slimmer cabinet --------------------------------------------- */
 @media (max-width: 850px) {
     :root { --crt: 64px; }
 }
-@media (max-height: 700px) {
+@media (max-height: 800px) {
     :root { --crt: 56px; }
 }
 @media (max-width: 600px) {

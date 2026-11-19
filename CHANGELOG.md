@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.12] - 2026-11-18
+
+### Changed
+
+- Every built-in theme fits a tablet or wall display without scrolling, in landscape and portrait, with the map and alerts shown. While the page is fitted to the screen it has a screen layout: a one-line header; in landscape, the current conditions and forecast on the left and the map and alerts on the right; in portrait, the map takes the height left over. Phones (narrower than 600 px) still scroll. Themes can override the layout (see "Fit to screen" in docs/themes.md).
+
+### Added
+
+- The add-on's log lists the options Outpost received at each start (switches as on or off, choices by value, and keys, addresses, and other text only as "set"), so a setting that wasn't saved is easy to spot. Its documentation says to press Save.
+
 ## [0.7.0-beta.11] - 2026-11-18
 
 ### Fixed

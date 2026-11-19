@@ -636,3 +636,108 @@ footer {
     html { font-size: clamp(16px, 2vw, 30px); }
     main { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; }
 }
+
+/* ---- Screen layout ------------------------------------------------------------
+   While the page is fitted to the screen (a tablet or wall screen), it is laid out
+   for one screen instead of a long page. The header takes one line; in portrait the map takes the
+   height left over; in landscape, with the map on, the current conditions and forecast go on the
+   left and the map and alerts on the right. Fit to screen then scales the result to fill the screen.
+   The selectors are in :where(), so a theme's own rules for these elements still win. */
+:where(:root[data-fit="on"]) .header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 24px;
+    padding-block: 12px;
+    text-align: left;
+}
+:where(:root[data-fit="on"]) .title { align-items: flex-start; }
+:where(:root[data-fit="on"]) .title-logo { height: calc(var(--title-logo) * 3.6rem); }
+:where(:root[data-fit="on"]) .title-text { font-size: calc((1 - var(--title-logo)) * 3.4rem); }
+:where(:root[data-fit="on"]) .header .location { margin-top: 0; font-size: 2.4rem; }
+:where(:root[data-fit="on"]) .header .subtitle { order: 3; flex-basis: 100%; }
+
+/* The map fills the space it is given (at least --map-min-height) */
+:where(:root[data-fit="on"]) .map-panel { display: flex; flex-direction: column; }
+:where(:root[data-fit="on"]) .map-frame {
+    flex: 1 1 auto;
+    aspect-ratio: auto;
+    max-height: none;
+    min-height: var(--map-min-height, 180px);
+}
+/* Out of the flow, so the size the map was last drawn at never holds the frame open */
+:where(:root[data-fit="on"]) .map-canvas { position: absolute; inset: 0; }
+
+/* Current conditions: the readings beside the temperature when there is room, under it when not.
+   Sizes are fixed rather than following the screen width, because the page is scaled to fit. */
+:where(:root[data-fit="on"]) .current {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 24px;
+    text-align: left;
+}
+:where(:root[data-fit="on"]) .current-main { flex: 0 0 auto; justify-content: flex-start; }
+:where(:root[data-fit="on"]) .details { flex: 1 1 var(--details-min-width, 480px); }
+:where(:root[data-fit="on"]) .details { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+:where(:root[data-fit="on"]) .detail-box { overflow-wrap: break-word; }
+:where(:root[data-fit="on"]) .current-icon { width: 120px; }
+:where(:root[data-fit="on"]) .temperature { font-size: 7rem; }
+:where(:root[data-fit="on"]) .condition { font-size: 2.4rem; }
+
+/* Portrait: one column as tall as the screen, the map taking what is left */
+@media (orientation: portrait) {
+    :where(:root[data-fit="on"]) main {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100dvh / var(--fit-scale, 1));
+    }
+    :where(:root[data-fit="on"]) .map-panel { flex: 1 1 auto; }
+}
+
+/* Landscape with the map or alerts shown: two columns, the current conditions and forecast on the
+   left, and the map, the alerts, or the map with the alerts under it on the right */
+@media (orientation: landscape) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])),
+    :where(:root[data-fit="on"]) main:has(> #alertsPanel:not([hidden])) {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        grid-template-areas:
+            "header   header"
+            "banner   banner"
+            "current  map"
+            "forecast map"
+            "forecast alerts"
+            "status   status"
+            "footer   footer";
+        column-gap: 22px;
+        align-content: start;
+    }
+    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #alertsPanel[hidden]) {
+        grid-template-areas:
+            "header   header"
+            "banner   banner"
+            "current  map"
+            "forecast map"
+            "status   status"
+            "footer   footer";
+    }
+    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #alertsPanel:not([hidden])) {
+        grid-template-areas:
+            "header   header"
+            "banner   banner"
+            "current  alerts"
+            "forecast alerts"
+            "status   status"
+            "footer   footer";
+    }
+    :where(:root[data-fit="on"]) main > .header { grid-area: header; }
+    :where(:root[data-fit="on"]) main > #alertBanner { grid-area: banner; }
+    :where(:root[data-fit="on"]) main > .current { grid-area: current; }
+    :where(:root[data-fit="on"]) main > [data-panel="forecast"] { grid-area: forecast; }
+    :where(:root[data-fit="on"]) main > #mapPanel { grid-area: map; }
+    :where(:root[data-fit="on"]) main > #alertsPanel { grid-area: alerts; }
+    :where(:root[data-fit="on"]) main > #alertsStatus { grid-area: status; }
+    :where(:root[data-fit="on"]) main > footer { grid-area: footer; }
+}

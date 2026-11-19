@@ -415,6 +415,65 @@ async function checkMap(browser) {
     return problems;
 }
 
+// Tablets (landscape and portrait): every theme fits the screen without scrolling, even with the
+// map and an alert shown (the tallest page), and nothing sticks out past the right edge
+const TABLETS = { "tablet landscape": { width: 1024, height: 768 }, "tablet portrait": { width: 768, height: 1024 } };
+async function checkScreenFit(browser, theme) {
+    const { sampleTile } = require("./mvt-fixture.js");
+    const problems = [];
+    for (const [name, viewport] of Object.entries(TABLETS)) {
+        const page = await browser.newPage({ viewport });
+        await page.route("**/data/config.json*", async (route) => {
+            const response = await route.fetch();
+            const body = await response.json();
+            body.map = { ...body.map, enabled: true, zoom: 7, radar: false, radar_loop: false };
+            await route.fulfill({ response, json: body });
+        });
+        await page.route("**/tiles/base/7/*/*.mvt", (route) => route.fulfill({
+            contentType: "application/vnd.mapbox-vector-tile", body: Buffer.from(sampleTile()) }));
+        for (const pattern of ["**/api/weather*", "**/data/weather.json*"]) {
+            await page.route(pattern, async (route) => {
+                const response = await route.fetch();
+                if (!response.ok()) return route.fulfill({ response });
+                const body = await response.json();
+                body.alerts = [{ title: "Wind Advisory", severity: "moderate", expires: "2099-01-01T00:00:00Z",
+                    description: "Wind Advisory issued for the area until tomorrow evening by the local office.",
+                    uri: "https://example.invalid/alert" }];
+                await route.fulfill({ response, json: body });
+            });
+        }
+        await page.goto(`${BASE}/?theme=${theme}`, { waitUntil: "load" });
+        const shown = await waitFor(page, () => !document.getElementById("mapPanel").hidden
+            && !document.getElementById("alertsPanel").hidden
+            && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
+        if (!shown) problems.push(`${name}: the map and the alert were not shown`);
+        await page.waitForTimeout(500); // fit.js measures on the next frame, and again when fonts load
+        const state = await page.evaluate(() => {
+            const html = document.documentElement;
+            // Content inside something that clips it (such as a news crawl sliding in) doesn't count
+            const clipped = (element) => {
+                for (let parent = element.parentElement; parent && parent.tagName !== "MAIN"; parent = parent.parentElement) {
+                    if (getComputedStyle(parent).overflowX !== "visible") return true;
+                }
+                return false;
+            };
+            const right = Math.max(...[...document.querySelectorAll("main *")]
+                .filter((element) => element.getClientRects().length && !clipped(element))
+                .map((element) => element.getBoundingClientRect().right));
+            const canvas = document.getElementById("mapCanvas").getBoundingClientRect();
+            return { fit: html.dataset.fit, scroll: html.scrollHeight, wide: html.scrollWidth, right,
+                width: innerWidth, height: innerHeight, mapHeight: canvas.height };
+        });
+        if (state.fit !== "on") problems.push(`${name}: not fitted to the screen`);
+        if (state.scroll > state.height + 1) problems.push(`${name}: the page scrolls (${state.scroll} px for ${state.height})`);
+        if (state.wide > state.width + 1 || state.right > state.width + 1) problems.push(`${name}: something sticks out past the right edge`);
+        if (state.mapHeight < 80) problems.push(`${name}: the map is only ${Math.round(state.mapHeight)} px tall`);
+        if (SCREENSHOTS) await page.screenshot({ path: `${SCREENSHOTS}/${theme.replace("/", "--")}-${name.replace(" ", "-")}.png` });
+        await page.close();
+    }
+    return problems;
+}
+
 async function checkFraming(browser) {
     // A page on another site must not be able to show the dashboard in a frame
     const page = await browser.newPage();
@@ -448,6 +507,7 @@ async function checkFraming(browser) {
         for (const [name, viewport] of Object.entries(VIEWPORTS)) {
             report(`${theme.id} (${name})`, await checkTheme(browser, theme.id, name, viewport));
         }
+        report(`${theme.id} fits a tablet`, await checkScreenFit(browser, theme.id));
     }
     report("switching themes with the on-screen switcher", await checkSwitching(browser, themes));
     report("reduced effects (device setting, address, and checkbox)", await checkReducedEffects(browser));

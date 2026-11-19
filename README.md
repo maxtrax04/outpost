@@ -297,7 +297,7 @@ The dashboard also shows today's sunrise and sunset (or "Midnight sun" / "Polar 
 
 ## Phones, tablets, and tall screens
 
-The dashboard adapts to the screen: phones get a compact layout with the forecast as one row per day, tablets and wide screens keep five forecast cards in a row, phones turned sideways use a short header, and tall portrait screens (a monitor or tablet mounted upright) scale everything up and center it vertically. Notches and rounded corners are respected.
+The dashboard adapts to the screen. Tablets, wall displays, and wide screens get the whole dashboard on one screen without scrolling, in every built-in theme: a one-line header, and in landscape the current conditions and forecast on the left with the map and alerts on the right; in portrait the map takes the height left over. Everything is scaled to fill the screen. Phones get a compact layout that scrolls, with the forecast as one row per day. Notches and rounded corners are respected.
 
 **Add it to your home screen** to open it like an app, without browser bars:
 

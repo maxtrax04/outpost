@@ -151,6 +151,28 @@ def nginx_snippet(addon: bool) -> str:
     )
 
 
+# Options whose values are choices from a list, so the log can show them
+CHOICE_OPTIONS = ("provider", "alerts_provider", "units", "effects", "clock", "dim_mode")
+
+
+def options_summary(options: Mapping[str, Any]) -> str:
+    """The options that are set, for the log: switches as on or off, choices by value, and anything
+    else (a key, a contact, coordinates, text) only as "set", so no value of those reaches the log."""
+    parts = []
+    for option, value in options.items():
+        if not isinstance(option, str) or not re.fullmatch(r"[a-z_]{1,40}", option):
+            continue
+        if isinstance(value, bool):
+            parts.append(f"{option} {'on' if value else 'off'}")
+        elif value_text(value) is None:
+            continue
+        elif option in CHOICE_OPTIONS and re.fullmatch(r"[a-z0-9]{1,20}", str(value)):
+            parts.append(f"{option} {value}")
+        else:
+            parts.append(f"{option} set")
+    return ", ".join(parts) or "none"
+
+
 def write_atomically(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(".tmp")
@@ -179,6 +201,8 @@ def run(options_path: Path = OPTIONS_PATH, env_path: Path = ENV_PATH, snippet_pa
              if name in from_ha and settings.get(name) == from_ha[name] and name not in from_options]
     source = f"; {', '.join(taken)} from Home Assistant" if taken else ""
     _say(f"Home Assistant add-on: {len(from_options)} options set{source}; ingress on port {INGRESS_PORT}")
+    # What Home Assistant saved, so a setting that did not stick is easy to see
+    _say(f"Add-on options: {options_summary(options if isinstance(options, dict) else {})}")
     return True
 
 
