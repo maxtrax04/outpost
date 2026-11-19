@@ -24,6 +24,12 @@
     --font-body: "Share Tech Mono", "Courier New", monospace;
     --title-spacing: 0.2em;
     --title-logo: 1;
+
+    /* Fit the whole dashboard on a tablet or wall screen, growing on big screens up to 2.5 times
+       (no wider than 16:9). See "Fit to screen" in docs/themes.md. */
+    --fit-screen: 1;
+    --fit-width: min(100vw, 178vh);
+    --fit-max-scale: 2.5;
 }
 
 /* A file from the theme's own folder: url() paths are relative to this theme.css. */

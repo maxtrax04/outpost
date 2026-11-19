@@ -28,8 +28,10 @@ else, set both **Latitude** and **Longitude**.
 
 Each option is one of Outpost's settings, described in full in the README:
 https://github.com/maxtrax04/outpost#settings. The option `map_zoom` is the setting `OUTPOST_MAP_ZOOM`,
-and so on; **Time zone** is `TZ`. Empty options use Outpost's defaults. Changes take effect when the
-add-on restarts.
+and so on; **Time zone** is `TZ`. Empty options use Outpost's defaults. Press **Save** at the bottom
+of the options; Home Assistant forgets changes that aren't saved. Changes take effect when the add-on
+restarts. Each start, the **Log** tab lists the options Outpost received (switches as on or off; keys,
+addresses, and other text only as "set").
 
 Some options worth knowing:
 

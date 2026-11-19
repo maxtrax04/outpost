@@ -5,8 +5,11 @@
 // (or ?fit=off) to the address. When it is on, <html> gets data-fit="on" and style.css scales
 // <main> by --fit-scale.
 //
-// It never shrinks below MIN_SCALE: if the page would need more than that (a phone in portrait,
-// say), it is left at full size and scrolls as usual, because tiny text is worse than scrolling.
+// It never shrinks below MIN_SCALE: if the page would need more than that, it is left at full
+// size and scrolls as usual, because tiny text is worse than scrolling. Phones (screens narrower
+// than MIN_WIDTH) always scroll, unless the address says ?fit=on.
+//
+// While it is on, style.css lays the page out for one screen (see "Screen layout" there).
 //
 // A theme can also let it grow on big screens, so the page fills them: `--fit-max-scale: 2`
 // allows up to twice the normal size. The default is 1 (shrink only). And it can shrink less:
@@ -17,17 +20,18 @@
     "use strict";
 
     const MIN_SCALE = 0.55;
+    const MIN_WIDTH = 600; // CSS pixels; narrower screens are phones
     const STEPS = 8; // binary search steps: precise to about 0.2%
 
     let scheduled = false;
     let listening = false;
 
-    // Whether fitting is wanted: the address wins, then the theme's --fit-screen
-    function wanted(search, themeValue) {
+    // Whether fitting is wanted: the address wins, then the theme's --fit-screen, which phones ignore
+    function wanted(search, themeValue, width = Infinity) {
         const fromAddress = new URLSearchParams(search || "").get("fit");
         if (fromAddress === "on") return true;
         if (fromAddress === "off") return false;
-        return String(themeValue || "").trim() === "1";
+        return String(themeValue || "").trim() === "1" && width >= MIN_WIDTH;
     }
 
     // How large the theme lets the page grow: its --fit-max-scale, from 1 (the default) to 4
@@ -67,7 +71,7 @@
         const main = doc.querySelector("main");
         const themeValue = root.getComputedStyle(html).getPropertyValue("--fit-screen");
 
-        if (!main || !wanted(root.location.search, themeValue)) {
+        if (!main || !wanted(root.location.search, themeValue, root.innerWidth)) {
             delete html.dataset.fit;
             html.style.removeProperty("--fit-scale");
             return null;
@@ -117,7 +121,7 @@
         schedule();
     }
 
-    const api = { MIN_SCALE, wanted, maxScale, shrinkLimit, chooseScale, apply, schedule, start };
+    const api = { MIN_SCALE, MIN_WIDTH, wanted, maxScale, shrinkLimit, chooseScale, apply, schedule, start };
 
     root.OutpostFit = api;
 

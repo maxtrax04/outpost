@@ -24,8 +24,8 @@ Set `OUTPOST_THEME` in your `.env` (or container settings) to the folder name:
 | `command-center` | Cool blue tactical display, thin borders |
 | `modern-dark` | Flat, rounded, no effects; uses system fonts |
 | `field-station` | Riveted steel instrument panel with analog dials and hazard stripes |
-| `atomic-broadcast` | A 1950s television set: cabinet, test card, and a news crawl for alerts; fits the screen |
-| `ink` | Black on white for ePaper displays; no effects, fits the screen |
+| `atomic-broadcast` | A 1950s television set: cabinet, test card, and a news crawl for alerts |
+| `ink` | Black on white for ePaper displays; no effects |
 
 Restart the container after changing it. The dashboard picks up the change on its next refresh.
 
@@ -281,20 +281,34 @@ their size and its edges stretch, so one file works on a phone, a portrait table
 
 ### Fit to screen
 
-A theme styled as a single screen (a television, a wall panel, a device) can have the whole dashboard
-fit the screen without scrolling. Set these in its `:root`:
+A theme can have the whole dashboard fit the screen of a tablet or wall display without scrolling.
+Every built-in theme does. Set these in its `:root`:
 
 | Token | What it does |
 |---|---|
 | `--fit-screen` | `1` turns fitting on |
 | `--fit-width` | How wide the page may get while fitting (default `1200px`; `100vw` uses the full width) |
 | `--fit-max-scale` | How much the page may grow on big screens, from `1` (the default: shrink only) to `4` |
-| `--fit-min-scale` | How far the page may shrink, from `0.55` (the default) to `1`. A page that would need more keeps its normal layout and scrolls. Themes for ordinary screens use about `0.85`, so laptops keep their usual layout while big screens are filled |
+| `--fit-min-scale` | How far the page may shrink, from `0.55` (the default) to `1`. A page that would need more keeps its normal layout and scrolls |
 
 While it is on, `<html>` has `data-fit="on"` and `--fit-scale` (the scale in use), and `<main>` is zoomed
 by that scale. It never shrinks below `0.55`, because tiny text is worse than scrolling: a screen that
-would need more (a phone in portrait, say) gets the normal layout and scrolls. Add `?fit=on` or `?fit=off`
-to the address to try it with any theme.
+would need more gets the normal layout and scrolls. Phones (screens narrower than 600 px) always get the
+normal layout. Add `?fit=on` or `?fit=off` to the address to try it with any theme.
+
+While fitting, the page is laid out for one screen (the "Screen layout" rules at the end of `style.css`):
+
+- The header is one line: the logo on the left, the place on the right.
+- The readings sit beside the temperature when there is room, and under it when not. The temperature,
+  icon, and condition have fixed sizes, since the page is scaled anyway.
+- In portrait, the page is one column as tall as the screen, and the map takes the height left over.
+- In landscape, with the map or alerts shown, the page has two columns: the current conditions and
+  forecast on the left; the map, the alerts, or the map with the alerts under it on the right. The map
+  fills its column (at least `--map-min-height`, default `180px`).
+
+Those rules use `:where()`, so they are as easy to override as the base styles: a theme's own rule for
+`.header`, `.current`, and so on wins. A theme that moves a panel out of the page (as `atomic-broadcast`
+pins its alerts to the bottom of the screen) should adjust the grid for it; see that theme for an example.
 
 Anything inside `<main>` with `position: fixed` is zoomed too, so divide its offsets by the scale, for
 example `bottom: calc(10px / var(--fit-scale, 1))`. `.frame` is outside `<main>` and is never zoomed.

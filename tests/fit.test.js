@@ -13,6 +13,10 @@ test("off unless the theme or the address turns it on", () => {
     assert.equal(fit.wanted("?fit=on", ""), true);
     assert.equal(fit.wanted("?fit=off", "1"), false);
     assert.equal(fit.wanted("?fit=maybe", "1"), true);
+    // Phones scroll, unless the address asks
+    assert.equal(fit.wanted("", "1", 390), false);
+    assert.equal(fit.wanted("", "1", fit.MIN_WIDTH), true);
+    assert.equal(fit.wanted("?fit=on", "", 390), true);
 });
 
 test("a page that already fits is not shrunk", () => {
