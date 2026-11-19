@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.10] - 2026-11-18
+
+### Fixed
+
+- The add-on's Outpost panel shows for every Home Assistant user, not only administrators.
+- The add-on's install steps use Home Assistant's current names (Settings > Apps > Install app, since add-ons became apps in Home Assistant 2026.2), say how to put the panel in the sidebar, and say that the map needs Map and Contact set.
+
 ## [0.7.0-beta.9] - 2026-11-17
 
 ### Added

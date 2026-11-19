@@ -15,10 +15,13 @@ Assistant. Use your own addresses. They were checked with Home Assistant 2026.11
 
 The add-on (experimental) runs Outpost in Home Assistant itself, from the same image as the Docker setup:
 
-1. Go to **Settings > Add-ons > Add-on store**, open the menu (⋮), choose **Repositories**, and add
+1. Go to **Settings > Apps > Install app** (add-ons are called apps since Home Assistant 2026.2), open
+   the menu (⋮) in the top-right corner, choose **Repositories**, and add
    `https://github.com/maxtrax04/outpost-addon` (or `https://github.com/maxtrax04/outpost-addon#beta` for
    beta versions).
-2. Install **Outpost**, start it, and open **Outpost** in the sidebar.
+2. Install **Outpost** and start it. Open it with **Open web UI** on its page, or turn on **Show in
+   sidebar** there for an **Outpost** item in the sidebar.
+3. For the map, turn on **Map** in its options and set **Contact** (OpenStreetMap's tiles need it).
 
 It uses Home Assistant's home location, name, time zone, and units unless you set others in its options.
 Each option is one of Outpost's [settings](../README.md#settings) (`map_zoom` is `OUTPOST_MAP_ZOOM`, and so

@@ -8,11 +8,12 @@ Please report problems at https://github.com/maxtrax04/outpost/issues.
 
 ## Installation
 
-1. In Home Assistant, go to **Settings > Add-ons > Add-on store**, open the menu (⋮) in the top-right
-   corner, and choose **Repositories**.
+1. In Home Assistant, go to **Settings > Apps > Install app** (add-ons are called apps since Home
+   Assistant 2026.2), open the menu (⋮) in the top-right corner, and choose **Repositories**.
 2. Add `https://github.com/maxtrax04/outpost-addon` and close the dialog.
 3. Find **Outpost** in the store, install it, and start it.
-4. Open **Outpost** in the sidebar (turn on **Show in sidebar** on the add-on's page if it isn't there).
+4. Open it with **Open web UI**, or turn on **Show in sidebar** on its page for an **Outpost** item in
+   the sidebar. The item shows for every Home Assistant user, not only administrators.
 
 To try beta versions before they are released, add `https://github.com/maxtrax04/outpost-addon#beta`
 instead. Beta versions may have problems that the released version doesn't.
