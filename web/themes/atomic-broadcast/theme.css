@@ -323,11 +323,41 @@ main:has(> #alertsPanel:not([hidden])) {
 }
 
 /* Fitted to a landscape screen (see "Screen layout" in style.css): the crawl is pinned outside the
-   page, so it takes no column. The map runs down beside the whole forecast, and without the map the
-   page is one column. */
+   page, so it takes no place in the right-hand column, which is laid out as if there were no alerts.
+   With only the crawl, the page is one column. */
 @media (orientation: landscape) {
-    :root[data-fit="on"]:not([data-effects="reduced"]) main > #mapPanel { grid-row-end: 6; }
-    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]) { display: block; }
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel:not([hidden])) {
+        grid-template-areas:
+            "header   header"
+            "banner   banner"
+            "current  map"
+            "forecast map"
+            "forecast sensors"
+            "status   status"
+            "footer   footer";
+        grid-template-rows: auto auto auto 1fr auto auto auto;
+    }
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel[hidden]):has(> #alertsPanel:not([hidden])) {
+        grid-template-areas:
+            "header   header"
+            "banner   banner"
+            "current  map"
+            "forecast map"
+            "status   status"
+            "footer   footer";
+        grid-template-rows: auto auto auto 1fr auto auto;
+    }
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel:not([hidden])) {
+        grid-template-areas:
+            "header   header"
+            "banner   banner"
+            "current  sensors"
+            "forecast sensors"
+            "status   status"
+            "footer   footer";
+        grid-template-rows: auto;
+    }
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel[hidden]):has(> #alertsPanel:not([hidden])) { display: block; }
 }
 
 /* ---- Smaller screens: a slimmer cabinet --------------------------------------------- */

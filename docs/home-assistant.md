@@ -22,6 +22,8 @@ The add-on (experimental) runs Outpost in Home Assistant itself, from the same i
 2. Install **Outpost** and start it. Open it with **Open web UI** on its page, or turn on **Show in
    sidebar** there for an **Outpost** item in the sidebar.
 3. For the map, turn on **Map** in its options and set **Contact** (OpenStreetMap's tiles need it).
+4. To show your own sensors on the dashboard, list their entity IDs under **Sensors** in its options, one
+   per line (see [Sensors](../README.md#sensors)). The add-on reads them from Home Assistant itself.
 
 It uses Home Assistant's home location, name, time zone, and units unless you set others in its options.
 Each option is one of Outpost's [settings](../README.md#settings) (`map_zoom` is `OUTPOST_MAP_ZOOM`, and so

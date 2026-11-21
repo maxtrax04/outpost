@@ -235,7 +235,7 @@ class AddonFolderTests(unittest.TestCase):
         # defaults to on would look off while it is on: every switch is required and has the
         # default from the README's settings table
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        switches = [option for option, kind in self.config["schema"].items() if kind.startswith("bool")]
+        switches = [option for option, kind in self.config["schema"].items() if str(kind).startswith("bool")]
         self.assertIn("auto_dim", switches)
         for option in switches:
             with self.subTest(option=option):

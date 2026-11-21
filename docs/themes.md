@@ -326,6 +326,24 @@ These attributes on `<html>` let a theme react to the page's state with selector
 | `data-clock` | `12`, `24`, or `auto` (the browser's language decides) |
 | `data-fit` | `on` while [fitting to the screen](#fit-to-screen) |
 
+### Sensors
+
+The sensor panel (`#sensorsPanel`, shown when `OUTPOST_SENSORS` lists readings) holds `.sensor` tiles in
+`#sensors` (a `.sensor-list` grid). Each tile is also a `.detail-box`, so it already looks like the weather
+readings, with the label, a `<br>`, and the value in a `.sensor-value` span. For styling some of them on
+their own, each tile has:
+
+| Attribute | Values |
+|---|---|
+| `data-metric` | `sensor` |
+| `data-sensor-kind` | `number`, `binary` (on or off), or `text` |
+| `data-device-class` | Home Assistant's device class, such as `temperature`, `door`, or `motion` (absent when there is none) |
+| `data-state` | `on` or `off`, for on/off sensors |
+| `data-missing` | Present when there is no reading (the value shows `--`) |
+
+For example, `.sensor[data-device-class="door"][data-state="on"] { border-color: var(--warn); }` marks
+open doors.
+
 ### Alerts
 
 Each alert is a `.alert-item` (also a `.detail-box`) with a `.severity-<level>` class: `extreme`, `severe`,

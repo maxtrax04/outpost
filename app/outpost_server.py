@@ -6,12 +6,13 @@ The update loop writes /data/weather.json for home every OUTPOST_UPDATE_INTERVAL
 `outpost_updater.py --loop` did. The API answers on 127.0.0.1:8081, reached only through nginx at
 /api/ (nginx/default.conf):
 
-  GET /api/status                       {"api_version": 1, "version": ..., "location_search": true}
+  GET /api/status                       {"api_version": 1, "version": ..., "location_search": true, "sensors": false}
   GET /api/weather                      home: the same as weather.json
   GET /api/weather?lat=..&lon=..&name=..  another place, in the same format
   GET /api/places?q=..                  places matching a name, for the search box (Open-Meteo geocoding)
   GET /api/radar[?lat=..&lon=..]        the map's radar frames for home or another place (outpost_radar.py)
   GET /tiles/radar/...                  a radar tile, through nginx's radar cache
+  GET /api/sensors                      the sensor panel's readings (outpost_sensors.py, docs/sensors-design.md)
 
 One process, so the providers' response caches and request minimums are shared by home and other
 places. Other places are fetched only when a screen asks, at most every PLACE_REFRESH_SECONDS each,
@@ -35,6 +36,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import outpost_map
 import outpost_radar
+import outpost_sensors
 import outpost_updater as u
 from providers import geocoding, openmeteo
 
@@ -155,8 +157,16 @@ def home_weather() -> Dict[str, Any]:
     return u.HomeState().read() or u.build_error_payload("No weather data yet; the first update has not finished")
 
 
-def status() -> Dict[str, Any]:
-    return {"api_version": API_VERSION, "version": u.APP_VERSION, "location_search": u.LOCATION_SEARCH}
+def status(sensors: Optional[outpost_sensors.Sensors] = None) -> Dict[str, Any]:
+    return {"api_version": API_VERSION, "version": u.APP_VERSION, "location_search": u.LOCATION_SEARCH,
+            "sensors": bool(sensors and sensors.on)}
+
+
+def sensor_readings(sensors: Optional[outpost_sensors.Sensors]) -> Dict[str, Any]:
+    """The sensor panel's readings: only what OUTPOST_SENSORS lists, whatever the request says."""
+    if sensors is None or not sensors.on:
+        raise ApiError(404, "sensors_off", "No sensors are listed (OUTPOST_SENSORS)")
+    return sensors.answer()
 
 
 def weather(query: Dict[str, Any], places: Places) -> Dict[str, Any]:
@@ -210,7 +220,8 @@ def make_radar() -> Optional[outpost_radar.Radar]:
     return outpost_radar.Radar(map_settings["zoom"], u.USER_AGENT) if map_settings["radar"] else None
 
 
-def make_handler(places: Places, radar: Optional[outpost_radar.Radar] = None) -> type:
+def make_handler(places: Places, radar: Optional[outpost_radar.Radar] = None,
+                 sensors: Optional[outpost_sensors.Sensors] = None) -> type:
     class Handler(BaseHTTPRequestHandler):
         server_version = "Outpost"
         sys_version = ""
@@ -223,13 +234,15 @@ def make_handler(places: Places, radar: Optional[outpost_radar.Radar] = None) ->
             query = parse_qs(parts.query, keep_blank_values=True, max_num_fields=20)
             try:
                 if parts.path == "/api/status":
-                    self.send_json(200, status())
+                    self.send_json(200, status(sensors))
                 elif parts.path == "/api/weather":
                     self.send_json(200, weather(query, places))
                 elif parts.path == "/api/places":
                     self.send_json(200, search_places(query))
                 elif parts.path == "/api/radar":
                     self.send_json(200, radar_frames(query, radar))
+                elif parts.path == "/api/sensors":
+                    self.send_json(200, sensor_readings(sensors))
                 else:
                     raise ApiError(404, "not_found", "No such API address")
             except ApiError as error:
@@ -285,8 +298,9 @@ def make_handler(places: Places, radar: Optional[outpost_radar.Radar] = None) ->
 
 
 def make_server(places: Places, host: str = HOST, port: int = PORT,
-                radar: Optional[outpost_radar.Radar] = None) -> ThreadingHTTPServer:
-    server = ThreadingHTTPServer((host, port), make_handler(places, radar))
+                radar: Optional[outpost_radar.Radar] = None,
+                sensors: Optional[outpost_sensors.Sensors] = None) -> ThreadingHTTPServer:
+    server = ThreadingHTTPServer((host, port), make_handler(places, radar, sensors))
     server.daemon_threads = True
     return server
 
@@ -296,13 +310,17 @@ def main() -> None:
     u.write_config()
     threading.Thread(target=u.run_loop, name="home-updates", daemon=True).start()
 
-    server = make_server(Places(u.LOCATION_LIMIT), radar=make_radar())
+    sensors = outpost_sensors.from_environment()
+    if sensors.on:
+        threading.Thread(target=sensors.run, name="sensors", daemon=True).start()
+
+    server = make_server(Places(u.LOCATION_LIMIT), radar=make_radar(), sensors=sensors)
     if u.LOCATION_SEARCH:
         search = (f"other places on, at most {u.LOCATION_LIMIT} weather fetches an hour between them, "
                   f"each at most every {PLACE_REFRESH_SECONDS // 60} min")
     else:
         search = "other places off (OUTPOST_LOCATION_SEARCH=false)"
-    print(f"[Outpost] API listening on {HOST}:{PORT}; {search}", flush=True)
+    print(f"[Outpost] API listening on {HOST}:{PORT}; {search}; {sensors.describe()}", flush=True)
     server.serve_forever()
 
 

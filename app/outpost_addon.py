@@ -65,6 +65,10 @@ def value_text(value: Any) -> Optional[str]:
     if isinstance(value, str):
         text = value.strip()
         return text or None
+    if isinstance(value, list):
+        # A list option, such as the sensors: its text items, separated by commas
+        items = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+        return ", ".join(items) or None
     return None
 
 

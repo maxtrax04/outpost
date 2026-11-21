@@ -98,6 +98,12 @@ configuration:
   dim_end:
     name: Dim until
     description: HH:MM, with the schedule mode.
+  sensors:
+    name: Sensors
+    description: "Home Assistant entities for the sensor panel, one per line, such as sensor.living_room_temperature. Add a label before = and a unit in brackets: Garage=binary_sensor.garage_door."
+  sensors_interval:
+    name: Sensor interval
+    description: Seconds between sensor readings (at least 5; default 10).
   frame_ancestors:
     name: Sites that may frame it
     description: Only needed to show Outpost's own port in a frame elsewhere. The Outpost panel in Home Assistant works without it.
