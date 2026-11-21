@@ -21,7 +21,7 @@ A self-hosted dashboard platform for weather, alerts, sensors, power monitoring,
 - Normalized weather data format, so the display doesn't care which provider supplied it
 - Built-in health check (including stale-data detection)
 - Warning banner when data is old, degraded, or unavailable
-- Works with Home Assistant: an add-on (experimental), a Webpage card for the dashboard, sensors and a weather entity from its data ([how](docs/home-assistant.md)), and your Home Assistant sensors on the dashboard ([Sensors](#sensors))
+- Works with Home Assistant: an add-on (experimental), a Webpage card for the dashboard, sensors and a weather entity from its data ([how](docs/home-assistant.md)), and your Home Assistant sensors and home power on the dashboard ([Sensors](#sensors), [Power](#power))
 - Themes: seven built in (from green-phosphor terminals to a 1950s television and black-on-white for ePaper), more from the [community](https://github.com/maxtrax04/outpost-themes), or your own, with no rebuild
 
 ## Quick start
@@ -102,8 +102,13 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_MAP_RADAR` | `true` | Rain radar on the map: NOAA in the US, RainViewer elsewhere. See [Map](#map). |
 | `OUTPOST_MAP_RADAR_LOOP` | `false` | Play the past 2 hours of radar as a loop instead of showing the latest frame (never on ePaper or with reduced effects). |
 | `OUTPOST_SENSORS` | *(empty)* | Home Assistant entities for the sensor panel, separated by commas, such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door`. See [Sensors](#sensors). |
-| `OUTPOST_SENSORS_INTERVAL` | `10` | Seconds between sensor readings (at least 5). |
-| `OUTPOST_HA_URL` | *(empty)* | Your Home Assistant, such as `http://homeassistant.local:8123`, for the sensors. Not needed in the add-on. |
+| `OUTPOST_POWER_HOME` | *(empty)* | Home Assistant entity with the home's power use, for the power panel. See [Power](#power). |
+| `OUTPOST_POWER_SOLAR` | *(empty)* | Entity with solar production. |
+| `OUTPOST_POWER_GRID` | *(empty)* | Entity with grid power, positive when importing and negative when exporting. |
+| `OUTPOST_POWER_GRID_INVERT` | `false` | `true` for a grid meter that counts exports as positive. |
+| `OUTPOST_POWER_BATTERY` | *(empty)* | Entity with the battery's charge in percent. |
+| `OUTPOST_SENSORS_INTERVAL` | `10` | Seconds between sensor and power readings (at least 5). |
+| `OUTPOST_HA_URL` | *(empty)* | Your Home Assistant, such as `http://homeassistant.local:8123`, for the sensors and power. Not needed in the add-on. |
 | `OUTPOST_HA_TOKEN` | *(empty)* | A long-lived access token for `OUTPOST_HA_URL`. Keep it private; it is only sent to Home Assistant. Not needed in the add-on. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
@@ -230,6 +235,24 @@ OUTPOST_HA_TOKEN=your-long-lived-access-token
 Outpost reads each entity every `OUTPOST_SENSORS_INTERVAL` seconds (10 by default), and screens ask Outpost every 15 seconds. It only reads the entities you list, and it never changes anything in Home Assistant.
 
 Anyone who can open the dashboard sees these readings. If Outpost can be reached from the internet without a login in front of it, don't list doors, locks, or who is home.
+
+### Power
+
+The power panel shows your home's energy at a glance: what the home uses, what solar makes, what goes to or comes from the grid, and the battery's charge. Give each part you have one Home Assistant entity; leave out the ones you don't have:
+
+```bash
+OUTPOST_POWER_HOME=sensor.house_power
+OUTPOST_POWER_SOLAR=sensor.solar_power
+OUTPOST_POWER_GRID=sensor.grid_power
+OUTPOST_POWER_BATTERY=sensor.battery_level
+```
+
+- **Home** and **Solar** show the power now, in W or kW (from 1000 W).
+- **Grid** reads Importing or Exporting under the amount. Positive means importing, Home Assistant's usual way. If your meter counts exports as positive, set `OUTPOST_POWER_GRID_INVERT=true`.
+- **Battery** shows the charge in percent, with a bar (a dial in Field Station).
+- A label before `=` replaces the name, as for sensors: `Roof=sensor.solar_power`.
+
+Power uses the same Home Assistant connection (`OUTPOST_HA_URL` and `OUTPOST_HA_TOKEN`, or nothing in the add-on) and is read with the sensors, every `OUTPOST_SENSORS_INTERVAL` seconds. On a wide screen, power and sensors sit side by side; on a landscape tablet, power goes under the forecast.
 
 ## Data and storage
 

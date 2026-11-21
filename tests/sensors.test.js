@@ -42,3 +42,40 @@ test("an answer gives at most 24 tiles, and nothing from anything else", () => {
     const many = { sensors: Array.from({ length: 30 }, (_, n) => ({ label: `S${n}`, text: "1", missing: false })) };
     assert.equal(sensors.readings(many).length, 24);
 });
+
+test("power tiles: the grid's direction and the battery's charge", () => {
+    assert.deepEqual(sensors.powerData({ role: "grid", label: "Grid", text: "1.2", unit: "kW", value: 1.2,
+                                         direction: "import", missing: false }), {
+        role: "grid", label: "Grid", value: "1.2 kW", missing: false, direction: "import", note: "Importing", fraction: null,
+    });
+    const exporting = sensors.powerData({ role: "grid", text: "800", unit: "W", direction: "export", missing: false });
+    assert.equal(exporting.note, "Exporting");
+    assert.equal(exporting.label, "Grid");
+    const battery = sensors.powerData({ role: "battery", label: "Battery", text: "85", unit: "%", fraction: 0.85, missing: false });
+    assert.equal(battery.value, "85%");
+    assert.equal(battery.fraction, 0.85);
+    assert.equal(sensors.powerData({ role: "battery", text: "85", unit: "%", fraction: 7, missing: false }).fraction, 1);
+});
+
+test("missing or odd power readings", () => {
+    const missing = sensors.powerData({ role: "grid", label: "Grid", text: "", direction: "import", missing: true });
+    assert.equal(missing.value, "--");
+    assert.equal(missing.direction, "");
+    assert.equal(missing.note, "");
+    assert.equal(sensors.powerData({ role: "battery", text: "85", fraction: 0.85, missing: true }).fraction, null);
+    assert.equal(sensors.powerData({ role: "grid", text: "1", direction: "<b>", missing: false }).direction, "");
+    for (const odd of [null, "x", {}, { role: "car" }, { role: "__proto__" }]) {
+        assert.equal(sensors.powerData(odd), null);
+    }
+});
+
+test("power roles are shown once each, in their order", () => {
+    assert.deepEqual(sensors.powerReadings(null), []);
+    assert.deepEqual(sensors.powerReadings({ sensors: [] }), []);
+    const answer = { power: [
+        { role: "battery", text: "50", missing: false }, { role: "home", text: "1", missing: false },
+        { role: "home", text: "2", missing: false }, { role: "car", text: "3", missing: false },
+    ] };
+    assert.deepEqual(sensors.powerReadings(answer).map((data) => [data.role, data.value]),
+                     [["home", "1"], ["battery", "50"]]);
+});

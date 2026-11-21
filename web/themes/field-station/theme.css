@@ -146,3 +146,6 @@ h2 {
 /* Fitted to a screen (see "Screen layout" in style.css): slimmer bezels and smaller dials, so the
    page needs less shrinking and the text stays larger */
 :root[data-fit="on"] { --bezel: 16px; --dial-w: 64px; }
+
+/* The battery's charge (power panel) gets the dial like any other gauge, so no bar */
+.detail-box .power-bar { display: none; }

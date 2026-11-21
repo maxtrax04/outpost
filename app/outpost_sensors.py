@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Sensors (docs/sensors-design.md): readings from Home Assistant for the sensor panel.
+Sensors (docs/sensors-design.md): readings from Home Assistant for the sensor and power panels.
 
 OUTPOST_SENSORS lists the readings, separated by commas. Each one is a source, optionally with a
 label before "=" and a unit in brackets after it:
 
     sensor.living_room_temperature, Garage=binary_sensor.garage_door, Attic=sensor.attic [°F]
 
-A source is a Home Assistant entity ID. outpost_server.py reads each one every
+A source is a Home Assistant entity ID. The power panel has one setting per role, each one source
+(OUTPOST_POWER_HOME, OUTPOST_POWER_SOLAR, OUTPOST_POWER_GRID, OUTPOST_POWER_BATTERY), and
+OUTPOST_POWER_GRID_INVERT flips the grid's sign for meters that count exports as positive.
+
+outpost_server.py reads each one every
 OUTPOST_SENSORS_INTERVAL seconds and answers /api/sensors with the latest values. Only what is
 listed here is ever read or answered, so a screen can't use Outpost to read the rest of Home
 Assistant. Outpost only reads: it never calls a Home Assistant service.
@@ -46,6 +50,15 @@ MAX_TEXT_LENGTH = 40
 
 SUPERVISOR_URL = "http://supervisor/core"
 
+# The power panel's roles, in the order shown: (role, label, setting)
+POWER_ROLES = (
+    ("home", "Home", "OUTPOST_POWER_HOME"),
+    ("solar", "Solar", "OUTPOST_POWER_SOLAR"),
+    ("grid", "Grid", "OUTPOST_POWER_GRID"),
+    ("battery", "Battery", "OUTPOST_POWER_BATTERY"),
+)
+POWER_LABELS = {role: label for role, label, _ in POWER_ROLES}
+
 # Home Assistant entity IDs are "<domain>.<object id>", in lower case
 ENTITY_ID = re.compile(r"[a-z][a-z0-9_]{0,40}\.[a-z0-9_]{1,200}")
 DEVICE_CLASS = re.compile(r"[a-z0-9_]{1,40}")
@@ -83,11 +96,13 @@ def plain_text(text: Any, limit: int) -> str:
 class Item:
     """One listed reading."""
 
-    def __init__(self, number: int, source: str, label: str = "", unit: str = "") -> None:
-        self.id = f"s{number}"
+    def __init__(self, number: int, source: str, label: str = "", unit: str = "", role: str = "") -> None:
+        # role: "" for the sensor panel, or one of the power panel's POWER_ROLES
+        self.id = f"p-{role}" if role else f"s{number}"
         self.source = source
         self.label = label
         self.unit = unit
+        self.role = role
 
     def __repr__(self) -> str:
         return f"Item({self.source!r}, label={self.label!r}, unit={self.unit!r})"
@@ -123,6 +138,28 @@ def parse_items(text: Optional[str]) -> Tuple[List[Item], List[str]]:
             break
         seen.add((source, label, unit))
         items.append(Item(len(items) + 1, source, label, unit))
+    return items, problems
+
+
+def flag(value: Optional[str], default: bool = False) -> bool:
+    text = (value or "").strip().lower()
+    if not text:
+        return default
+    return text in ("1", "true", "yes", "on")
+
+
+def parse_power(environ: Mapping[str, str]) -> Tuple[List[Item], List[str]]:
+    """The power panel's readings, one per role that is set, and a note for each setting skipped."""
+    items: List[Item] = []
+    problems: List[str] = []
+    for role, _, setting in POWER_ROLES:
+        found, notes = parse_items(environ.get(setting))
+        problems.extend(f"{setting}: {note}; skipping it" for note in notes)
+        if len(found) > 1:
+            problems.append(f"{setting}: one reading per role; using the first")
+        if found:
+            first = found[0]
+            items.append(Item(0, first.source, first.label, first.unit, role))
     return items, problems
 
 
@@ -258,16 +295,66 @@ def reading(item: Item, state: Mapping[str, Any]) -> Dict[str, Any]:
     return result
 
 
+def power_reading(item: Item, state: Mapping[str, Any], invert_grid: bool = False) -> Dict[str, Any]:
+    """What the power panel shows for a role. Power is a number (anything else is missing). The grid
+    is shown without its sign, with "direction": positive is importing (flipped by invert_grid). The
+    battery's charge also comes as "fraction", 0 to 1, for a bar."""
+    raw = state.get("state")
+    raw = raw.strip() if isinstance(raw, str) else ""
+    negative = raw.startswith("-")
+    if item.role == "grid":
+        state = dict(state, state=raw.lstrip("+-"))
+    result = reading(item, state)
+    result["role"] = item.role
+    if not item.label:
+        result["label"] = POWER_LABELS.get(item.role, result["label"])
+    if result["kind"] != "number":
+        result.update(kind="number", value=None, text="", missing=True)
+    if item.role == "grid":
+        result["direction"] = None
+    if result["missing"]:
+        return result
+    if item.role == "grid":
+        signed = -result["value"] if negative else result["value"]
+        if invert_grid:
+            signed = -signed
+        result["value"] = signed if signed != 0 else 0.0
+        result["direction"] = "import" if signed > 0 else "export" if signed < 0 else "idle"
+    elif item.role == "battery":
+        if not result["unit"]:
+            result["unit"] = "%"
+        if result["unit"] == "%":
+            result["fraction"] = round(min(1.0, max(0.0, result["value"] / 100)), 3)
+    return result
+
+
+def missing_reading(item: Item) -> Dict[str, Any]:
+    """An item with no reading yet, or none for too long."""
+    if item.role:
+        value = {"id": item.id, "role": item.role, "label": item.label or POWER_LABELS[item.role],
+                 "kind": "number", "value": None, "text": "", "unit": item.unit, "device_class": "",
+                 "missing": True}
+        if item.role == "grid":
+            value["direction"] = None
+        return value
+    return {"id": item.id, "label": item.label or item.source, "kind": "text", "value": None,
+            "text": "", "unit": item.unit, "device_class": "", "missing": True}
+
+
 Getter = Callable[[str, str], Dict[str, Any]]
 
 
 class Sensors:
-    """The listed readings and their latest values, read from Home Assistant by `run`."""
+    """The listed readings (the sensor list and the power roles) and their latest values, read from
+    Home Assistant by `run`."""
 
     def __init__(self, items: List[Item], url: Optional[str], token: str = "", where: str = "",
                  interval: int = DEFAULT_INTERVAL, get: Getter = http_get,
-                 clock: Callable[[], float] = time.time) -> None:
+                 clock: Callable[[], float] = time.time, power: Optional[List[Item]] = None,
+                 invert_grid: bool = False) -> None:
         self.items = items
+        self.power = list(power or [])
+        self.invert_grid = invert_grid
         self.url = url
         self.token = token
         self.where = where
@@ -284,7 +371,7 @@ class Sensors:
     @property
     def on(self) -> bool:
         """True when there is something to show: readings listed and somewhere to read them."""
-        return bool(self.items) and self.url is not None
+        return bool(self.items or self.power) and self.url is not None
 
     def _report(self, problem: Optional[str]) -> None:
         if problem != self._problem:
@@ -306,7 +393,7 @@ class Sensors:
         if not self.on:
             return
         problem = None
-        for item in self.items:
+        for item in self.items + self.power:
             url = f"{self.url}/api/states/{urllib.parse.quote(item.source)}"
             try:
                 state = self.get(url, self.token)
@@ -318,7 +405,7 @@ class Sensors:
                 break
             else:
                 self._report_missing(item, False)
-            value = reading(item, state)
+            value = power_reading(item, state, self.invert_grid) if item.role else reading(item, state)
             with self._lock:
                 self._readings[item.id] = value
                 self._read_at[item.id] = self.clock()
@@ -328,19 +415,23 @@ class Sensors:
         self._report(problem)
 
     def answer(self) -> Dict[str, Any]:
-        """/api/sensors: every listed reading, in the listed order, marked missing when too old."""
+        """/api/sensors: every listed reading, in the listed order, and the power roles that are set,
+        in POWER_ROLES order; each marked missing when too old."""
         now = self.clock()
-        sensors = []
+
+        def latest(item: Item) -> Dict[str, Any]:
+            value = self._readings.get(item.id)
+            if value is None or now - self._read_at.get(item.id, 0) > KEEP_SECONDS:
+                return missing_reading(item)
+            return dict(value)
+
         with self._lock:
-            for item in self.items:
-                value = self._readings.get(item.id)
-                if value is None or now - self._read_at.get(item.id, 0) > KEEP_SECONDS:
-                    value = {"id": item.id, "label": item.label or item.source, "kind": "text", "value": None,
-                             "text": "", "unit": item.unit, "device_class": "", "missing": True}
-                sensors.append(dict(value))
+            sensors = [latest(item) for item in self.items]
+            power = [latest(item) for item in self.power]
             updated = self._updated
         return {
             "sensors": sensors,
+            "power": power,
             "updated_at": (datetime.fromtimestamp(updated, timezone.utc).isoformat().replace("+00:00", "Z")
                            if updated is not None else None),
             "interval_seconds": self.interval,
@@ -359,11 +450,16 @@ class Sensors:
 
     def describe(self) -> str:
         """For the startup log: how many readings and from where, never a token or a value."""
-        if not self.items:
-            return "sensors off (OUTPOST_SENSORS is empty)"
+        if not self.items and not self.power:
+            return "sensors off (OUTPOST_SENSORS and OUTPOST_POWER_* are empty)"
         if self.url is None:
             return f"sensors off: {self.where}"
-        return f"{len(self.items)} sensor readings from {self.where}, every {self.interval} s"
+        counts = []
+        if self.items:
+            counts.append(f"{len(self.items)} sensor reading{'' if len(self.items) == 1 else 's'}")
+        if self.power:
+            counts.append(f"power ({', '.join(item.role for item in self.power)})")
+        return f"{' and '.join(counts)} from {self.where}, every {self.interval} s"
 
 
 def from_environment(environ: Optional[Mapping[str, str]] = None) -> Sensors:
@@ -371,6 +467,10 @@ def from_environment(environ: Optional[Mapping[str, str]] = None) -> Sensors:
     items, problems = parse_items(environ.get("OUTPOST_SENSORS"))
     for problem in problems:
         _say(f"OUTPOST_SENSORS: {problem}; skipping it")
+    power, problems = parse_power(environ)
+    for problem in problems:
+        _say(problem)
     url, token, where = connection(environ)
-    return Sensors(items, url if items else None, token, where,
-                   interval_setting(environ.get("OUTPOST_SENSORS_INTERVAL")))
+    return Sensors(items, url if items or power else None, token, where,
+                   interval_setting(environ.get("OUTPOST_SENSORS_INTERVAL")), power=power,
+                   invert_grid=flag(environ.get("OUTPOST_POWER_GRID_INVERT")))
