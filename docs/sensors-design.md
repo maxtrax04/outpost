@@ -2,7 +2,8 @@
 
 Status: design for [#35](https://github.com/maxtrax04/outpost/issues/35), decided 2026-11-20 (Home
 Assistant and MQTT, a sensor panel and a power panel, in 0.7.0). Step 1 (sensors from Home Assistant) is
-built in 0.7.0-beta.13. The README's "Sensors" section is the user guide.
+built in 0.7.0-beta.13, and step 2 (power) in 0.7.0-beta.14. The README's "Sensors" and "Power" sections
+are the user guide.
 
 ## What
 
@@ -74,7 +75,8 @@ OUTPOST_POWER_BATTERY=sensor.battery_level
 ```
 
 - A source is a Home Assistant entity ID (`sensor.x`, `binary_sensor.x`, and so on) or `mqtt:<topic>`.
-- Up to 24 items in all. A bad item is skipped and named in the log, and the rest still work.
+- Up to 24 sensor items, plus one per power role. A bad item is skipped and named in the log, and the
+  rest still work.
 - In the add-on, `sensors` is a list of these items (the Configuration tab shows one box per item), and
   the power roles are text boxes.
 
@@ -96,10 +98,13 @@ Four roles, all optional, shown only when at least one is set:
 
 - **Home:** use now.
 - **Solar:** production now.
-- **Grid:** positive is importing, negative is exporting (Home Assistant's usual sign). It reads
-  "Importing 1.2 kW" or "Exporting 0.8 kW". `OUTPOST_POWER_GRID_INVERT=true` flips the sign for meters
-  that count the other way.
-- **Battery:** charge in percent, as a bar (`--value`, like the gauges, so Field Station gives it a dial).
+- **Grid:** positive is importing, negative is exporting (Home Assistant's usual sign). It shows the
+  amount without a sign, with "Importing", "Exporting", or "Idle" under it (`data-direction`).
+  `OUTPOST_POWER_GRID_INVERT=true` flips the sign for meters that count the other way.
+- **Battery:** charge in percent (a unit of `%` is assumed when there is none), as a bar (`--value` and
+  `data-gauge`, like the gauges, so Field Station gives it a dial and Atomic Broadcast its tuning bar).
+- Each role shows its role name ("Home", "Solar", "Grid", "Battery") unless the setting gives a label.
+  Anything but a number reads as missing.
 
 A flow diagram (solar to home to grid, with moving dots) would look good, but it's more to theme and
 animate. It can come later. The roles and `/api/sensors` stay the same.
@@ -113,9 +118,14 @@ animate. It can come later. The roles and `/api/sensors` stay the same.
   `.detail-box` tiles as the weather readings. Every theme, including community themes, styles them
   with no changes. Each tile has `data-sensor-kind` (`number`, `binary`, `text`) and `data-device-class`,
   so a theme can style doors or power on its own.
-- **Screen layout:** in landscape the two panels go in the right-hand column under the map, and the
-  map takes what height is left. In portrait they go after the forecast, before the map. The tablet
-  fit check runs with both panels shown.
+- **Screen layout:** both panels are in `#homePanels`, power first, side by side when there is room. In
+  landscape fitting the wrapper is `display: contents`: power goes under the forecast and the sensors
+  under the map, which takes what height is left (a hidden panel's grid row has no height, so power
+  needs no layouts of its own). Atomic Broadcast, with its alerts pinned outside the page, puts power
+  under the map and the sensors beside the forecast. In portrait they go after the forecast, before the
+  map. The tablet fit check runs with both panels shown. With every panel shown and a very long
+  condition, Field Station can need more than the smallest scale on a 1024x768 tablet, and then
+  scrolls.
 - Sensors show the same values for every place a viewer picks: they're about home, not the place shown.
 
 ## Privacy and security

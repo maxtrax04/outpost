@@ -55,10 +55,17 @@
             <div id="forecastContainer" class="forecast"></div>
         </section>
 
-        <section id="sensorsPanel" class="panel sensors-panel" data-panel="sensors" hidden>
-            <h2>SENSORS</h2>
-            <div id="sensors" class="sensor-list"></div>
-        </section>
+        <div id="homePanels" class="home-panels" hidden>
+            <section id="powerPanel" class="panel power-panel" data-panel="power" hidden>
+                <h2>POWER</h2>
+                <div id="power" class="sensor-list power-list"></div>
+            </section>
+
+            <section id="sensorsPanel" class="panel sensors-panel" data-panel="sensors" hidden>
+                <h2>SENSORS</h2>
+                <div id="sensors" class="sensor-list"></div>
+            </section>
+        </div>
 
         <section id="mapPanel" class="panel map-panel" data-panel="map" hidden>
             <h2>MAP</h2>

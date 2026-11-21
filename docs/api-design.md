@@ -132,16 +132,20 @@ when the service cannot be reached and no recent list is kept.
 
 ### `GET /api/sensors`
 
-The sensor panel's readings (#35, `app/outpost_sensors.py`, [sensors-design.md](sensors-design.md)): every
-reading `OUTPOST_SENSORS` lists, in its order, each with `id`, `label`, `kind` (`number`, `binary`, or
-`text`), `value`, `text` (as shown), `unit`, `device_class`, and `missing`, plus `updated_at` and
-`interval_seconds`. Nothing in the request chooses what is read. 404 `sensors_off` when nothing is listed
-or Home Assistant isn't set up.
+The sensor and power panels' readings (#35, `app/outpost_sensors.py`, [sensors-design.md](sensors-design.md)):
+`sensors` has every reading `OUTPOST_SENSORS` lists, in its order, each with `id`, `label`, `kind` (`number`,
+`binary`, or `text`), `value`, `text` (as shown), `unit`, `device_class`, and `missing`. `power` has the
+power roles that are set (`OUTPOST_POWER_*`), in the order home, solar, grid, battery, with the same fields
+plus `role`; the grid's also has `direction` (`import`, `export`, `idle`, or null when missing) and shows
+its `text` without a sign, and the battery's has `fraction` (0 to 1) when its unit is `%`. Then
+`updated_at` and `interval_seconds`. Nothing in the request chooses what is read. 404 `sensors_off` when
+nothing is listed or Home Assistant isn't set up.
 
 ### `GET /api/status`
 
 `{"location_search": true, "sensors": false}` and the API version, so the dashboard knows whether to show
-the search box and the sensor panel, and that the API exists at all.
+the search box and the sensor and power panels (`sensors` is true when either has something listed),
+and that the API exists at all.
 
 ## Dashboard
 

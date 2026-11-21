@@ -324,20 +324,22 @@ main:has(> #alertsPanel:not([hidden])) {
 
 /* Fitted to a landscape screen (see "Screen layout" in style.css): the crawl is pinned outside the
    page, so it takes no place in the right-hand column, which is laid out as if there were no alerts.
-   With only the crawl, the page is one column. */
+   That leaves room on the right, so power goes there too: beside the current conditions, under the
+   map (which takes what height is left), with the sensors beside the forecast. With only the crawl,
+   the page is one column. (#alertsPanel is in each selector so these win over style.css's.) */
 @media (orientation: landscape) {
-    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel:not([hidden])) {
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel:not([hidden])):has(> #homePanels:not([hidden])):has(> #alertsPanel) {
         grid-template-areas:
             "header   header"
             "banner   banner"
             "current  map"
-            "forecast map"
+            "current  power"
             "forecast sensors"
             "status   status"
             "footer   footer";
-        grid-template-rows: auto auto auto 1fr auto auto auto;
+        grid-template-rows: auto auto 1fr auto auto auto auto;
     }
-    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel[hidden]):has(> #alertsPanel:not([hidden])) {
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel:not([hidden])):has(> #homePanels[hidden]):has(> #alertsPanel:not([hidden])) {
         grid-template-areas:
             "header   header"
             "banner   banner"
@@ -347,17 +349,18 @@ main:has(> #alertsPanel:not([hidden])) {
             "footer   footer";
         grid-template-rows: auto auto auto 1fr auto auto;
     }
-    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel:not([hidden])) {
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #homePanels:not([hidden])):has(> #alertsPanel) {
         grid-template-areas:
             "header   header"
             "banner   banner"
+            "current  power"
             "current  sensors"
             "forecast sensors"
             "status   status"
             "footer   footer";
         grid-template-rows: auto;
     }
-    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel[hidden]):has(> #alertsPanel:not([hidden])) { display: block; }
+    :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #homePanels[hidden]):has(> #alertsPanel:not([hidden])) { display: block; }
 }
 
 /* ---- Smaller screens: a slimmer cabinet --------------------------------------------- */
@@ -374,3 +377,6 @@ main:has(> #alertsPanel:not([hidden])) {
 }
 
 /* Reduced effects: Outpost already turns off the scanlines, glow, and the pointers' slide */
+
+/* The battery's charge (power panel) gets the tuning bar like any other gauge, so no plain bar */
+.detail-box .power-bar { display: none; }

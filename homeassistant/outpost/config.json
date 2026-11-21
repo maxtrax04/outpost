@@ -34,7 +34,8 @@
     "clock_toggle": true,
     "alerts_always_show": false,
     "auto_dim": true,
-    "sensors": []
+    "sensors": [],
+    "power_grid_invert": false
   },
   "schema": {
     "provider": "list(auto|openmeteo|nws|metno|pirateweather)",
@@ -72,6 +73,11 @@
     "dim_end": "match(^([01][0-9]|2[0-3]):[0-5][0-9]$)?",
     "sensors": ["str"],
     "sensors_interval": "int(5,3600)?",
+    "power_home": "str?",
+    "power_solar": "str?",
+    "power_grid": "str?",
+    "power_grid_invert": "bool",
+    "power_battery": "str?",
     "frame_ancestors": "str?",
     "user_agent": "str?"
   }

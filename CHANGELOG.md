@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.14] - 2026-11-20
+
+### Added
+
+- A power panel: home use, solar, grid, and battery from Home Assistant, one entity each in `OUTPOST_POWER_HOME`, `OUTPOST_POWER_SOLAR`, `OUTPOST_POWER_GRID`, and `OUTPOST_POWER_BATTERY` (each optional). The grid reads Importing or Exporting under the amount (positive is importing; `OUTPOST_POWER_GRID_INVERT=true` flips it), and the battery's charge shows as a bar, or on the theme's own gauge in Field Station and Atomic Broadcast. It uses the sensors' Home Assistant connection and interval. In the add-on, set the **Power** options. See "Power" in the README (#35).
+- `/api/sensors` also answers the power readings (`power`), and themes can style the tiles: `.detail-box.power` with `data-power-role`, `data-direction`, and, on the battery, `--value` and `data-gauge` (see "Power" in docs/themes.md).
+
+### Changed
+
+- Power and sensors sit side by side when there is room. On a landscape tablet, power goes under the forecast and the sensors under the map; in Atomic Broadcast, whose alerts run along the bottom of the screen, power goes under the map and the sensors beside the forecast, which also gives that theme more room without power.
+
 ## [0.7.0-beta.13] - 2026-11-20
 
 ### Added
