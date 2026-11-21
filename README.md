@@ -21,7 +21,7 @@ A self-hosted dashboard platform for weather, alerts, sensors, power monitoring,
 - Normalized weather data format, so the display doesn't care which provider supplied it
 - Built-in health check (including stale-data detection)
 - Warning banner when data is old, degraded, or unavailable
-- Works with Home Assistant: an add-on (experimental), a Webpage card for the dashboard, and sensors and a weather entity from its data ([how](docs/home-assistant.md))
+- Works with Home Assistant: an add-on (experimental), a Webpage card for the dashboard, sensors and a weather entity from its data ([how](docs/home-assistant.md)), and your Home Assistant sensors on the dashboard ([Sensors](#sensors))
 - Themes: seven built in (from green-phosphor terminals to a 1950s television and black-on-white for ePaper), more from the [community](https://github.com/maxtrax04/outpost-themes), or your own, with no rebuild
 
 ## Quick start
@@ -101,6 +101,10 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_MAP_TILES` | *(OpenStreetMap)* | Another server for the map's vector tiles, such as `https://tiles.example.org/{z}/{x}/{y}.mvt`. It must use the Shortbread schema. |
 | `OUTPOST_MAP_RADAR` | `true` | Rain radar on the map: NOAA in the US, RainViewer elsewhere. See [Map](#map). |
 | `OUTPOST_MAP_RADAR_LOOP` | `false` | Play the past 2 hours of radar as a loop instead of showing the latest frame (never on ePaper or with reduced effects). |
+| `OUTPOST_SENSORS` | *(empty)* | Home Assistant entities for the sensor panel, separated by commas, such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door`. See [Sensors](#sensors). |
+| `OUTPOST_SENSORS_INTERVAL` | `10` | Seconds between sensor readings (at least 5). |
+| `OUTPOST_HA_URL` | *(empty)* | Your Home Assistant, such as `http://homeassistant.local:8123`, for the sensors. Not needed in the add-on. |
+| `OUTPOST_HA_TOKEN` | *(empty)* | A long-lived access token for `OUTPOST_HA_URL`. Keep it private; it is only sent to Home Assistant. Not needed in the add-on. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
@@ -206,6 +210,26 @@ Which one is used is worked out from the place's coordinates alone, with rough b
 The latest frame is shown, and it is updated every couple of minutes. `OUTPOST_MAP_RADAR_LOOP=true` plays the past 2 hours instead, a frame every 10 minutes. ePaper (the `ink` theme) and [reduced effects](#reduced-effects) always get the latest frame alone, since an animation would make an ePaper panel flash. On ePaper, each new frame is a redraw, every 2 to 10 minutes.
 
 A theme can choose the map's colors with `--map-land`, `--map-water`, `--map-road`, `--map-border`, `--map-label`, `--map-halo`, and `--map-marker`; see [docs/themes.md](docs/themes.md#map-colors). Without them, the map follows the theme's own colors.
+
+## Sensors
+
+Outpost can show readings from [Home Assistant](https://www.home-assistant.io) beside the weather: indoor temperature, humidity, a door, the garage, anything Home Assistant has. List the entities in `OUTPOST_SENSORS`, separated by commas:
+
+```bash
+OUTPOST_SENSORS=sensor.living_room_temperature, sensor.living_room_humidity, Garage=binary_sensor.garage_door
+OUTPOST_HA_URL=http://homeassistant.local:8123
+OUTPOST_HA_TOKEN=your-long-lived-access-token
+```
+
+- **Names and units** come from Home Assistant. Put a label before `=` to show another name, and a unit in brackets after the entity to show another unit: `Attic=sensor.attic_temperature [°F]`. Outpost doesn't convert sensor readings (`OUTPOST_UNITS` is for the weather).
+- **Numbers** under 100 show one decimal, larger ones none. Power over 1000 W shows in kW.
+- **Doors, windows, and garage doors** read Open or Closed, motion and occupancy Detected or Clear, and other on/off sensors On or Off. Other text, like a lock's "locked", is shown as it is.
+- **Missing readings** show `--`: an entity that is unavailable, or one that isn't in Home Assistant (the log says which). If Home Assistant can't be reached, the last readings stay for 15 minutes.
+- **The token** is a long-lived access token from your Home Assistant profile (Security tab). It is only sent to Home Assistant, and never to a screen. In the [Home Assistant add-on](docs/home-assistant.md), Outpost reads Home Assistant on its own: list the entities under **Sensors** in its options, and leave the URL and token out.
+
+Outpost reads each entity every `OUTPOST_SENSORS_INTERVAL` seconds (10 by default), and screens ask Outpost every 15 seconds. It only reads the entities you list, and it never changes anything in Home Assistant.
+
+Anyone who can open the dashboard sees these readings. If Outpost can be reached from the internet without a login in front of it, don't list doors, locks, or who is home.
 
 ## Data and storage
 

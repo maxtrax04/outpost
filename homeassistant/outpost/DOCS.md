@@ -42,6 +42,10 @@ Some options worth knowing:
   **Contact** too.
 - **Location search**: lets viewers look at the weather somewhere else from the panel on screen. Turn it
   off if only home should be shown.
+- **Sensors**: Home Assistant entities to show on the dashboard, one per line, such as
+  `sensor.living_room_temperature`. Put a label before `=` and a unit in brackets after it if you like:
+  `Garage=binary_sensor.garage_door`. The add-on reads them from Home Assistant itself, with no token to
+  set. It only reads the entities listed. Anyone who can open the dashboard sees them.
 
 ## Wall tablets and other screens
 
@@ -70,4 +74,5 @@ above, and use `http://homeassistant.local:<port>` as Outpost's address there.
 
 Outpost sends your location only to the weather services you choose (and, with the map, the map and
 radar tiles it shows), and does not log it. The add-on reads Home Assistant's configuration only for
-the location, time zone, and units, once at startup.
+the location, time zone, and units, once at startup, and the entities listed under **Sensors**, every
+**Sensor interval** seconds (10 by default).

@@ -415,9 +415,24 @@ async function checkMap(browser) {
     return problems;
 }
 
+// Sensor readings for the fit check, as /api/sensors answers them (made-up rooms)
+const SAMPLE_SENSORS = {
+    sensors: [
+        ["Living room", "number", 21.5, "21.5", "°C", "temperature"],
+        ["Humidity", "number", 45, "45", "%", "humidity"],
+        ["Garage", "binary", false, "Closed", "", "garage_door"],
+        ["Back door", "binary", true, "Open", "", "door"],
+        ["Freezer", "number", -18.2, "-18.2", "°C", "temperature"],
+        ["Front lock", "text", "locked", "Locked", "", ""],
+    ].map(([label, kind, value, text, unit, deviceClass], n) => ({
+        id: `s${n + 1}`, label, kind, value, text, unit, device_class: deviceClass, missing: false })),
+    updated_at: "2026-01-01T00:00:00Z",
+    interval_seconds: 10,
+};
+
 // Tablets (landscape and portrait): every theme that fits the screen (--fit-screen: 1, as all the
-// built-in ones do) fits without scrolling, even with the map and an alert shown (the tallest page),
-// and nothing sticks out past the right edge
+// built-in ones do) fits without scrolling, even with the map, sensors, and an alert shown (the
+// tallest page), and nothing sticks out past the right edge
 const TABLETS = { "tablet landscape": { width: 1024, height: 768 }, "tablet portrait": { width: 768, height: 1024 } };
 async function checkScreenFit(browser, theme) {
     const { sampleTile } = require("./mvt-fixture.js");
@@ -432,6 +447,11 @@ async function checkScreenFit(browser, theme) {
         });
         await page.route("**/tiles/base/7/*/*.mvt", (route) => route.fulfill({
             contentType: "application/vnd.mapbox-vector-tile", body: Buffer.from(sampleTile()) }));
+        await page.route("**/api/status*", async (route) => {
+            const response = await route.fetch();
+            await route.fulfill({ response, json: { ...(await response.json()), sensors: true } });
+        });
+        await page.route("**/api/sensors*", (route) => route.fulfill({ json: SAMPLE_SENSORS }));
         for (const pattern of ["**/api/weather*", "**/data/weather.json*"]) {
             await page.route(pattern, async (route) => {
                 const response = await route.fetch();
@@ -446,8 +466,10 @@ async function checkScreenFit(browser, theme) {
         await page.goto(`${BASE}/?theme=${theme}`, { waitUntil: "load" });
         const shown = await waitFor(page, () => !document.getElementById("mapPanel").hidden
             && !document.getElementById("alertsPanel").hidden
+            && !document.getElementById("sensorsPanel").hidden
+            && document.querySelectorAll("#sensors .sensor").length === 6
             && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
-        if (!shown) problems.push(`${name}: the map and the alert were not shown`);
+        if (!shown) problems.push(`${name}: the map, the sensors, and the alert were not shown`);
         await page.waitForTimeout(500); // fit.js measures on the next frame, and again when fonts load
         const fits = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--fit-screen").trim() === "1");
         if (!fits) {

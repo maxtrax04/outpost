@@ -150,7 +150,7 @@ jobs:
       - name: Check the dashboard, themes, and icons are served
         run: |
           curl -fsS http://localhost:8088/ | grep -q "OUTPOST"
-          for file in style.css app.js dim.js themes.js manifest.webmanifest; do
+          for file in style.css app.js dim.js themes.js sensors.js manifest.webmanifest; do
             curl -fsS -o /dev/null "http://localhost:8088/$file"
           done
           for theme in retro-crt amber-terminal command-center modern-dark field-station atomic-broadcast ink sonar; do

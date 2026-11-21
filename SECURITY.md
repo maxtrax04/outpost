@@ -28,6 +28,8 @@ unless you prefer otherwise.
 - `weather.json` and `config.json` contain your location. Anyone who can reach the dashboard can read them.
 - Your `OUTPOST_CONTACT` value is sent to weather services in the User-Agent header.
 - `OUTPOST_PIRATEWEATHER_API_KEY` is a secret. Outpost sends it only to Pirate Weather, in a request header (never in an address), and never writes it to `weather.json`, `config.json`, or the log.
+- `OUTPOST_HA_TOKEN` is a secret with access to your Home Assistant. Outpost sends it only to `OUTPOST_HA_URL`, in a request header, and never to a screen or the log. Outpost only reads the entities listed in `OUTPOST_SENSORS`, and never changes anything in Home Assistant; a token from a Home Assistant user with fewer rights limits what a leaked token could do.
+- Readings listed in `OUTPOST_SENSORS` can be seen by anyone who can reach the dashboard (at `/api/sensors`). Don't list doors, locks, or presence on a dashboard others can reach.
 - Theme files in a folder mounted at `/config/themes` (CSS, fonts, and images only) are served to anyone who
   can reach the dashboard. Mount a folder that holds only themes, read-only.
 - With `OUTPOST_COMMUNITY_THEMES` set, Outpost downloads those themes from GitHub (`codeload.github.com`) once each time

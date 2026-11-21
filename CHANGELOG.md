@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.13] - 2026-11-20
+
+### Added
+
+- A sensor panel with readings from Home Assistant: list entities in `OUTPOST_SENSORS` (such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door`), with `OUTPOST_HA_URL` and a long-lived access token in `OUTPOST_HA_TOKEN`. Names and units come from Home Assistant, or from the list. Doors read Open or Closed, motion Detected or Clear, other on/off sensors On or Off. Outpost reads them every `OUTPOST_SENSORS_INTERVAL` seconds (default 10), only the entities listed, and never changes anything in Home Assistant. In the add-on, list them under **Sensors**; no URL or token is needed. See "Sensors" in the README and docs/sensors-design.md (#35).
+- `/api/sensors` answers the listed readings, and `/api/status` says whether there are any.
+- Themes can style sensor tiles: each is a `.detail-box.sensor` with `data-sensor-kind`, `data-device-class`, `data-state`, and `data-missing` (see "Sensors" in docs/themes.md).
+
+### Changed
+
+- The screen layout makes room for the sensor panel: in landscape it goes on the right under the map, and in portrait after the forecast. The map's row takes the height the left column has to spare.
+
 ## [0.7.0-beta.12] - 2026-11-18
 
 ### Changed

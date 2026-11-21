@@ -269,6 +269,7 @@ function renderSubtitle(config) {
 // search is offered only when /api/status says the server has it on.
 
 let locationSearch = false;
+let sensorsOn = false;      // whether /api/status says the server has sensors listed (sensors.js)
 let homeName = "";
 let shownPlace = null;      // OutpostPlaces.key of the place whose weather is on the screen
 let weatherRequest = 0;     // so an older answer never replaces a newer choice
@@ -279,8 +280,10 @@ async function loadApiStatus() {
         if (response.ok) {
             const status = await response.json();
             locationSearch = Boolean(status && status.location_search === true);
+            sensorsOn = Boolean(status && status.sensors === true);
         } else if (response.status === 404) {
             locationSearch = false; // served without the API
+            sensorsOn = false;
         }
     } catch (error) {
         // Keep what was known; the API may be restarting
@@ -533,6 +536,8 @@ async function refresh() {
     renderSubtitle(config);
     renderSun(here);
     renderMap(config, here, place);
+    // Sensors are about home, so they stay the same whichever place is shown
+    OutpostSensors.start(sensorsOn);
     OutpostFit.start();
 }
 

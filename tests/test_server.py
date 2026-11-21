@@ -163,7 +163,8 @@ class HttpTests(unittest.TestCase):
     def test_status(self):
         status, headers, body = self.get("/api/status")
         self.assertEqual(status, 200)
-        self.assertEqual(body, {"api_version": 1, "version": u.APP_VERSION, "location_search": True})
+        self.assertEqual(body, {"api_version": 1, "version": u.APP_VERSION, "location_search": True,
+                                "sensors": False})
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertTrue(headers["Content-Type"].startswith("application/json"))
 
