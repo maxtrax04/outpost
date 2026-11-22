@@ -6,139 +6,41 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-## [0.7.0-beta.15] - 2026-11-21
+## [0.7.0] - 2026-11-21
+
+Platform: each screen can show another place (location search, "Use my location", and pinned screens), a map with rain radar, a Home Assistant add-on, sensor and power panels with readings from Home Assistant or MQTT, and every built-in theme fitted to a tablet or wall display without scrolling. **Other places are allowed by default**; see "Upgrading from 0.6.0" below.
 
 ### Added
 
-- Sensor and power readings straight from an MQTT broker: write `mqtt:<topic>` wherever an entity goes (`Shed=mqtt:shed/temperature [°C]`), with `#field` for a field of a JSON message (`mqtt:zigbee2mqtt/garage#contact`, `#ENERGY.Power` for one inside another). Set the broker with `OUTPOST_MQTT_HOST`, `OUTPOST_MQTT_PORT`, `OUTPOST_MQTT_USERNAME`, `OUTPOST_MQTT_PASSWORD`, and `OUTPOST_MQTT_TLS`. Outpost subscribes only to the exact topics listed, never publishes, and keeps a reading while the broker is connected. MQTT and Home Assistant readings can be mixed. See "MQTT" in the README (#35).
-- The add-on uses the Mosquitto broker add-on for `mqtt:` readings, with nothing to set, or the broker in its new **MQTT** options.
-
-## [0.7.0-beta.14] - 2026-11-20
-
-### Added
-
-- A power panel: home use, solar, grid, and battery from Home Assistant, one entity each in `OUTPOST_POWER_HOME`, `OUTPOST_POWER_SOLAR`, `OUTPOST_POWER_GRID`, and `OUTPOST_POWER_BATTERY` (each optional). The grid reads Importing or Exporting under the amount (positive is importing; `OUTPOST_POWER_GRID_INVERT=true` flips it), and the battery's charge shows as a bar, or on the theme's own gauge in Field Station and Atomic Broadcast. It uses the sensors' Home Assistant connection and interval. In the add-on, set the **Power** options. See "Power" in the README (#35).
-- `/api/sensors` also answers the power readings (`power`), and themes can style the tiles: `.detail-box.power` with `data-power-role`, `data-direction`, and, on the battery, `--value` and `data-gauge` (see "Power" in docs/themes.md).
+- Location search (#30). Under LOCATION in the panel (the button in the bottom-left corner), type a place name and pick a result, and that screen shows the weather there. Home and the places chosen before stay in the list, kept in that browser only; `x` forgets one. Night dimming, sunrise, and sunset follow the place shown. Searches go to Open-Meteo's geocoding service, which needs no key; each search is kept for a day, at most one a second is sent, and what was searched for is never logged.
+- "Use my location" in the panel (#31). On a phone or laptop it asks the browser once where the device is, then shows the weather there as "My location", saved with the other places; tap it again to update it. The position is rounded to about 1 km in the browser before it is stored or sent. When the browser refuses, the panel says why. Browsers share a location only with HTTPS pages; README "My location" covers HTTPS with Caddy, Tailscale, or a reverse proxy you already run.
+- `?lat=..&lon=..&name=..` in the address pins one screen to a place, for example a wall screen showing a second home.
+- Limits that protect your weather services' quotas (see "Other places" in the README): `OUTPOST_LOCATION_SEARCH` (default `true`) allows other places, `OUTPOST_LOCATION_LIMIT` (default 30) caps the weather fetches an hour for all other places together, and `OUTPOST_LOCATION_PIRATEWEATHER` (default `true`) lets other places use the Pirate Weather key, but only from the quota home won't need before the monthly reset. Coordinates are rounded to about 1 km, so nearby screens share one fetch; each place is fetched at most every 15 minutes, and only while a screen shows it. When the hourly limit is used up, a place already shown gets its last data again and a new one is refused, and the screen says why. Other places are kept only in memory, never written to disk, and never logged.
+- Outpost's API (docs/api-design.md): `/api/weather` (home, or another place with `?lat=..&lon=..`, in the `weather.json` format), `/api/places`, `/api/radar`, `/api/sensors`, and `/api/status`. The web server allows each address 5 API requests a second.
+- A map panel (#32, docs/map-design.md). `OUTPOST_MAP=true` shows a fixed map under the forecast, centered on the place shown and marked with a ring, drawn from OpenStreetMap's vector tiles in the theme's colors and font: land, water, main roads, borders, and place names. It needs no map library and no WebGL, so it also works on slow tablets and ePaper. `OUTPOST_MAP_ZOOM` sets the zoom (4 to 12, default 7). With OpenStreetMap's tiles the map needs `OUTPOST_CONTACT`, as their usage policy asks; `OUTPOST_MAP_TILES` points it at another tile server with the same Shortbread schema.
+- Rain radar on the map, on whenever the map is (`OUTPOST_MAP_RADAR=false` turns it off). In the US (the lower 48 states, Alaska, Hawaii, Guam, and Puerto Rico) it comes from NOAA's MRMS radar mosaic, new every 2 minutes; elsewhere from RainViewer, new every 10 minutes, which stops at zoom 7 and is drawn larger above that. The frame's time is in the top-left corner. `OUTPOST_MAP_RADAR_LOOP=true` plays the past 2 hours instead of the latest frame (never on ePaper or with reduced effects).
+- Outpost fetches map tiles and radar itself and keeps them, so screens never contact OpenStreetMap, NOAA, or RainViewer, and screens showing the same area share one copy. Tile and radar requests are not logged.
+- A Home Assistant add-on (#34, experimental), in `homeassistant/` and published to [maxtrax04/outpost-addon](https://github.com/maxtrax04/outpost-addon) by the release workflow: beta versions on its `beta` branch, released versions on `main`. It runs the same image and adds an Outpost panel to Home Assistant's sidebar for every user. It uses Home Assistant's home location, name, time zone, and units unless they are set in its options, and each option is one of Outpost's settings; switches start at Outpost's defaults. A wall tablet that isn't logged in to Home Assistant can open Outpost on a port of its own, which is off until you set one, and custom themes go in the add-on's configuration folder. Its log lists the options Outpost received at each start (switches as on or off, choices by value, keys and other text only as "set").
+- `docs/home-assistant.md`: the add-on, showing the dashboard in a Webpage card (and what to do when it stays blank), and ready-to-paste configuration that reads `weather.json` as Home Assistant sensors and as a `weather.outpost` entity with the daily forecast.
+- A sensor panel (#35, docs/sensors-design.md): list readings in `OUTPOST_SENSORS`, such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door`. Names and units come from Home Assistant, or from a label before `=` and a unit in brackets. Doors read Open or Closed, motion Detected or Clear, and other on/off sensors On or Off. Home Assistant is reached at `OUTPOST_HA_URL` with a long-lived access token in `OUTPOST_HA_TOKEN`, every `OUTPOST_SENSORS_INTERVAL` seconds (default 10); the add-on needs neither. Outpost reads only what is listed and never changes anything. See "Sensors" in the README.
+- A power panel: home use, solar, grid, and battery, one reading each in `OUTPOST_POWER_HOME`, `OUTPOST_POWER_SOLAR`, `OUTPOST_POWER_GRID`, and `OUTPOST_POWER_BATTERY` (each optional). The grid reads Importing or Exporting under the amount (positive is importing; `OUTPOST_POWER_GRID_INVERT=true` flips it), and the battery's charge shows as a bar, or on the theme's own gauge in Field Station and Atomic Broadcast. See "Power" in the README.
+- Sensor and power readings straight from an MQTT broker: write `mqtt:<topic>` wherever an entity goes (`Shed=mqtt:shed/temperature [°C]`), with `#field` for a field of a JSON message (`mqtt:zigbee2mqtt/garage#contact`, `#ENERGY.Power` for one inside another). Set the broker with `OUTPOST_MQTT_HOST`, `OUTPOST_MQTT_PORT`, `OUTPOST_MQTT_USERNAME`, `OUTPOST_MQTT_PASSWORD`, and `OUTPOST_MQTT_TLS`; the add-on uses the Mosquitto broker add-on with nothing to set. Outpost subscribes only to the exact topics listed, never publishes, and keeps a reading while the broker is connected. MQTT and Home Assistant readings can be mixed. See "MQTT" in the README.
+- For theme authors (docs/themes.md): map colors (`--map-land`, `--map-water`, `--map-road`, `--map-border`, `--map-label`, `--map-halo`, `--map-marker`; without them the map follows the theme's colors), sensor tiles (`.detail-box.sensor` with `data-sensor-kind`, `data-device-class`, `data-state`, and `data-missing`), power tiles (`.detail-box.power` with `data-power-role`, `data-direction`, and, on the battery, `--value` and `data-gauge`), and the screen layout ("Fit to screen").
+- The README shows the latest release and the license as badges beside the CI status.
 
 ### Changed
 
-- Power and sensors sit side by side when there is room. On a landscape tablet, power goes under the forecast and the sensors under the map; in Atomic Broadcast, whose alerts run along the bottom of the screen, power goes under the map and the sensors beside the forecast, which also gives that theme more room without power.
-
-## [0.7.0-beta.13] - 2026-11-20
-
-### Added
-
-- A sensor panel with readings from Home Assistant: list entities in `OUTPOST_SENSORS` (such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door`), with `OUTPOST_HA_URL` and a long-lived access token in `OUTPOST_HA_TOKEN`. Names and units come from Home Assistant, or from the list. Doors read Open or Closed, motion Detected or Clear, other on/off sensors On or Off. Outpost reads them every `OUTPOST_SENSORS_INTERVAL` seconds (default 10), only the entities listed, and never changes anything in Home Assistant. In the add-on, list them under **Sensors**; no URL or token is needed. See "Sensors" in the README and docs/sensors-design.md (#35).
-- `/api/sensors` answers the listed readings, and `/api/status` says whether there are any.
-- Themes can style sensor tiles: each is a `.detail-box.sensor` with `data-sensor-kind`, `data-device-class`, `data-state`, and `data-missing` (see "Sensors" in docs/themes.md).
-
-### Changed
-
-- The screen layout makes room for the sensor panel: in landscape it goes on the right under the map, and in portrait after the forecast. The map's row takes the height the left column has to spare.
-
-## [0.7.0-beta.12] - 2026-11-18
-
-### Changed
-
-- Every built-in theme fits a tablet or wall display without scrolling, in landscape and portrait, with the map and alerts shown. While the page is fitted to the screen it has a screen layout: a one-line header; in landscape, the current conditions and forecast on the left and the map and alerts on the right; in portrait, the map takes the height left over. Phones (narrower than 600 px) still scroll. Themes can override the layout (see "Fit to screen" in docs/themes.md).
-
-### Added
-
-- The add-on's log lists the options Outpost received at each start (switches as on or off, choices by value, and keys, addresses, and other text only as "set"), so a setting that wasn't saved is easy to spot. Its documentation says to press Save.
-
-## [0.7.0-beta.11] - 2026-11-18
-
-### Fixed
-
-- The add-on's switches show Outpost's defaults. Night dimming and the other settings that are on by default showed as off in Home Assistant while they were on, and could not be turned off from the switch; each switch now starts at its real default and saves either way.
-
-## [0.7.0-beta.10] - 2026-11-18
-
-### Fixed
-
-- The add-on's Outpost panel shows for every Home Assistant user, not only administrators.
-- The add-on's install steps use Home Assistant's current names (Settings > Apps > Install app, since add-ons became apps in Home Assistant 2026.2), say how to put the panel in the sidebar, and say that the map needs Map and Contact set.
-
-## [0.7.0-beta.9] - 2026-11-17
-
-### Added
-
-- A Home Assistant add-on (#34, experimental), in `homeassistant/` and published to [maxtrax04/outpost-addon](https://github.com/maxtrax04/outpost-addon) by the release workflow: beta versions on its `beta` branch, released versions on `main`. It runs the same image, adds an Outpost panel to Home Assistant's sidebar (ingress), and uses Home Assistant's home location, name, time zone, and units unless they are set in its options. Each option is one of Outpost's settings.
-- In the add-on, a wall tablet that isn't logged in to Home Assistant can open Outpost on a port of its own, which is off until you set one. Custom themes go in the add-on's configuration folder.
-- The image carries the labels Home Assistant looks for on an add-on (`io.hass.type`, `io.hass.version`).
-
-## [0.7.0-beta.8] - 2026-11-17
-
-### Added
-
-- Rain radar on the map (#32, step 2 of docs/map-design.md), on whenever the map is (`OUTPOST_MAP_RADAR=false` turns it off). In the US (the lower 48 states, Alaska, Hawaii, Guam, and Puerto Rico) it comes from NOAA's MRMS radar mosaic, new every 2 minutes; elsewhere from RainViewer, new every 10 minutes, which stops at zoom 7 and is drawn larger above that. It is drawn under the place names, with the frame's time in the top-left corner and its source credited next to OpenStreetMap.
-- `OUTPOST_MAP_RADAR_LOOP=true` plays the past 2 hours of radar, a frame every 10 minutes, instead of the latest frame. ePaper (the `ink` theme) and reduced effects always get the latest frame alone.
-- Outpost fetches the radar and keeps it, so screens never contact NOAA or RainViewer, and screens showing the same area share one copy. Radar requests are not logged.
-- `GET /api/radar` lists the radar frames for home or, with location search on, another place (docs/api-design.md).
-
-## [0.7.0-beta.7] - 2026-11-17
-
-### Added
-
-- A map panel (#32, step 1 of docs/map-design.md). `OUTPOST_MAP=true` shows a fixed map under the forecast, centered on the place shown and marked with a ring, drawn from OpenStreetMap's vector tiles in the theme's colors and font: land, water, main roads, borders, and place names. It needs no map library and no WebGL, so it also works on slow tablets and ePaper. Rain radar on the map comes in a later beta.
-- Outpost fetches the map's tiles itself and keeps them as long as the tile server says, so screens never contact OpenStreetMap. Only the tiles a screen shows are fetched, at one zoom (`OUTPOST_MAP_ZOOM`, 4 to 12, default 7), and tile requests are not logged.
-- With OpenStreetMap's tiles, the map needs `OUTPOST_CONTACT`, as their usage policy asks of a server that keeps tiles. `OUTPOST_MAP_TILES` points it at another tile server with the same Shortbread schema.
-- Themes can set the map's colors with `--map-land`, `--map-water`, `--map-road`, `--map-border`, `--map-label`, `--map-halo`, and `--map-marker` (docs/themes.md). Without them, the map follows the theme's own colors.
-
-## [0.7.0-beta.6] - 2026-11-17
-
-### Added
-
-- "Use my location" in the panel (#31). On a phone or laptop it asks the browser once where the device is, then shows the weather there as "My location", saved with the other places. Tap it again to update it. The position is rounded to about 1 km in the browser before it is stored or sent.
-- When the browser refuses (permission denied, no position, or too slow), the panel says why, and the search still works. Over plain HTTP, the button says it needs HTTPS, since browsers share a location only with HTTPS pages.
-- README "My location": using it over HTTPS with Caddy, Tailscale, or a reverse proxy you already run, and what happens to the position.
-
-## [0.7.0-beta.5] - 2026-11-17
-
-### Added
-
-- Location search (#30). Under LOCATION in the panel (the button in the bottom-left corner), type a place name and pick a result, and that screen shows the weather there. Home and the places chosen before stay in the list, kept in that browser only; `x` forgets one. Night dimming, sunrise, and sunset follow the place shown.
-- `?lat=..&lon=..&name=..` in the address pins one screen to a place, for example a wall screen showing a second home. With `OUTPOST_LOCATION_SEARCH=false` it is refused.
-- `/api/places?q=..` searches for places by name with Open-Meteo's geocoding service, which needs no key. Each search is kept for a day, at most one a second is sent, and what was searched for is never logged.
-
-### Changed
-
-- The panel button now also appears when there is only one theme, if location search is on. `OUTPOST_THEME_SWITCHER=false` still removes it, search included.
-- While another place's weather loads, the readings are blanked, so one place's readings never show under another's name. When the server refuses a place (over the hourly limit, or search turned off), the screen says why.
+- Every built-in theme fits a tablet or wall display without scrolling, in landscape and portrait, with the map, alerts, sensors, and power shown. While the page is fitted to the screen it has a screen layout: a one-line header; in landscape, the current conditions, forecast, and power on the left and the map, sensors, and alerts on the right (Atomic Broadcast, whose alerts run along the bottom, puts power under the map); in portrait, the map takes the height left over. Phones (narrower than 600 px) still scroll.
+- The dashboard reads the weather from the API, and from `data/weather.json` when the page is served without it. While another place's weather loads, the readings are blanked, so one place's readings never show under another's name.
+- The panel button also appears when there is only one theme, if location search is on. `OUTPOST_THEME_SWITCHER=false` still removes it, search included.
+- One process runs both the update loop and the API (`app/outpost_server.py`, in place of `outpost_updater.py --loop`), so home and other places share each weather service's request limits. Each place's last good data is kept separately, so one place's outage never shows another's readings.
 - The web server's access log no longer records query strings or the Referer header, since a pinned screen's address carries a place.
 
-## [0.7.0-beta.4] - 2026-11-16
+### Upgrading from 0.6.0
 
-### Added
-
-- Outpost's API, the first step toward letting each screen show another place (docs/api-design.md). `/api/weather` gives home's weather (the same as `weather.json`), and `/api/weather?lat=..&lon=..&name=..` the weather for another place, in the same format. `/api/status` says whether other places are allowed. A location search on the dashboard comes in a later beta.
-- `OUTPOST_LOCATION_SEARCH` (default `true`) allows other places; `false` turns them off. `OUTPOST_LOCATION_LIMIT` (default 30) caps the weather fetches an hour for all other places together, and `OUTPOST_LOCATION_PIRATEWEATHER` (default `true`) lets other places use the Pirate Weather key, but only from the quota home won't need before the monthly reset. See "Other places" in the README.
-- Other places cost little. Their coordinates are rounded to about 1 km, so nearby screens share one fetch. Each place is fetched at most every 15 minutes, and only while a screen shows it. When the hourly limit is used up, a place already shown gets its last data again, and a new one is refused. The web server allows each address 5 API requests a second.
-- Other places are kept only in memory. They are never written to `weather.json` or to disk, and API requests (which carry the coordinates) are not logged.
-
-### Changed
-
-- The dashboard reads the weather from the API, and from `data/weather.json` when the page is served without it.
-- One process now runs both the update loop and the API (`app/outpost_server.py`, in place of `outpost_updater.py --loop`), so home and other places share each weather service's request limits.
-
-## [0.7.0-beta.3] - 2026-11-16
-
-### Changed
-
-- `docs/api-design.md`: the plan for the 0.7.0 API that lets each screen show another place (location search, "my location"), with the limits that protect your weather services' quotas. Nothing changes on the dashboard yet.
-- Behind the scenes, the updater can fetch the weather for any place, not only home, and keeps each place's last good data separately, so one place's outage never shows another's readings. `weather.json` and the dashboard are unchanged.
-
-## [0.7.0-beta.2] - 2026-11-16
-
-### Added
-
-- `docs/home-assistant.md`: how to show the dashboard in a Home Assistant Webpage card (and what to do when it stays blank, such as Home Assistant on HTTPS with Outpost on HTTP), and ready-to-paste Home Assistant configuration that reads `weather.json` as sensors (temperature, humidity, wind, pressure, alerts, a severe-alert sensor, and a data-problem sensor) and as a `weather.outpost` entity with the daily forecast for the built-in weather cards.
-
-## [0.7.0-beta.1] - 2026-11-16
-
-### Changed
-
-- The README shows the latest release and the license as badges beside the CI status.
+- **Other places are on by default.** Anyone who can open the dashboard can look at the weather elsewhere, up to `OUTPOST_LOCATION_LIMIT` fetches an hour (default 30). Set `OUTPOST_LOCATION_SEARCH=false` to show only home; pinned `?lat=&lon=` addresses are then refused.
+- If you start the container with your own command that runs `outpost_updater.py --loop`, run `outpost_server.py` instead. `--loop` still updates `weather.json`, but without the API there is no location search, radar, or sensors. With the image's own start script nothing changes.
+- `weather.json` is unchanged (`schema_version` 1), so tools that read it need no changes.
 
 ## [0.6.0] - 2026-11-14
 
