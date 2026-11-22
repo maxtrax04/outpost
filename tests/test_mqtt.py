@@ -62,6 +62,13 @@ class PacketTests(unittest.TestCase):
         self.assertEqual(reader.skipped, 1)
         self.assertEqual(len(reader.buffer), 0)
 
+    def test_tls_checks_the_certificate_with_tls_1_2_or_newer(self):
+        import ssl
+        context = m.tls_context()
+        self.assertEqual(context.minimum_version, ssl.TLSVersion.TLSv1_2)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
+
     def test_reader_refuses_a_bad_length(self):
         with self.assertRaises(m.ProtocolError):
             m.Reader().feed(b"\x30\xff\xff\xff\xff\x01")

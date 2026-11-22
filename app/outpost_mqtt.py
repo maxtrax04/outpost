@@ -173,6 +173,13 @@ def tcp_connect(host: str, port: int, timeout: float) -> socket.socket:
     return socket.create_connection((host, port), timeout=timeout)
 
 
+def tls_context() -> ssl.SSLContext:
+    """Checks the broker's certificate and name, with TLS 1.2 or newer."""
+    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
 class Client:
     """Subscribes to `topics` on one broker and calls on_message(topic, payload) for each message,
     from its own thread (run). on_alive() is called whenever the broker is heard from, and
@@ -206,8 +213,7 @@ class Client:
     def _open(self) -> socket.socket:
         sock = self.connect(self.host, self.port, CONNECT_TIMEOUT)
         if self.tls:
-            context = self.tls_context or ssl.create_default_context()
-            sock = context.wrap_socket(sock, server_hostname=self.host)
+            sock = (self.tls_context or tls_context()).wrap_socket(sock, server_hostname=self.host)
         return sock
 
     def session(self, stop: threading.Event) -> None:
