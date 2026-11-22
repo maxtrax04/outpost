@@ -426,12 +426,18 @@ const SAMPLE_SENSORS = {
         ["Front lock", "text", "locked", "Locked", "", ""],
     ].map(([label, kind, value, text, unit, deviceClass], n) => ({
         id: `s${n + 1}`, label, kind, value, text, unit, device_class: deviceClass, missing: false })),
+    power: [
+        { role: "home", label: "Home", text: "640", unit: "W", value: 640 },
+        { role: "solar", label: "Solar", text: "2.4", unit: "kW", value: 2.4 },
+        { role: "grid", label: "Grid", text: "1.8", unit: "kW", value: -1.8, direction: "export" },
+        { role: "battery", label: "Battery", text: "85", unit: "%", value: 85, fraction: 0.85 },
+    ].map((reading) => ({ id: `p-${reading.role}`, kind: "number", device_class: "", missing: false, ...reading })),
     updated_at: "2026-01-01T00:00:00Z",
     interval_seconds: 10,
 };
 
 // Tablets (landscape and portrait): every theme that fits the screen (--fit-screen: 1, as all the
-// built-in ones do) fits without scrolling, even with the map, sensors, and an alert shown (the
+// built-in ones do) fits without scrolling, even with the map, power, sensors, and an alert shown (the
 // tallest page), and nothing sticks out past the right edge
 const TABLETS = { "tablet landscape": { width: 1024, height: 768 }, "tablet portrait": { width: 768, height: 1024 } };
 async function checkScreenFit(browser, theme) {
@@ -457,6 +463,11 @@ async function checkScreenFit(browser, theme) {
                 const response = await route.fetch();
                 if (!response.ok()) return route.fulfill({ response });
                 const body = await response.json();
+                // The mock picks a condition at random, and a long one ("Thunderstorm watch") puts the
+                // readings under the temperature, which makes the page taller. A fixed, common one keeps
+                // the check the same every run. (With every panel shown and a very long condition, the
+                // heaviest themes may not fit a 1024x768 tablet at the smallest scale, and then scroll.)
+                if (body.current) body.current.condition = "Partly cloudy";
                 body.alerts = [{ title: "Wind Advisory", severity: "moderate", expires: "2099-01-01T00:00:00Z",
                     description: "Wind Advisory issued for the area until tomorrow evening by the local office.",
                     uri: "https://example.invalid/alert" }];
@@ -468,8 +479,10 @@ async function checkScreenFit(browser, theme) {
             && !document.getElementById("alertsPanel").hidden
             && !document.getElementById("sensorsPanel").hidden
             && document.querySelectorAll("#sensors .sensor").length === 6
+            && !document.getElementById("powerPanel").hidden
+            && document.querySelectorAll("#power .power").length === 4
             && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
-        if (!shown) problems.push(`${name}: the map, the sensors, and the alert were not shown`);
+        if (!shown) problems.push(`${name}: the map, power, sensors, and the alert were not shown`);
         await page.waitForTimeout(500); // fit.js measures on the next frame, and again when fonts load
         const fits = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--fit-screen").trim() === "1");
         if (!fits) {

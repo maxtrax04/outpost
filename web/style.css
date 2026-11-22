@@ -311,13 +311,40 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
     opacity: 0.85;
 }
 
-/* Sensor panel (sensors.js): Home Assistant readings as tiles like the weather readings above */
+/* Sensor and power panels (sensors.js): Home Assistant readings as tiles like the weather readings
+   above. #homePanels holds both, so the screen layout places them as one. */
 .sensor-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;
 }
 .sensor-value { overflow-wrap: anywhere; }
+/* Power and sensors side by side when there is room, one above the other when not. The power
+   tiles (at most four) stay on one row. */
+.home-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+    column-gap: 22px;
+}
+.power-list { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+/* The battery's charge as a bar along the bottom of its tile (a theme with gauges can hide it and
+   use --value and data-gauge like any other gauge) */
+.detail-box .power-bar {
+    display: block;
+    height: 6px;
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.detail-box .power-bar::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: calc(var(--value, 0) * 100%);
+    background: var(--accent);
+}
+.detail-box[data-missing] .power-bar { display: none; }
 
 .forecast {
     display: grid;
@@ -704,12 +731,13 @@ footer {
     :where(:root[data-fit="on"]) .map-panel { flex: 1 1 auto; }
 }
 
-/* Landscape with the map, the sensors, or the alerts shown: two columns, the current conditions and
-   forecast on the left, and on the right the map, then the sensors, then the alerts (whichever are
-   shown). The map's row takes the height the left column has to spare, so the map fills it. */
+/* Landscape with the map, the sensors or power (#homePanels), or the alerts shown: two columns, the
+   current conditions, forecast, and power on the left, and on the right the map, then the sensors,
+   then the alerts (whichever are shown). The map's row takes the height the left column has to
+   spare, so the map fills it. A hidden panel's row has no height, so power needs no layouts of its own. */
 @media (orientation: landscape) {
     :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])),
-    :where(:root[data-fit="on"]) main:has(> #sensorsPanel:not([hidden])),
+    :where(:root[data-fit="on"]) main:has(> #homePanels:not([hidden])),
     :where(:root[data-fit="on"]) main:has(> #alertsPanel:not([hidden])) {
         display: grid;
         grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
@@ -717,7 +745,7 @@ footer {
         align-content: start;
     }
     /* Map, sensors, and alerts */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel:not([hidden])) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #homePanels:not([hidden])):has(> #alertsPanel:not([hidden])) {
         grid-template-areas:
             "header   header"
             "banner   banner"
@@ -725,24 +753,26 @@ footer {
             "forecast map"
             "forecast sensors"
             "forecast alerts"
+            "power    alerts"
             "status   status"
             "footer   footer";
-        grid-template-rows: auto auto auto 1fr auto auto auto auto;
+        grid-template-rows: auto auto auto 1fr auto auto auto auto auto;
     }
     /* Map and sensors */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel[hidden]) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #homePanels:not([hidden])):has(> #alertsPanel[hidden]) {
         grid-template-areas:
             "header   header"
             "banner   banner"
             "current  map"
             "forecast map"
             "forecast sensors"
+            "power    sensors"
             "status   status"
             "footer   footer";
-        grid-template-rows: auto auto auto 1fr auto auto auto;
+        grid-template-rows: auto auto auto 1fr auto auto auto auto;
     }
     /* Map and alerts */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel[hidden]):has(> #alertsPanel:not([hidden])) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #homePanels[hidden]):has(> #alertsPanel:not([hidden])) {
         grid-template-areas:
             "header   header"
             "banner   banner"
@@ -754,7 +784,7 @@ footer {
         grid-template-rows: auto auto auto 1fr auto auto auto;
     }
     /* Map */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #sensorsPanel[hidden]):has(> #alertsPanel[hidden]) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel:not([hidden])):has(> #homePanels[hidden]):has(> #alertsPanel[hidden]) {
         grid-template-areas:
             "header   header"
             "banner   banner"
@@ -765,29 +795,31 @@ footer {
         grid-template-rows: auto auto auto 1fr auto auto;
     }
     /* Sensors and alerts */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel:not([hidden])) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #homePanels:not([hidden])):has(> #alertsPanel:not([hidden])) {
         grid-template-areas:
             "header   header"
             "banner   banner"
             "current  sensors"
             "forecast alerts"
+            "power    alerts"
             "status   status"
             "footer   footer";
-        grid-template-rows: auto auto auto auto auto auto;
+        grid-template-rows: auto auto auto auto auto auto auto;
     }
     /* Sensors */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel:not([hidden])):has(> #alertsPanel[hidden]) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #homePanels:not([hidden])):has(> #alertsPanel[hidden]) {
         grid-template-areas:
             "header   header"
             "banner   banner"
             "current  sensors"
             "forecast sensors"
+            "power    sensors"
             "status   status"
             "footer   footer";
-        grid-template-rows: auto auto auto auto auto auto;
+        grid-template-rows: auto auto auto auto auto auto auto;
     }
     /* Alerts */
-    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #sensorsPanel[hidden]):has(> #alertsPanel:not([hidden])) {
+    :where(:root[data-fit="on"]) main:has(> #mapPanel[hidden]):has(> #homePanels[hidden]):has(> #alertsPanel:not([hidden])) {
         grid-template-areas:
             "header   header"
             "banner   banner"
@@ -802,7 +834,11 @@ footer {
     :where(:root[data-fit="on"]) main > .current { grid-area: current; }
     :where(:root[data-fit="on"]) main > [data-panel="forecast"] { grid-area: forecast; }
     :where(:root[data-fit="on"]) main > #mapPanel { grid-area: map; }
-    :where(:root[data-fit="on"]) main > #sensorsPanel { grid-area: sensors; }
+    /* The power panel goes under the forecast, and the sensors in the right-hand column: their
+       wrapper steps aside so each is placed on its own */
+    :where(:root[data-fit="on"]) main > #homePanels:not([hidden]) { display: contents; }
+    :where(:root[data-fit="on"]) main > #homePanels > #powerPanel { grid-area: power; }
+    :where(:root[data-fit="on"]) main > #homePanels > #sensorsPanel { grid-area: sensors; }
     :where(:root[data-fit="on"]) main > #alertsPanel { grid-area: alerts; }
     :where(:root[data-fit="on"]) main > #alertsStatus { grid-area: status; }
     :where(:root[data-fit="on"]) main > footer { grid-area: footer; }

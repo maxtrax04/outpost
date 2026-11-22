@@ -12,7 +12,7 @@ The update loop writes /data/weather.json for home every OUTPOST_UPDATE_INTERVAL
   GET /api/places?q=..                  places matching a name, for the search box (Open-Meteo geocoding)
   GET /api/radar[?lat=..&lon=..]        the map's radar frames for home or another place (outpost_radar.py)
   GET /tiles/radar/...                  a radar tile, through nginx's radar cache
-  GET /api/sensors                      the sensor panel's readings (outpost_sensors.py, docs/sensors-design.md)
+  GET /api/sensors                      the sensor and power panels' readings (outpost_sensors.py, docs/sensors-design.md)
 
 One process, so the providers' response caches and request minimums are shared by home and other
 places. Other places are fetched only when a screen asks, at most every PLACE_REFRESH_SECONDS each,
@@ -163,9 +163,9 @@ def status(sensors: Optional[outpost_sensors.Sensors] = None) -> Dict[str, Any]:
 
 
 def sensor_readings(sensors: Optional[outpost_sensors.Sensors]) -> Dict[str, Any]:
-    """The sensor panel's readings: only what OUTPOST_SENSORS lists, whatever the request says."""
+    """The sensor and power panels' readings: only what the settings list, whatever the request says."""
     if sensors is None or not sensors.on:
-        raise ApiError(404, "sensors_off", "No sensors are listed (OUTPOST_SENSORS)")
+        raise ApiError(404, "sensors_off", "No sensors are listed (OUTPOST_SENSORS, OUTPOST_POWER_*)")
     return sensors.answer()
 
 

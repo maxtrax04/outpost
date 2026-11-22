@@ -302,9 +302,12 @@ While fitting, the page is laid out for one screen (the "Screen layout" rules at
 - The readings sit beside the temperature when there is room, and under it when not. The temperature,
   icon, and condition have fixed sizes, since the page is scaled anyway.
 - In portrait, the page is one column as tall as the screen, and the map takes the height left over.
-- In landscape, with the map or alerts shown, the page has two columns: the current conditions and
-  forecast on the left; the map, the alerts, or the map with the alerts under it on the right. The map
-  fills its column (at least `--map-min-height`, default `180px`).
+- In landscape, with the map, sensors, power, or alerts shown, the page has two columns: the current
+  conditions, the forecast, and power on the left; the map, the sensors, and the alerts (whichever are
+  shown) on the right. The map fills its column (at least `--map-min-height`, default `180px`).
+- Power and sensors are in `#homePanels`. Outside landscape fitting they sit side by side when there is
+  room; in landscape fitting it is `display: contents`, so each panel has its own grid area (`power` and
+  `sensors`).
 
 Those rules use `:where()`, so they are as easy to override as the base styles: a theme's own rule for
 `.header`, `.current`, and so on wins. A theme that moves a panel out of the page (as `atomic-broadcast`
@@ -343,6 +346,25 @@ their own, each tile has:
 
 For example, `.sensor[data-device-class="door"][data-state="on"] { border-color: var(--warn); }` marks
 open doors.
+
+### Power
+
+The power panel (`#powerPanel`, shown when an `OUTPOST_POWER_*` setting is set) holds `.power` tiles in
+`#power` (a `.sensor-list.power-list`, kept on one row), in the order home, solar, grid, battery. Like the
+sensor tiles, each is a `.detail-box` with the label, a `<br>`, and the value in a `.sensor-value` span.
+
+| Attribute or element | What |
+|---|---|
+| `data-metric` | `power-home`, `power-solar`, `power-grid`, or `power-battery` |
+| `data-power-role` | `home`, `solar`, `grid`, or `battery` |
+| `data-direction` | On the grid tile: `import`, `export`, or `idle` |
+| `.power-direction` | On the grid tile: a `.reading-note` that says Importing, Exporting, or Idle |
+| `data-gauge` and `--value` | On the battery tile: its charge from 0 to 1, like the weather gauges, so a theme's gauge style shows it |
+| `.power-bar` | On the battery tile: a bar filled to `--value`. A theme that draws its own gauges can hide it with `.detail-box .power-bar { display: none; }`, as `field-station` and `atomic-broadcast` do |
+| `data-missing` | Present when there is no reading |
+
+For example, `.power[data-direction="export"] .sensor-value { color: var(--accent); }` colors the grid
+when it is exporting.
 
 ### Alerts
 

@@ -127,7 +127,7 @@ class ConnectionTests(unittest.TestCase):
     def test_nothing_listed_is_off(self):
         sensors = o.from_environment({"OUTPOST_HA_URL": "http://ha.example", "OUTPOST_HA_TOKEN": "abc"})
         self.assertFalse(sensors.on)
-        self.assertIn("OUTPOST_SENSORS is empty", sensors.describe())
+        self.assertIn("OUTPOST_SENSORS and OUTPOST_POWER_* are empty", sensors.describe())
 
     def test_listed_without_home_assistant_is_off_and_says_why(self):
         sensors = o.from_environment({"OUTPOST_SENSORS": "sensor.a"})
@@ -138,7 +138,7 @@ class ConnectionTests(unittest.TestCase):
         sensors = o.from_environment({"OUTPOST_SENSORS": "sensor.a", "OUTPOST_HA_URL": "http://ha.example",
                                       "OUTPOST_HA_TOKEN": "secret-token"})
         self.assertTrue(sensors.on)
-        self.assertEqual(sensors.describe(), "1 sensor readings from Home Assistant, every 10 s")
+        self.assertEqual(sensors.describe(), "1 sensor reading from Home Assistant, every 10 s")
 
 
 class ReadingTests(unittest.TestCase):
@@ -287,6 +287,115 @@ class SensorsTests(unittest.TestCase):
         self.assertGreaterEqual(len(calls), 2)
 
 
+class PowerTests(unittest.TestCase):
+    def setUp(self):
+        self.environ = {
+            "OUTPOST_HA_URL": "http://ha.example", "OUTPOST_HA_TOKEN": "secret-token",
+            "OUTPOST_POWER_HOME": "sensor.house", "OUTPOST_POWER_SOLAR": "Panels=sensor.pv",
+            "OUTPOST_POWER_GRID": "sensor.grid", "OUTPOST_POWER_BATTERY": "sensor.battery",
+        }
+
+    def item(self, role, source="sensor.x", label="", unit=""):
+        return o.Item(0, source, label, unit, role)
+
+    def test_one_reading_per_role(self):
+        items, problems = o.parse_power(self.environ)
+        self.assertEqual([(i.role, i.id, i.source, i.label) for i in items], [
+            ("home", "p-home", "sensor.house", ""), ("solar", "p-solar", "sensor.pv", "Panels"),
+            ("grid", "p-grid", "sensor.grid", ""), ("battery", "p-battery", "sensor.battery", ""),
+        ])
+        self.assertEqual(problems, [])
+
+    def test_bad_or_extra_readings_are_named(self):
+        items, problems = o.parse_power({"OUTPOST_POWER_HOME": "sensor.a, sensor.b",
+                                         "OUTPOST_POWER_GRID": "not an entity", "OUTPOST_POWER_SOLAR": " "})
+        self.assertEqual([(i.role, i.source) for i in items], [("home", "sensor.a")])
+        self.assertTrue(any(p.startswith("OUTPOST_POWER_HOME: one reading per role") for p in problems))
+        self.assertTrue(any(p.startswith("OUTPOST_POWER_GRID: ") for p in problems))
+
+    def test_roles_are_labelled_unless_the_setting_gives_a_label(self):
+        reading = o.power_reading(self.item("home"), state("640", friendly_name="Shelly 3EM", unit_of_measurement="W"))
+        self.assertEqual((reading["role"], reading["label"], reading["text"], reading["unit"]), ("home", "Home", "640", "W"))
+        reading = o.power_reading(self.item("solar", label="Roof"), state("2350", unit_of_measurement="W"))
+        self.assertEqual((reading["label"], reading["text"], reading["unit"]), ("Roof", "2.4", "kW"))
+
+    def test_grid_direction(self):
+        grid = self.item("grid")
+        cases = [("1200", False, "import", "1.2", 1.2), ("-800", False, "export", "800", -800),
+                 ("0", False, "idle", "0", 0), ("-0.0", False, "idle", "0.0", 0),
+                 ("1200", True, "export", "1.2", -1.2), ("-0.3", True, "import", "0.3", 0.3)]
+        for raw, invert, direction, text, value in cases:
+            with self.subTest(raw=raw, invert=invert):
+                unit = "kW" if raw.endswith(".3") else "W"
+                reading = o.power_reading(grid, state(raw, unit_of_measurement=unit), invert)
+                self.assertEqual((reading["direction"], reading["text"], reading["missing"]), (direction, text, False))
+                self.assertAlmostEqual(reading["value"], value)
+
+    def test_battery_charge_as_a_fraction(self):
+        battery = self.item("battery")
+        reading = o.power_reading(battery, state("85", unit_of_measurement="%", device_class="battery"))
+        self.assertEqual((reading["text"], reading["unit"], reading["fraction"]), ("85", "%", 0.85))
+        self.assertEqual(o.power_reading(battery, state("62.5"))["unit"], "%")
+        self.assertEqual(o.power_reading(battery, state("130", unit_of_measurement="%"))["fraction"], 1.0)
+        self.assertNotIn("fraction", o.power_reading(battery, state("13.2", unit_of_measurement="kWh")))
+
+    def test_anything_but_a_number_is_missing(self):
+        for role in ("home", "grid", "battery"):
+            for raw in ("unavailable", "charging", "on"):
+                with self.subTest(role=role, raw=raw):
+                    reading = o.power_reading(self.item(role, "binary_sensor.x" if raw == "on" else "sensor.x"),
+                                              state(raw))
+                    self.assertEqual((reading["kind"], reading["text"], reading["missing"]), ("number", "", True))
+                    self.assertIsNone(reading["value"])
+                    self.assertEqual("direction" in reading, role == "grid")
+
+    def test_read_with_the_sensors_and_answered_in_role_order(self):
+        home = FakeHomeAssistant({
+            "sensor.t": state("21.5", unit_of_measurement="°C"),
+            "sensor.house": state("640", unit_of_measurement="W"),
+            "sensor.grid": state("300", unit_of_measurement="W"),
+            "sensor.battery": state("85", unit_of_measurement="%"),
+        })
+        environ = dict(self.environ, OUTPOST_SENSORS="sensor.t", OUTPOST_POWER_GRID_INVERT="true")
+        with quiet():
+            sensors = o.from_environment(environ)
+        sensors.get = home
+        self.assertTrue(sensors.invert_grid)
+        before = sensors.answer()["power"]
+        self.assertEqual([(r["role"], r["label"], r["missing"]) for r in before], [
+            ("home", "Home", True), ("solar", "Panels", True), ("grid", "Grid", True), ("battery", "Battery", True)])
+        with quiet():
+            sensors.poll_once()
+        self.assertEqual([url.rsplit("/", 1)[-1] for url, _ in home.asked],
+                         ["sensor.t", "sensor.house", "sensor.pv", "sensor.grid", "sensor.battery"])
+        answer = sensors.answer()
+        self.assertEqual([r["text"] for r in answer["sensors"]], ["21.5"])
+        power = {r["role"]: r for r in answer["power"]}
+        self.assertEqual(power["home"]["text"], "640")
+        self.assertTrue(power["solar"]["missing"])
+        self.assertEqual(power["grid"]["direction"], "export")
+        self.assertEqual(power["battery"]["fraction"], 0.85)
+
+    def test_power_alone_turns_the_panels_on(self):
+        environ = {k: v for k, v in self.environ.items() if k != "OUTPOST_POWER_SOLAR"}
+        with quiet():
+            sensors = o.from_environment(environ)
+        self.assertTrue(sensors.on)
+        self.assertEqual(sensors.items, [])
+        self.assertEqual(sensors.describe(), "power (home, grid, battery) from Home Assistant, every 10 s")
+        self.assertEqual(sensors.answer()["sensors"], [])
+        self.assertFalse(o.Sensors([], "http://ha.example", power=[]).on)
+        with quiet():
+            both = o.from_environment(dict(self.environ, OUTPOST_SENSORS="sensor.t"))
+        self.assertEqual(both.describe(),
+                         "1 sensor reading and power (home, solar, grid, battery) from Home Assistant, every 10 s")
+
+    def test_grid_invert_setting(self):
+        for value, expected in (("", False), ("false", False), ("true", True), ("1", True), ("nope", False)):
+            with self.subTest(value=value):
+                self.assertIs(o.flag(value), expected)
+
+
 class HttpGetTests(unittest.TestCase):
     def test_answers_and_errors(self):
         def opener(code=None, body=b"{}", error=None):
@@ -351,6 +460,18 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn("sensor.secret", json.dumps(body))
         self.assertEqual(len(home.asked), 1)
 
+    def test_power_on_its_own(self):
+        home = FakeHomeAssistant({"sensor.grid": state("-450", unit_of_measurement="W")})
+        sensors = o.Sensors([], "http://ha.example", "t", "Home Assistant", get=home,
+                            power=[o.Item(0, "sensor.grid", role="grid")])
+        with quiet():
+            sensors.poll_once()
+        base = self.start(sensors)
+        self.assertTrue(self.get(base + "/api/status")[1]["sensors"])
+        body = self.get(base + "/api/sensors")[1]
+        self.assertEqual(body["sensors"], [])
+        self.assertEqual([(r["role"], r["text"], r["direction"]) for r in body["power"]], [("grid", "450", "export")])
+
     def test_sensors_off(self):
         for sensors in (None, o.Sensors([], None)):
             with self.subTest(sensors=sensors):
@@ -372,6 +493,17 @@ class AddonTests(unittest.TestCase):
                          {"OUTPOST_SENSORS": "sensor.a, Garage=binary_sensor.g"})
         self.assertEqual(a.settings_from_options({"sensors": []}), {})
         self.assertIn("sensors set", a.options_summary({"sensors": ["sensor.a"]}))
+
+    def test_the_power_roles_are_settings(self):
+        import outpost_addon as a
+        self.assertEqual(a.settings_from_options({"power_home": " sensor.house ", "power_grid_invert": True,
+                                                  "power_solar": ""}),
+                         {"OUTPOST_POWER_HOME": "sensor.house", "OUTPOST_POWER_GRID_INVERT": "true"})
+        config = json.loads((ROOT / "homeassistant" / "outpost" / "config.json").read_text(encoding="utf-8"))
+        for role in ("home", "solar", "grid", "battery"):
+            self.assertEqual(config["schema"][f"power_{role}"], "str?")
+        self.assertEqual(config["schema"]["power_grid_invert"], "bool")
+        self.assertIs(config["options"]["power_grid_invert"], False)
 
     def test_the_add_on_lists_sensors(self):
         config = json.loads((ROOT / "homeassistant" / "outpost" / "config.json").read_text(encoding="utf-8"))

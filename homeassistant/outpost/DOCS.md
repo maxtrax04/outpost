@@ -46,6 +46,9 @@ Some options worth knowing:
   `sensor.living_room_temperature`. Put a label before `=` and a unit in brackets after it if you like:
   `Garage=binary_sensor.garage_door`. The add-on reads them from Home Assistant itself, with no token to
   set. It only reads the entities listed. Anyone who can open the dashboard sees them.
+- **Power**: for the power panel, one entity each for home use, solar, grid, and battery charge (leave out
+  the ones you don't have). Grid is positive when importing; turn on **Flip the grid sign** if your meter
+  counts exports as positive.
 
 ## Wall tablets and other screens
 
@@ -74,5 +77,5 @@ above, and use `http://homeassistant.local:<port>` as Outpost's address there.
 
 Outpost sends your location only to the weather services you choose (and, with the map, the map and
 radar tiles it shows), and does not log it. The add-on reads Home Assistant's configuration only for
-the location, time zone, and units, once at startup, and the entities listed under **Sensors**, every
-**Sensor interval** seconds (10 by default).
+the location, time zone, and units, once at startup, and the entities listed under **Sensors** and
+**Power**, every **Sensor interval** seconds (10 by default).

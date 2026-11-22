@@ -104,6 +104,21 @@ configuration:
   sensors_interval:
     name: Sensor interval
     description: Seconds between sensor readings (at least 5; default 10).
+  power_home:
+    name: Power - home use
+    description: "An entity with the home's power use now, such as sensor.house_power (W or kW)."
+  power_solar:
+    name: Power - solar
+    description: An entity with solar production now.
+  power_grid:
+    name: Power - grid
+    description: An entity with grid power, positive when importing and negative when exporting.
+  power_grid_invert:
+    name: Flip the grid sign
+    description: For meters that count exports as positive.
+  power_battery:
+    name: Power - battery
+    description: An entity with the battery's charge in percent.
   frame_ancestors:
     name: Sites that may frame it
     description: Only needed to show Outpost's own port in a frame elsewhere. The Outpost panel in Home Assistant works without it.
