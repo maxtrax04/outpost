@@ -211,6 +211,7 @@ themes use most of them and are a good place to start.
 | `.panel` | Every panel. One panel: `[data-panel="header"]`, `"banner"` (the warning banner), `"current"`, `"forecast"`, or `"alerts"` |
 | `.detail-box` | Each reading in the current-weather panel. One reading: `[data-metric="humidity"]` (names below) |
 | `.forecast-card` | Each forecast day |
+| `.hourly-hour` | Each hour in the hourly forecast, a strip (`#hourlyPanel`, `.hourly-strip`) at the top of the forecast panel, with `data-icon` (its weather icon) and, on the hour under way, `data-now`. Inside: `.hourly-time`, `.hourly-icon`, `.hourly-temp`, and `.hourly-rain` (`data-missing` when there is no chance to show). The strip shows as many hours as fit on one line (at most 12); set `grid-template-columns` on `.hourly` to change how wide each one is. |
 | `.frame` | An empty layer over the whole screen, above the content and scanlines, for a bezel. Set `--frame-inset` (for example `--frame-inset: 32px;` in `:root`) to move the content in from the edges so the bezel does not cover it, and `--frame-inset-bottom` as well for a bezel with a deeper bottom edge |
 
 Decorations must not cover text, and should not catch taps (`.frame` already ignores them).
@@ -303,7 +304,7 @@ While fitting, the page is laid out for one screen (the "Screen layout" rules at
   icon, and condition have fixed sizes, since the page is scaled anyway.
 - In portrait, the page is one column as tall as the screen, and the map takes the height left over.
 - In landscape, with the map, sensors, power, or alerts shown, the page has two columns: the current
-  conditions, the forecast, and power on the left; the map, the sensors, and the alerts (whichever are
+  conditions, the forecast (with the hourly strip), and power on the left; the map, the sensors, and the alerts (whichever are
   shown) on the right. The map fills its column (at least `--map-min-height`, default `180px`).
 - Power and sensors are in `#homePanels`. Outside landscape fitting they sit side by side when there is
   room; in landscape fitting it is `display: contents`, so each panel has its own grid area (`power` and

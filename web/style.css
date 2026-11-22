@@ -346,6 +346,36 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 }
 .detail-box[data-missing] .power-bar { display: none; }
 
+/* Hourly forecast (hourly.js), at the top of the forecast panel: one line of hours, as many as fit
+   (the rest are on rows of no height, so they never take room) */
+.hourly-strip { margin-bottom: 12px; }
+.hourly {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+    grid-template-rows: auto;
+    grid-auto-rows: 0;
+    column-gap: 8px;
+    overflow: hidden;
+}
+.hourly-hour {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    padding: 6px 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--cell-bg);
+    text-align: center;
+}
+.hourly-hour[data-now] { border-color: var(--accent); }
+.hourly-time { font-size: 0.85em; color: var(--text-dim); white-space: nowrap; }
+.hourly-icon { width: 30px; aspect-ratio: 1; margin: 2px 0; }
+.hourly-temp { font-size: 1.15em; white-space: nowrap; }
+.hourly-rain { font-size: 0.8em; color: var(--text-dim); white-space: nowrap; }
+
 .forecast {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

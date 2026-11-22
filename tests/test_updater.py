@@ -13,7 +13,7 @@ import outpost_updater as u
 from providers import metno, nws, openmeteo
 
 DIM_VARS = ["OUTPOST_AUTO_DIM", "OUTPOST_DIM_LEVEL", "OUTPOST_DIM_MODE", "OUTPOST_DIM_START", "OUTPOST_DIM_END"]
-UI_VARS = ["OUTPOST_SUBTITLE", "OUTPOST_ALERTS_ALWAYS_SHOW", "OUTPOST_THEME_SWITCHER", "OUTPOST_EFFECTS", "OUTPOST_EFFECTS_TOGGLE"]
+UI_VARS = ["OUTPOST_SUBTITLE", "OUTPOST_ALERTS_ALWAYS_SHOW", "OUTPOST_HOURLY", "OUTPOST_THEME_SWITCHER", "OUTPOST_EFFECTS", "OUTPOST_EFFECTS_TOGGLE"]
 
 
 def nws_data():
@@ -470,13 +470,13 @@ class ConfigTests(UpdaterTestCase):
 
     def test_ui_defaults(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "", "OUTPOST_ALERTS_ALWAYS_SHOW": ""})
-        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False, "theme_switcher": True,
+        self.assertEqual(config["ui"], {"subtitle": "", "alerts_always_show": False, "hourly": True, "theme_switcher": True,
                                         "effects": "full", "effects_toggle": True, "clock": "auto",
                                         "clock_toggle": True})
 
     def test_ui_settings(self):
         config = self.write_with_env({"OUTPOST_SUBTITLE": "  {date}  ", "OUTPOST_ALERTS_ALWAYS_SHOW": "True"})
-        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True, "theme_switcher": True,
+        self.assertEqual(config["ui"], {"subtitle": "{date}", "alerts_always_show": True, "hourly": True, "theme_switcher": True,
                                         "effects": "full", "effects_toggle": True, "clock": "auto",
                                         "clock_toggle": True})
 
@@ -494,6 +494,11 @@ class ConfigTests(UpdaterTestCase):
             with self.subTest(value=value):
                 config = self.write_with_env({"OUTPOST_ALERTS_ALWAYS_SHOW": value})
                 self.assertEqual(config["ui"]["alerts_always_show"], expected)
+
+    def test_the_hourly_forecast_can_be_turned_off(self):
+        for value, expected in (("false", False), ("0", False), ("off", False), ("true", True), ("", True)):
+            with self.subTest(value=value):
+                self.assertIs(self.write_with_env({"OUTPOST_HOURLY": value})["ui"]["hourly"], expected)
 
     def test_theme_switcher_can_be_turned_off(self):
         for value in ("false", "0", "no", "off"):
