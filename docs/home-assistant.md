@@ -110,6 +110,7 @@ rest:
           - status
           - current
           - forecast
+          - hourly
           - units
           - sources
           - generated_at
@@ -188,7 +189,7 @@ Notes:
 
 A [template weather entity](https://www.home-assistant.io/integrations/weather.template/) turns those
 readings into a `weather.outpost` entity, which the built-in weather forecast card shows, with the daily
-forecast. It reads the *Outpost weather* sensor above.
+and hourly forecasts. It reads the *Outpost weather* sensor above.
 
 ```yaml
 template:
@@ -242,7 +243,25 @@ template:
             }] %}
           {% endfor %}
           {{ ns.days }}
+        forecast_hourly: >-
+          {% set ns = namespace(hours=[]) %}
+          {% for hour in state_attr('sensor.outpost_weather', 'hourly') or [] %}
+            {% if as_datetime(hour.time) > now() - timedelta(hours=1) %}
+              {% set ns.hours = ns.hours + [{
+                'datetime': hour.time,
+                'condition': conditions.get(hour.icon, 'exceptional'),
+                'temperature': hour.temperature,
+                'precipitation_probability': hour.precipitation_chance,
+                'wind_speed': hour.wind_speed,
+                'wind_bearing': hour.wind_direction,
+              }] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.hours }}
 ```
+
+The hourly forecast needs Outpost 0.8.0 or later; with an older version it stays empty. Hours that have
+already passed (while the data is degraded) are left out.
 
 The attribution credits the weather source, as Open-Meteo and MET Norway require.
 

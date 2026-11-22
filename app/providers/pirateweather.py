@@ -29,6 +29,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any, Dict, List, Optional, Tuple
+
+from providers import hourly as hours
 from zoneinfo import ZoneInfo
 
 API_URL = "https://api.pirateweather.net/forecast"
@@ -130,7 +132,7 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
     if not api_key:
         raise RuntimeError("Pirate Weather needs an API key: set OUTPOST_PIRATEWEATHER_API_KEY")
 
-    params = {"units": "us", "exclude": "minutely,hourly"}
+    params = {"units": "us", "exclude": "minutely"}
     # The key travels in the apikey header; the address only needs something in its place
     url = f"{API_URL}/key-in-header/{latitude:.4f},{longitude:.4f}?{urllib.parse.urlencode(params)}"
     now = time.time()
@@ -239,7 +241,22 @@ def build_forecast(days: List[Dict[str, Any]], zone: tzinfo) -> List[Dict[str, A
     return forecast
 
 
-def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
+def build_hourly(entries: Any, now: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    """The next hours (providers/hourly.py) from the hourly block."""
+    result = []
+    for item in entries if isinstance(entries, list) else []:
+        start = _number(item.get("time")) if isinstance(item, dict) else None
+        if start is None:
+            continue
+        condition, icon = describe(item.get("icon"), item.get("summary"))
+        chance = _number(item.get("precipProbability"))
+        result.append(hours.entry(datetime.fromtimestamp(start, timezone.utc), _number(item.get("temperature")),
+                                  condition, icon, chance * 100 if chance is not None else None,
+                                  _number(item.get("windSpeed")), _number(item.get("windBearing"))))
+    return hours.upcoming(result, now)
+
+
+def normalize(raw: Dict[str, Any], now: Optional[datetime] = None) -> Dict[str, Any]:
     """
     Outpost's normalized format. Readings are unrounded, in °F, mph, inHg, and miles; the updater
     converts them to OUTPOST_UNITS and rounds them (app/units.py).
@@ -252,6 +269,7 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "source": SOURCE,
         "current": build_current(currently),
         "forecast": build_forecast(days, _zone(raw)),
+        "hourly": build_hourly(((raw or {}).get("hourly") or {}).get("data"), now),
         "timezone": raw.get("timezone"),  # the location's, such as America/Chicago
         "alerts": [],
     }

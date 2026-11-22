@@ -129,7 +129,7 @@ class IntervalTests(unittest.TestCase):
     def test_the_limits_are_reported_at_startup(self):
         with mock.patch.object(u, "UPDATE_INTERVAL", 60):
             text = u.request_limits_text()
-        for part in ("Open-Meteo every 15 min", "NWS forecast every 15 min", "observations every 5 min",
+        for part in ("Open-Meteo every 15 min", "NWS forecast and hourly forecast every 15 min", "observations every 5 min",
                      "alerts every 1 min", "MET Norway", "Pirate Weather every 10 min"):
             self.assertIn(part, text)
 

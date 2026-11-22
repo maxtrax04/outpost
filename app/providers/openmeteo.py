@@ -20,6 +20,8 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from providers import hourly as hours
+
 API_URL = "https://api.open-meteo.com/v1/forecast"
 SOURCE = "Open-Meteo.com"
 # What this provider supplies. Open-Meteo has no official alerts.
@@ -45,8 +47,10 @@ CURRENT_VARS = [
     "dew_point_2m",
 ]
 
-# UV index and visibility are only offered hourly, so we read the current hour.
-HOURLY_VARS = ["uv_index", "visibility"]
+# UV index and visibility are only offered hourly, so we read the current hour. The rest are for the
+# hourly forecast.
+HOURLY_VARS = ["uv_index", "visibility", "temperature_2m", "weather_code", "precipitation_probability",
+               "wind_speed_10m", "wind_direction_10m", "is_day"]
 
 DAILY_VARS = [
     "weather_code",
@@ -176,7 +180,31 @@ def _observed_at(local_time: Any, utc_offset_seconds: Any) -> Optional[str]:
     return moment.replace(tzinfo=timezone.utc).isoformat()
 
 
-def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
+def build_hourly(raw: Dict[str, Any], now: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    """The next hours (providers/hourly.py) from Open-Meteo's hourly block, in local time (timezone=auto)."""
+    block = raw.get("hourly") or {}
+    stamps = block.get("time") or []
+
+    def column(name: str) -> List[Any]:
+        values = block.get(name)
+        return values if isinstance(values, list) and len(values) == len(stamps) else [None] * len(stamps)
+
+    temps, codes, chances = column("temperature_2m"), column("weather_code"), column("precipitation_probability")
+    winds, directions, days = column("wind_speed_10m"), column("wind_direction_10m"), column("is_day")
+    entries = []
+    for index, stamp in enumerate(stamps):
+        moment = _observed_at(stamp, raw.get("utc_offset_seconds"))
+        if moment is None:
+            continue
+        condition, icon = describe(codes[index])
+        if days[index] == 0:
+            icon = NIGHT_ICONS.get(icon, icon)
+        entries.append(hours.entry(datetime.fromisoformat(moment), temps[index], condition, icon,
+                                   chances[index], winds[index], directions[index]))
+    return hours.upcoming(entries, now)
+
+
+def normalize(raw: Dict[str, Any], now: Optional[datetime] = None) -> Dict[str, Any]:
     """
     Convert an Open-Meteo response into Outpost's normalized format. Readings are unrounded, in
     °F, mph, inHg, and miles; the updater converts them to OUTPOST_UNITS and rounds them (app/units.py).
@@ -227,6 +255,7 @@ def normalize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "source": SOURCE,
         "current": normalized_current,
         "forecast": forecast,
+        "hourly": build_hourly(raw, now),
         "timezone": raw.get("timezone"),  # the location's (timezone=auto), such as Europe/Oslo
         "alerts": [],  # Open-Meteo does not provide official alerts
     }

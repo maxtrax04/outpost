@@ -55,7 +55,7 @@
       "required": ["system", "temperature", "speed", "pressure", "distance"],
       "properties": {
         "system": { "enum": ["imperial", "metric"] },
-        "temperature": { "type": "string", "description": "Label for temperature, feels_like, dew_point, high, and low, such as °F." },
+        "temperature": { "type": "string", "description": "Label for temperature, feels_like, dew_point, high, and low (also in hourly), such as °F." },
         "speed": { "type": "string", "description": "Label for wind_speed, such as mph." },
         "pressure": { "type": "string", "description": "Label for pressure, such as inHg." },
         "distance": { "type": "string", "description": "Label for visibility, such as mi." }
@@ -93,6 +93,23 @@
           "icon": { "$ref": "#/$defs/icon" },
           "precipitation_chance": { "$ref": "#/$defs/percent" },
           "uv_index": { "$ref": "#/$defs/reading" }
+        }
+      }
+    },
+    "hourly": {
+      "type": "array",
+      "description": "The next 24 hours, from the hour under way (added in Outpost 0.8.0; older files leave it out). Empty when the source has no hourly forecast.",
+      "items": {
+        "type": "object",
+        "required": ["time", "temperature", "condition", "icon", "precipitation_chance", "wind_speed", "wind_direction"],
+        "properties": {
+          "time": { "type": "string", "format": "date-time", "description": "When the hour starts (ISO 8601, UTC)." },
+          "temperature": { "$ref": "#/$defs/reading" },
+          "condition": { "type": "string" },
+          "icon": { "$ref": "#/$defs/icon" },
+          "precipitation_chance": { "$ref": "#/$defs/percent" },
+          "wind_speed": { "$ref": "#/$defs/reading" },
+          "wind_direction": { "type": ["integer", "null"], "minimum": 0, "maximum": 359, "description": "Where the wind comes from, in whole degrees. null when calm or not given." }
         }
       }
     },

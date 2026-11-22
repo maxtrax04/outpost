@@ -25,6 +25,7 @@ import outpost_map
 import regions
 import units
 from providers import gapfill, metno, nws, openmeteo, pirateweather
+from providers import hourly as hours
 
 DATA_PATH = Path("/data/weather.json")
 
@@ -524,6 +525,21 @@ def mock_data() -> Dict[str, Any]:
             "uv_index": random.randint(0,8)
         })
     
+    # The hourly forecast: from the hour under way, warmest mid-afternoon
+    hour_start = now.replace(minute=0, second=0, microsecond=0)
+    hourly = []
+    for offset in range(hours.HOURS):
+        moment = hour_start + timedelta(hours=offset)
+        condition, icon = current_condition, current_icon
+        if offset and random.random() < 0.25:
+            condition, icon = random.choice(condition_options)
+        night = not 6 <= moment.hour < 19
+        if night:
+            icon = {"sunny": "clear-night", "partly-cloudy": "partly-cloudy-night"}.get(icon, icon)
+        hourly.append(hours.entry(
+            moment, base_temp - 8 + 10 * max(0.0, 1 - abs(moment.hour - 15) / 9), condition, icon,
+            random.randint(0, 60), random.randint(0, 25), random.randint(0, 359)))
+
     alerts = []
 
     if current_condition == "Thunderstorm watch":
@@ -562,6 +578,7 @@ def mock_data() -> Dict[str, Any]:
             "visibility": random.randint(5, 10)
         },
         "forecast": forecast,
+        "hourly": hourly,
         "alerts": alerts,
     }
 
@@ -655,13 +672,14 @@ def build_payload(
     last_error: Optional[str] = None,
     timezone: Optional[str] = None,
     location: Optional[Location] = None,
+    hourly: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     weather.json, in the format described in docs/data-format.md, for `location` (home by default).
     Readings arrive in the providers' units, unrounded, and are converted to OUTPOST_UNITS and rounded here.
     """
     location = location or home_location()
-    readings = units.present({"current": current, "forecast": forecast}, UNITS)
+    readings = units.present({"current": current, "forecast": forecast, "hourly": hourly or []}, UNITS)
     return {
         "$schema": SCHEMA_URL,
         "schema_version": SCHEMA_VERSION,
@@ -681,6 +699,7 @@ def build_payload(
         "units": units_block(),
         "current": readings["current"],
         "forecast": readings["forecast"],
+        "hourly": readings["hourly"],
         "alerts": alerts,
         "last_error": last_error
     }
@@ -739,6 +758,7 @@ def build_live_payload(provider_name: str, data: Dict[str, Any],
         },
         current=data["current"],
         forecast=data["forecast"],
+        hourly=data.get("hourly") or [],
         alerts=alerts["alerts"],
         last_error=alerts["error"],
         timezone=location_timezone(data),
@@ -1118,7 +1138,7 @@ def request_limits_text() -> str:
 
     return ("Weather services are asked at most: "
             f"Open-Meteo every {minutes(openmeteo.MIN_REQUEST_SECONDS)}; "
-            f"NWS forecast every {minutes(nws.FORECAST_REQUEST_SECONDS)}, "
+            f"NWS forecast and hourly forecast every {minutes(nws.FORECAST_REQUEST_SECONDS)}, "
             f"observations every {minutes(nws.OBSERVATION_REQUEST_SECONDS)}, "
             f"alerts every {minutes(nws.ALERTS_REQUEST_SECONDS)}; "
             "MET Norway when its forecast is due to change; "

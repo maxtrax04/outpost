@@ -26,6 +26,8 @@ import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any, Dict, List, Optional, Tuple
+
+from providers import hourly as hours
 from zoneinfo import ZoneInfo
 
 API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
@@ -291,6 +293,26 @@ def build_forecast(timeseries: List[Dict[str, Any]], zone: tzinfo, today: date) 
     return forecast
 
 
+def build_hourly(timeseries: List[Dict[str, Any]], now: datetime) -> List[Dict[str, Any]]:
+    """The next hours (providers/hourly.py): the entries with a one-hour forecast (about the next
+    2 to 3 days; after that MET Norway gives 6-hour steps)."""
+    entries = []
+    for entry in timeseries:
+        start = _time(entry)
+        symbol = _symbol(entry, "next_1_hours")
+        if start is None or not symbol:
+            continue
+        instant = _details(entry, "instant")
+        condition, icon = describe(symbol)
+        temperature = _number(instant.get("air_temperature"))
+        wind = _number(instant.get("wind_speed"))
+        entries.append(hours.entry(
+            start, C_TO_F(temperature) if temperature is not None else None, condition, icon,
+            _number(_details(entry, "next_1_hours").get("probability_of_precipitation")),
+            wind * MS_TO_MPH if wind is not None else None, _number(instant.get("wind_from_direction"))))
+    return hours.upcoming(entries, now)
+
+
 def normalize(raw: Dict[str, Any], longitude: float = 0.0, now: Optional[datetime] = None,
               zone: Optional[tzinfo] = None) -> Dict[str, Any]:
     """
@@ -306,6 +328,7 @@ def normalize(raw: Dict[str, Any], longitude: float = 0.0, now: Optional[datetim
         "source": SOURCE,
         "current": build_current(timeseries, now),
         "forecast": build_forecast(timeseries, zone, now.astimezone(zone).date()),
+        "hourly": build_hourly(timeseries, now),
         "alerts": [],
     }
 
