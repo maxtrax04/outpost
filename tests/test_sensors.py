@@ -68,7 +68,7 @@ class ListTests(unittest.TestCase):
                 self.assertEqual(o.parse_items(text), ([], []))
 
     def test_bad_items_are_skipped_and_named(self):
-        items, problems = o.parse_items("sensor.ok, Living Room, Sensor.Upper, a=b=sensor.x, mqtt:shed/temp")
+        items, problems = o.parse_items("sensor.ok, Living Room, Sensor.Upper, a=b=sensor.x, mqtt:shed/+/temp")
         self.assertEqual([item.source for item in items], ["sensor.ok"])
         self.assertEqual(len(problems), 4)
         self.assertIn("Living Room", problems[0])
@@ -510,6 +510,277 @@ class AddonTests(unittest.TestCase):
         self.assertEqual(config["schema"]["sensors"], ["str"])
         self.assertEqual(config["options"]["sensors"], [])
         self.assertTrue(config["homeassistant_api"])
+
+
+class MqttListTests(unittest.TestCase):
+    def test_topics_and_fields(self):
+        items, problems = o.parse_items("mqtt:shed/temp, Shed=mqtt:shed/climate#temperature [°F], "
+                                        "mqtt:tele/plug/SENSOR#ENERGY.Power, mqtt:$SYS/broker/uptime")
+        self.assertEqual(problems, [])
+        self.assertEqual([(item.topic, item.field, item.label, item.unit) for item in items], [
+            ("shed/temp", (), "", ""),
+            ("shed/climate", ("temperature",), "Shed", "°F"),
+            ("tele/plug/SENSOR", ("ENERGY", "Power"), "", ""),
+            ("$SYS/broker/uptime", (), "", ""),
+        ])
+        self.assertTrue(items[0].mqtt)
+        self.assertEqual(items[0].domain, "mqtt")
+        self.assertFalse(o.parse_items("sensor.t")[0][0].mqtt)
+
+    def test_labels_from_the_topic_or_field(self):
+        items, _ = o.parse_items("mqtt:shed/temp, mqtt:shed/climate#relative_humidity, mqtt:a/garage-door/")
+        self.assertEqual([item.default_label() for item in items], ["Temp", "Relative humidity", "Garage door"])
+
+    def test_wildcards_and_bad_topics_are_skipped(self):
+        for text in ("mqtt:", "mqtt:shed/+/temp", "mqtt:shed/#", "mqtt:shed#", "mqtt:shed#a..b",
+                     "mqtt:shed#a/b"):
+            with self.subTest(text=text):
+                items, problems = o.parse_items(text)
+                self.assertEqual(items, [])
+                self.assertEqual(len(problems), 1)
+                self.assertIn("MQTT topic", problems[0])
+
+
+class MqttReadingTests(unittest.TestCase):
+    def read(self, source, payload, unit=""):
+        item = o.parse_items(f"{source} [{unit}]" if unit else source)[0][0]
+        return o.reading(item, o.mqtt_state(item, payload))
+
+    def test_numbers_text_and_on_off(self):
+        self.assertEqual(self.read("mqtt:shed/temp", b" 21.54 ", "°C")["text"], "21.5")
+        self.assertEqual(self.read("mqtt:shed/temp", b"21.54")["label"], "Temp")
+        for payload, text in ((b"ON", "On"), (b"off", "Off"), (b"true", "On"), (b"false", "Off")):
+            with self.subTest(payload=payload):
+                value = self.read("mqtt:garage/door", payload)
+                self.assertEqual((value["kind"], value["text"]), ("binary", text))
+        # 1 and 0 stay numbers, and on/off with a unit is text
+        self.assertEqual(self.read("mqtt:count", b"1")["kind"], "number")
+        self.assertEqual(self.read("mqtt:mode", b"on", "x")["kind"], "text")
+        self.assertEqual(self.read("mqtt:garage/state", b"opening")["text"], "Opening")
+        self.assertEqual(self.read("mqtt:garage/state", b'"open"')["text"], "Open")
+
+    def test_json_fields(self):
+        message = b'{"temperature": 19.26, "battery": 88, "contact": false, "nested": {"list": [5, "x"]}}'
+        self.assertEqual(self.read("mqtt:a#temperature", message)["text"], "19.3")
+        self.assertEqual(self.read("mqtt:a#battery", message)["text"], "88")
+        self.assertEqual(self.read("mqtt:a#contact", message)["text"], "Off")
+        self.assertEqual(self.read("mqtt:a#nested.list.0", message)["text"], "5")
+        self.assertEqual(self.read("mqtt:a#nested.list.1", message)["text"], "X")
+        for source in ("mqtt:a#gone", "mqtt:a#nested", "mqtt:a#nested.list.9", "mqtt:a#temperature.x"):
+            with self.subTest(source=source):
+                self.assertTrue(self.read(source, message)["missing"])
+
+    def test_missing(self):
+        for payload in (b"", b"unavailable", b"\xff\xfe", b"nan"):
+            with self.subTest(payload=payload):
+                self.assertTrue(self.read("mqtt:a", payload)["missing"])
+        self.assertTrue(self.read("mqtt:a#t", b"not json")["missing"])
+        self.assertTrue(self.read("mqtt:a#t", b'{"t": null}')["missing"])
+
+
+class MqttConnectionTests(unittest.TestCase):
+    def test_settings(self):
+        mqtt, where = o.mqtt_connection({"OUTPOST_MQTT_HOST": " mqtt.example "})
+        self.assertEqual((mqtt.host, mqtt.port, mqtt.username, mqtt.password, mqtt.tls),
+                         ("mqtt.example", 1883, "", "", False))
+        self.assertEqual(where, "an MQTT broker")
+        mqtt, _ = o.mqtt_connection({"OUTPOST_MQTT_HOST": "[fd00::5]", "OUTPOST_MQTT_TLS": "true",
+                                     "OUTPOST_MQTT_USERNAME": "outpost", "OUTPOST_MQTT_PASSWORD": "secret-password"})
+        self.assertEqual((mqtt.host, mqtt.port, mqtt.username, mqtt.password, mqtt.tls),
+                         ("fd00::5", 8883, "outpost", "secret-password", True))
+        self.assertNotIn("secret-password", repr(mqtt))
+        self.assertEqual(o.mqtt_connection({"OUTPOST_MQTT_HOST": "10.0.0.2", "OUTPOST_MQTT_PORT": "1884"})[0].port, 1884)
+
+    def test_unusable_settings(self):
+        for environ, why in (({}, "OUTPOST_MQTT_HOST is not set"),
+                             ({"OUTPOST_MQTT_HOST": "mqtt://broker"}, "OUTPOST_MQTT_HOST"),
+                             ({"OUTPOST_MQTT_HOST": "broker", "OUTPOST_MQTT_PORT": "x"}, "OUTPOST_MQTT_PORT"),
+                             ({"OUTPOST_MQTT_HOST": "broker", "OUTPOST_MQTT_PORT": "70000"}, "OUTPOST_MQTT_PORT"),
+                             ({"OUTPOST_MQTT_HOST": "broker", "OUTPOST_MQTT_PASSWORD": "secret-password"},
+                              "OUTPOST_MQTT_USERNAME")):
+            with self.subTest(environ=environ):
+                mqtt, text = o.mqtt_connection(environ)
+                self.assertIsNone(mqtt)
+                self.assertIn(why, text)
+                self.assertNotIn("secret-password", text)
+
+    def test_from_environment(self):
+        # MQTT alone: on with a broker, off without one
+        sensors = o.from_environment({"OUTPOST_SENSORS": "mqtt:shed/temp", "OUTPOST_MQTT_HOST": "broker",
+                                      "OUTPOST_MQTT_USERNAME": "u", "OUTPOST_MQTT_PASSWORD": "secret-password"})
+        self.assertTrue(sensors.on)
+        self.assertIsNone(sensors.url)
+        self.assertEqual(sensors.describe(), "1 sensor reading from an MQTT broker")
+        sensors = o.from_environment({"OUTPOST_SENSORS": "mqtt:shed/temp"})
+        self.assertFalse(sensors.on)
+        self.assertIn("OUTPOST_MQTT_HOST is not set", sensors.describe())
+        # Both: Home Assistant still works when the broker isn't set up, and the log says so
+        sensors = o.from_environment({"OUTPOST_SENSORS": "sensor.a, mqtt:shed/temp",
+                                      "OUTPOST_POWER_SOLAR": "mqtt:solar/power",
+                                      "OUTPOST_HA_URL": "http://ha.example", "OUTPOST_HA_TOKEN": "t"})
+        self.assertTrue(sensors.on)
+        self.assertEqual(sensors.describe(), "2 sensor readings and power (solar) from Home Assistant, every 10 s; "
+                                             "MQTT readings off: OUTPOST_MQTT_HOST is not set")
+        sensors = o.from_environment({"OUTPOST_SENSORS": "sensor.a", "OUTPOST_POWER_SOLAR": "mqtt:solar/power",
+                                      "OUTPOST_HA_URL": "http://ha.example", "OUTPOST_HA_TOKEN": "t",
+                                      "OUTPOST_MQTT_HOST": "broker"})
+        self.assertEqual(sensors.describe(), "1 sensor reading and power (solar) from Home Assistant, every 10 s "
+                                             "and an MQTT broker")
+        # No broker settings are read when nothing comes from MQTT
+        self.assertIsNone(o.from_environment({"OUTPOST_SENSORS": "sensor.a", "OUTPOST_MQTT_HOST": "broker"}).mqtt)
+
+
+class FakeClient:
+    made = []
+
+    def __init__(self, host, port, topics, on_message, **options):
+        self.args = (host, port, topics)
+        self.options = options
+        self.on_message = on_message
+        FakeClient.made.append(self)
+
+    def run(self, stop):
+        stop.wait()
+
+
+class MqttSensorsTests(unittest.TestCase):
+    def setUp(self):
+        self.clock = Clock()
+        self.home = FakeHomeAssistant({"sensor.t": state("21.5", friendly_name="Living room")})
+        items, _ = o.parse_items("sensor.t, Shed=mqtt:shed/climate#temperature [°C], mqtt:garage/door")
+        power, _ = o.parse_power({"OUTPOST_POWER_GRID": "mqtt:meter/grid", "OUTPOST_POWER_HOME": "sensor.t"})
+        self.sensors = o.Sensors(items, "http://ha.example", "t", "Home Assistant", get=self.home,
+                                 clock=self.clock, power=power,
+                                 mqtt=o.MqttSettings("broker", 1883, "u", "secret-password"),
+                                 mqtt_client=FakeClient)
+
+    def test_home_assistant_reads_only_its_own_entities(self):
+        with quiet():
+            self.sensors.poll_once()
+        self.assertEqual([url for url, _ in self.home.asked],
+                         ["http://ha.example/api/states/sensor.t", "http://ha.example/api/states/sensor.t"])
+
+    def test_messages_become_readings(self):
+        self.sensors.mqtt_message("shed/climate", b'{"temperature": 4.04}')
+        self.sensors.mqtt_message("garage/door", b"ON")
+        self.sensors.mqtt_message("meter/grid", b"-1500")
+        self.sensors.mqtt_message("not/listed", b"1")
+        answer = self.sensors.answer()
+        self.assertEqual([(r["label"], r["text"], r["unit"], r["missing"]) for r in answer["sensors"]], [
+            ("sensor.t", "", "", True), ("Shed", "4.0", "°C", False), ("Door", "On", "", False)])
+        grid = answer["power"][1]
+        self.assertEqual((grid["role"], grid["label"], grid["text"], grid["unit"], grid["direction"]),
+                         ("grid", "Grid", "1500", "", "export"))
+        self.assertEqual(answer["updated_at"], "2027-01-15T08:00:00Z")
+
+    def test_kept_while_the_broker_is_there(self):
+        self.sensors.mqtt_message("garage/door", b"OFF")
+        # The door doesn't change for an hour, but the broker is still there
+        for _ in range(4):
+            self.clock.now += 15 * 60
+            self.sensors.mqtt_alive()
+        self.assertFalse(self.sensors.answer()["sensors"][2]["missing"])
+        # The broker goes away for 15 minutes
+        self.clock.now += o.KEEP_SECONDS + 1
+        self.assertTrue(self.sensors.answer()["sensors"][2]["missing"])
+        # Never heard from at all is missing, whatever the broker does
+        self.assertTrue(self.sensors.answer()["sensors"][1]["missing"])
+
+    def test_run_starts_the_client_with_the_topics(self):
+        FakeClient.made = []
+        sensors = o.Sensors(o.parse_items("mqtt:a, mqtt:b#x, mqtt:a")[0], None, power=[],
+                            mqtt=o.MqttSettings("broker", 1884, "u", "secret-password", True),
+                            mqtt_client=FakeClient)
+        self.assertTrue(sensors.on)
+        stop = threading.Event()
+        thread = threading.Thread(target=sensors.run, args=(stop,), daemon=True)
+        thread.start()
+        for _ in range(100):
+            if FakeClient.made:
+                break
+            thread.join(0.05)
+        stop.set()
+        thread.join(10)
+        self.assertFalse(thread.is_alive())
+        client = FakeClient.made[0]
+        self.assertEqual(client.args, ("broker", 1884, ["a", "b"]))
+        self.assertEqual(client.options["password"], "secret-password")
+        self.assertTrue(client.options["tls"])
+        self.assertEqual(client.on_message, sensors.mqtt_message)
+
+
+class MqttAddonTests(unittest.TestCase):
+    SERVICE = {"result": "ok", "data": {"host": "core-mosquitto", "port": 1883, "ssl": False,
+                                        "username": "addons", "password": "secret-password", "protocol": "3.1.1"}}
+
+    def test_the_service_becomes_settings(self):
+        import outpost_addon as a
+        self.assertEqual(a.from_mqtt_service(self.SERVICE), {
+            "OUTPOST_MQTT_HOST": "core-mosquitto", "OUTPOST_MQTT_PORT": "1883", "OUTPOST_MQTT_TLS": "false",
+            "OUTPOST_MQTT_USERNAME": "addons", "OUTPOST_MQTT_PASSWORD": "secret-password"})
+        for answer in ({}, {"data": None}, {"data": {"host": ""}}, {"result": "error"}):
+            with self.subTest(answer=answer):
+                self.assertEqual(a.from_mqtt_service(answer), {})
+
+    def run_addon(self, options, service=True):
+        import tempfile
+        from pathlib import Path
+        import outpost_addon as a
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        folder = Path(folder.name)
+        (folder / "options.json").write_text(json.dumps(options), encoding="utf-8")
+        asked = []
+
+        def get(url, token):
+            asked.append(url)
+            if url == a.MQTT_SERVICE_URL:
+                if not service:
+                    raise urllib.error.HTTPError(url, 400, "no service", {}, None)
+                return self.SERVICE
+            return {}
+
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            a.run(folder / "options.json", folder / "addon.env", folder / "addon.conf",
+                  {"SUPERVISOR_TOKEN": "token"}, get)
+        return (folder / "addon.env").read_text(encoding="utf-8"), log.getvalue(), asked
+
+    def test_mqtt_readings_use_the_mosquitto_add_on(self):
+        import outpost_addon as a
+        env, log, asked = self.run_addon({"sensors": ["mqtt:shed/temp"], "mqtt_tls": False})
+        self.assertIn("export OUTPOST_MQTT_HOST=core-mosquitto", env)
+        self.assertIn("export OUTPOST_MQTT_PASSWORD=secret-password", env)
+        self.assertIn(a.MQTT_SERVICE_URL, asked)
+        self.assertIn("MQTT broker from Home Assistant's MQTT service", log)
+        self.assertNotIn("secret-password", log)
+
+    def test_a_broker_in_the_options_wins(self):
+        import outpost_addon as a
+        env, _, asked = self.run_addon({"power_grid": "mqtt:meter/grid", "mqtt_host": "broker.example",
+                                        "mqtt_port": 8883, "mqtt_tls": True})
+        self.assertIn("export OUTPOST_MQTT_HOST=broker.example", env)
+        self.assertIn("export OUTPOST_MQTT_TLS=true", env)
+        self.assertNotIn("core-mosquitto", env)
+        self.assertNotIn(a.MQTT_SERVICE_URL, asked)
+
+    def test_without_mqtt_readings_the_service_is_not_asked(self):
+        import outpost_addon as a
+        env, _, asked = self.run_addon({"sensors": ["sensor.a"], "mqtt_tls": False})
+        self.assertNotIn(a.MQTT_SERVICE_URL, asked)
+        self.assertNotIn("OUTPOST_MQTT_HOST", env)
+
+    def test_without_the_service_the_log_says_what_to_do(self):
+        env, log, _ = self.run_addon({"sensors": ["mqtt:shed/temp"], "mqtt_tls": False}, service=False)
+        self.assertNotIn("OUTPOST_MQTT_HOST", env)
+        self.assertIn("install the Mosquitto broker add-on", log)
+
+    def test_the_add_on_asks_for_the_mqtt_service(self):
+        config = json.loads((ROOT / "homeassistant" / "outpost" / "config.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["services"], ["mqtt:want"])
+        self.assertEqual(config["schema"]["mqtt_password"], "password?")
+        self.assertEqual(config["schema"]["mqtt_tls"], "bool")
+        self.assertIs(config["options"]["mqtt_tls"], False)
 
 
 if __name__ == "__main__":

@@ -7,13 +7,16 @@ start.sh runs this script, which turns them into Outpost's usual settings (the o
 is OUTPOST_MAP_ZOOM, and "timezone" is TZ) in /run/outpost/addon.env, for start.sh to read before
 anything else starts. Options left empty fall back to Home Assistant's own home location, time
 zone, and units (read from its API with the SUPERVISOR_TOKEN the Supervisor gives the add-on),
-then to Outpost's defaults.
+then to Outpost's defaults. When sensors or power come from MQTT and no broker is set in the
+options, the broker and its login come from Home Assistant's MQTT service (the Mosquitto broker
+add-on), which config.json asks for ("services": ["mqtt:want"]).
 
 It also writes /etc/nginx/outpost/addon.conf: in the add-on, nginx also listens on INGRESS_PORT
 for Home Assistant's ingress (the Outpost panel in its sidebar) and answers there only the
 Supervisor's proxy, as Home Assistant asks. Outside the add-on the file only says so.
 
-Coordinates and the token are never printed or written anywhere but the settings file.
+Coordinates, the token, and the broker's password are never printed or written anywhere but the
+settings file.
 
 Uses only the Python standard library.
 """
@@ -35,6 +38,12 @@ INGRESS_PORT = 8099
 # The only address ingress requests come from
 INGRESS_PROXY = "172.30.32.2"
 HOME_ASSISTANT_CONFIG_URL = "http://supervisor/core/api/config"
+MQTT_SERVICE_URL = "http://supervisor/services/mqtt"
+MQTT_SETTINGS = ("OUTPOST_MQTT_HOST", "OUTPOST_MQTT_PORT", "OUTPOST_MQTT_USERNAME", "OUTPOST_MQTT_PASSWORD",
+                 "OUTPOST_MQTT_TLS")
+# The settings that list readings (an mqtt: source in any of them needs a broker)
+READING_SETTINGS = ("OUTPOST_SENSORS", "OUTPOST_POWER_HOME", "OUTPOST_POWER_SOLAR", "OUTPOST_POWER_GRID",
+                    "OUTPOST_POWER_BATTERY")
 TIMEOUT_SECONDS = 10
 
 OPTION_NAME = re.compile(r"[a-z][a-z0-9_]{0,40}")
@@ -136,6 +145,40 @@ def home_assistant_config(token: str, get: Getter = http_get) -> Dict[str, Any]:
         return {}
 
 
+def uses_mqtt(settings: Mapping[str, str]) -> bool:
+    return any("mqtt:" in settings.get(name, "") for name in READING_SETTINGS)
+
+
+def from_mqtt_service(answer: Mapping[str, Any]) -> Dict[str, str]:
+    """The broker from the Supervisor's /services/mqtt answer ({"data": {"host", "port", ...}})."""
+    data = answer.get("data")
+    if not isinstance(data, dict) or not isinstance(data.get("host"), str) or not data["host"].strip():
+        return {}
+    settings = {"OUTPOST_MQTT_HOST": data["host"].strip(),
+                "OUTPOST_MQTT_TLS": "true" if data.get("ssl") is True else "false"}
+    port = data.get("port")
+    if isinstance(port, int) and not isinstance(port, bool) and 0 < port < 65536:
+        settings["OUTPOST_MQTT_PORT"] = str(port)
+    for key, name in (("username", "OUTPOST_MQTT_USERNAME"), ("password", "OUTPOST_MQTT_PASSWORD")):
+        if isinstance(data.get(key), str) and data[key].strip():
+            settings[name] = data[key].strip()
+    return settings
+
+
+def mqtt_service(token: str, get: Getter = http_get) -> Dict[str, str]:
+    """The broker Home Assistant's MQTT service names, or {} when there is none."""
+    found: Dict[str, str] = {}
+    if token:
+        try:
+            found = from_mqtt_service(get(MQTT_SERVICE_URL, token))
+        except (urllib.error.URLError, OSError, ValueError):
+            found = {}
+    if not found:
+        _say("MQTT readings are listed, but Home Assistant has no MQTT service: install the Mosquitto "
+             "broker add-on, or set mqtt_host in the options")
+    return found
+
+
 def env_text(settings: Mapping[str, str]) -> str:
     lines = ["# Written by /app/outpost_addon.py from the add-on's options; read by start.sh."]
     lines += [f"export {name}={shlex.quote(value)}" for name, value in sorted(settings.items())]
@@ -200,11 +243,19 @@ def run(options_path: Path = OPTIONS_PATH, env_path: Path = ENV_PATH, snippet_pa
     from_options = settings_from_options(options if isinstance(options, dict) else {})
     from_ha = from_home_assistant(home_assistant_config(environ.get("SUPERVISOR_TOKEN", ""), get))
     settings = combine(from_options, from_ha)
+    broker = ""
+    if uses_mqtt(settings) and "OUTPOST_MQTT_HOST" not in from_options:
+        service = mqtt_service(environ.get("SUPERVISOR_TOKEN", ""), get)
+        if service:
+            for name in MQTT_SETTINGS:
+                settings.pop(name, None)
+            settings.update(service)
+            broker = "; MQTT broker from Home Assistant's MQTT service"
     write_atomically(env_path, env_text(settings))
     taken = [label for label, name in (("home location", "OUTPOST_LATITUDE"), ("time zone", "TZ"), ("units", "OUTPOST_UNITS"))
              if name in from_ha and settings.get(name) == from_ha[name] and name not in from_options]
     source = f"; {', '.join(taken)} from Home Assistant" if taken else ""
-    _say(f"Home Assistant add-on: {len(from_options)} options set{source}; ingress on port {INGRESS_PORT}")
+    _say(f"Home Assistant add-on: {len(from_options)} options set{source}{broker}; ingress on port {INGRESS_PORT}")
     # What Home Assistant saved, so a setting that did not stick is easy to see
     _say(f"Add-on options: {options_summary(options if isinstance(options, dict) else {})}")
     return True

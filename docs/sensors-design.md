@@ -2,8 +2,8 @@
 
 Status: design for [#35](https://github.com/maxtrax04/outpost/issues/35), decided 2026-11-20 (Home
 Assistant and MQTT, a sensor panel and a power panel, in 0.7.0). Step 1 (sensors from Home Assistant) is
-built in 0.7.0-beta.13, and step 2 (power) in 0.7.0-beta.14. The README's "Sensors" and "Power" sections
-are the user guide.
+built in 0.7.0-beta.13, step 2 (power) in 0.7.0-beta.14, and step 3 (MQTT) in 0.7.0-beta.15. The README's
+"Sensors", "Power", and "MQTT" sections are the user guide.
 
 ## What
 
@@ -48,17 +48,22 @@ screen. It can be added later without changing the settings or `/api/sensors`.
 ### MQTT: a small subscribe-only client
 
 - A hand-written MQTT 3.1.1 client (standard library `socket`, plus `ssl` for TLS) in
-  `app/outpost_mqtt.py`, on its own thread in `outpost_server.py`. It does CONNECT, SUBSCRIBE at QoS 0,
-  keep-alive pings, and reconnects with a growing delay (up to 5 minutes). It never publishes.
+  `app/outpost_mqtt.py`, on its own thread in `outpost_server.py`. It does CONNECT (clean session),
+  SUBSCRIBE at QoS 0, keep-alive pings (every 30 s; the connection is dropped after 90 s without a
+  word from the broker), and reconnects with a growing delay (5 s, doubling up to 5 minutes). It never
+  publishes. Messages over 256 KB are skipped as they arrive, so a large retained message can't use up
+  memory or stop the rest.
 - Only exact topics are subscribed: no `+` or `#` wildcards, so the broker sends only what's listed.
   Retained messages give a value right away.
 - A payload is a number or text, or JSON with the field named after `#` in the source
-  (`mqtt:home/garage/climate#temperature`).
+  (`mqtt:home/garage/climate#temperature`). A dot goes into a field inside another (Tasmota's
+  `#ENERGY.Power`) and a number into a list. JSON `true` and `false` read as on and off.
 - Settings: `OUTPOST_MQTT_HOST`, `OUTPOST_MQTT_PORT` (1883, or 8883 with TLS), `OUTPOST_MQTT_USERNAME`,
   `OUTPOST_MQTT_PASSWORD` (secret), and `OUTPOST_MQTT_TLS` (default `false`).
 - **Add-on:** it asks for the MQTT service (`services: ["mqtt:want"]`), so with the Mosquitto add-on
   installed, the host and login come from the Supervisor (`http://supervisor/services/mqtt`), with
-  nothing to set up.
+  nothing to set up. `outpost_addon.py` asks only when an `mqtt:` reading is listed and the **MQTT
+  broker** option is empty; that option, with its login, is for another broker.
 - MQTT has no units or names, so the source can give a unit (see Settings).
 
 ### Listing readings
@@ -86,11 +91,14 @@ OUTPOST_POWER_BATTERY=sensor.battery_level
   for the weather). Values of 100 or more are rounded to a whole number, smaller ones to one decimal.
   Power in W of 1000 or more is shown in kW.
 - **On/off** sensors use their device class: door, window, and garage door read Open or Closed, motion
-  and occupancy read Detected or Clear, and the rest read On or Off. MQTT values `ON`/`OFF`,
-  `true`/`false`, and `1`/`0` count as on/off when the item has no unit.
-- **Missing:** Home Assistant's `unavailable` or `unknown`, an MQTT topic with nothing for 15 minutes,
-  or a source that can't be reached. The tile shows `--` and is marked missing, like a missing weather
-  reading. The last value is kept for 15 minutes when Home Assistant can't be reached, then marked missing.
+  and occupancy read Detected or Clear, and the rest read On or Off. MQTT values `ON`/`OFF` and
+  `true`/`false` count as on/off when the item has no unit. `1` and `0` stay numbers: a count or a level
+  that happens to be 1 is more common than a switch that sends 1.
+- **Missing:** Home Assistant's `unavailable` or `unknown`, an MQTT topic with no message yet, or a
+  source that can't be reached. The tile shows `--` and is marked missing, like a missing weather
+  reading. The last value is kept for 15 minutes when Home Assistant or the broker can't be reached, then
+  marked missing. An MQTT reading stays while the broker is connected, however long ago it last changed:
+  many devices send only on a change, so a door closed all day isn't missing.
 
 ### Power panel
 

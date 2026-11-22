@@ -49,6 +49,10 @@ Some options worth knowing:
 - **Power**: for the power panel, one entity each for home use, solar, grid, and battery charge (leave out
   the ones you don't have). Grid is positive when importing; turn on **Flip the grid sign** if your meter
   counts exports as positive.
+- **MQTT**: a sensor or power part can be an MQTT topic instead, written `mqtt:shed/temperature` (or
+  `mqtt:zigbee2mqtt/shed#temperature` for a field of a JSON message). With the Mosquitto broker add-on
+  installed, Outpost gets the broker and a login from Home Assistant, so there is nothing else to set. For
+  another broker, set **MQTT broker** and its login. Outpost only subscribes; it never publishes.
 
 ## Wall tablets and other screens
 
@@ -78,4 +82,5 @@ above, and use `http://homeassistant.local:<port>` as Outpost's address there.
 Outpost sends your location only to the weather services you choose (and, with the map, the map and
 radar tiles it shows), and does not log it. The add-on reads Home Assistant's configuration only for
 the location, time zone, and units, once at startup, and the entities listed under **Sensors** and
-**Power**, every **Sensor interval** seconds (10 by default).
+**Power**, every **Sensor interval** seconds (10 by default). With `mqtt:` readings it asks Home Assistant
+for the MQTT broker once at startup, and subscribes only to the topics listed.

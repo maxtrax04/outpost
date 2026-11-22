@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0-beta.15] - 2026-11-21
+
+### Added
+
+- Sensor and power readings straight from an MQTT broker: write `mqtt:<topic>` wherever an entity goes (`Shed=mqtt:shed/temperature [°C]`), with `#field` for a field of a JSON message (`mqtt:zigbee2mqtt/garage#contact`, `#ENERGY.Power` for one inside another). Set the broker with `OUTPOST_MQTT_HOST`, `OUTPOST_MQTT_PORT`, `OUTPOST_MQTT_USERNAME`, `OUTPOST_MQTT_PASSWORD`, and `OUTPOST_MQTT_TLS`. Outpost subscribes only to the exact topics listed, never publishes, and keeps a reading while the broker is connected. MQTT and Home Assistant readings can be mixed. See "MQTT" in the README (#35).
+- The add-on uses the Mosquitto broker add-on for `mqtt:` readings, with nothing to set, or the broker in its new **MQTT** options.
+
 ## [0.7.0-beta.14] - 2026-11-20
 
 ### Added
