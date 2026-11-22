@@ -302,6 +302,7 @@ function showLoading(place) {
     setIcon(document.getElementById("currentIcon"), "unknown", "Loading");
     OutpostGauges.applyCurrent({}, document);
     document.getElementById("forecastContainer").replaceChildren();
+    OutpostHourly.clear(document);
 }
 
 async function loadWeather(config, place) {
@@ -353,6 +354,7 @@ async function loadWeather(config, place) {
         setBanner(!isOk);
 
         renderForecast(weather.forecast, units.system);
+        OutpostHourly.render(document, weather, config, setIcon);
         renderAlertsSection(weather, config);
     } catch (error) {
         if (request !== weatherRequest) return;

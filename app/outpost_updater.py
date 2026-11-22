@@ -282,6 +282,7 @@ def build_ui_config() -> Dict[str, Any]:
     return {
         "subtitle": subtitle,
         "alerts_always_show": env_flag("OUTPOST_ALERTS_ALWAYS_SHOW", False),
+        "hourly": env_flag("OUTPOST_HOURLY", True),
         "theme_switcher": env_flag("OUTPOST_THEME_SWITCHER", True),
         "effects": effects_setting(),
         "effects_toggle": env_flag("OUTPOST_EFFECTS_TOGGLE", True),

@@ -237,8 +237,13 @@ class ClientTests(unittest.TestCase):
         # A growing delay, logged once until it connects again
         self.assertEqual(waits[0], m.FIRST_RETRY_SECONDS)
         text = log.getvalue()
-        self.assertEqual(text.count("the broker closed the connection"), 1)
         self.assertIn("connected again", text)
+        # Each drop is logged once, and not again until a connection has worked (this broker drops
+        # every connection, so how many drops there were depends on when the test stops it)
+        events = [line for line in text.splitlines() if "closed the connection" in line or "connected again" in line]
+        self.assertIn("closed the connection", events[0])
+        for before, after in zip(events, events[1:]):
+            self.assertNotEqual("closed the connection" in before, "closed the connection" in after)
 
     def test_cant_connect(self):
         with socket.socket() as spare:

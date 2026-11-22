@@ -304,7 +304,8 @@ class HttpTests(unittest.TestCase):
         self.tiles.kind = "text/html"
         with mock.patch("builtins.print") as printed:
             self.get("/tiles/radar/noaa/conus/20270115T100000Z/7/29/48.png")
-        text = " ".join(str(call) for call in printed.call_args_list)
+        # Only what was printed (the call's repr also names the stream, whose address can contain "29")
+        text = " ".join(" ".join(str(arg) for arg in call.args) for call in printed.call_args_list)
         self.assertIn("Radar tile", text)
         self.assertNotIn("29", text)
         self.assertNotIn("conus", text)

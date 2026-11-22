@@ -437,8 +437,8 @@ const SAMPLE_SENSORS = {
 };
 
 // Tablets (landscape and portrait): every theme that fits the screen (--fit-screen: 1, as all the
-// built-in ones do) fits without scrolling, even with the map, power, sensors, and an alert shown (the
-// tallest page), and nothing sticks out past the right edge
+// built-in ones do) fits without scrolling, even with the map, power, sensors, the hourly forecast, and
+// an alert shown (the tallest page), and nothing sticks out past the right edge
 const TABLETS = { "tablet landscape": { width: 1024, height: 768 }, "tablet portrait": { width: 768, height: 1024 } };
 async function checkScreenFit(browser, theme) {
     const { sampleTile } = require("./mvt-fixture.js");
@@ -481,8 +481,10 @@ async function checkScreenFit(browser, theme) {
             && document.querySelectorAll("#sensors .sensor").length === 6
             && !document.getElementById("powerPanel").hidden
             && document.querySelectorAll("#power .power").length === 4
+            && !document.getElementById("hourlyPanel").hidden
+            && document.querySelectorAll("#hourly .hourly-hour").length >= 12
             && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
-        if (!shown) problems.push(`${name}: the map, power, sensors, and the alert were not shown`);
+        if (!shown) problems.push(`${name}: the map, power, sensors, the hourly forecast, and the alert were not shown`);
         await page.waitForTimeout(500); // fit.js measures on the next frame, and again when fonts load
         const fits = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--fit-screen").trim() === "1");
         if (!fits) {

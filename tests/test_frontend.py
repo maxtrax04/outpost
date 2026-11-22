@@ -36,7 +36,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
     def test_scripts_are_loaded_in_the_right_order(self):
         scripts = re.findall(r'<script src="([^"]+)"', self.html)
         self.assertEqual(scripts, ["dim.js", "effects.js", "fit.js", "clock.js", "themes.js", "gauges.js", "data.js",
-                                   "places.js", "place-panel.js", "mvt.js", "map.js", "radar.js", "sensors.js", "app.js"])
+                                   "hourly.js", "places.js", "place-panel.js", "mvt.js", "map.js", "radar.js", "sensors.js", "app.js"])
 
     def test_what_the_script_reads_from_the_api_is_sent_by_the_server(self):
         server = read("app/outpost_server.py")
@@ -76,7 +76,7 @@ class FrontEndConsistencyTests(unittest.TestCase):
 
     def test_settings_the_script_reads_are_written_by_the_updater(self):
         updater = read("app/outpost_updater.py") + read("app/outpost_map.py")
-        for key in ("latitude", "longitude", "theme", "themes", "dim", "ui", "subtitle", "alerts_always_show", "theme_switcher",
+        for key in ("latitude", "longitude", "theme", "themes", "dim", "ui", "subtitle", "alerts_always_show", "hourly", "theme_switcher",
                     "effects", "effects_toggle", "clock", "clock_toggle", "map", "zoom",
                     "attribution", "attribution_url"):
             with self.subTest(key=key):

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0-beta.2] - 2026-11-22
+
+### Added
+
+- The hourly forecast on the dashboard (#85): one box at the top of the forecast panel, between the current conditions and the days, with the next hours (as many as fit on one line, up to 12), each with its time ("Now" for the hour under way), weather icon, temperature, and chance of rain or snow. Times follow the dashboard's 12- or 24-hour clock and the location's time zone. It is on by default; `OUTPOST_HOURLY=false` hides it. Every built-in theme still fits a tablet with it shown.
+- Themes can style it: `#hourlyPanel` and `.hourly-hour`, with `data-icon` and `data-now` (see docs/themes.md).
+
 ## [0.8.0-beta.1] - 2026-11-22
 
 ### Added
