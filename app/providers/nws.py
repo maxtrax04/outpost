@@ -18,11 +18,14 @@ Uses only the Python standard library.
 import copy
 import json
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
+from providers import hourly as hours
 
 BASE_URL = "https://api.weather.gov"
 SOURCE = "National Weather Service (weather.gov)"
@@ -137,6 +140,7 @@ def get_point(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
 
     point = {
         "forecast_url": props["forecast"],
+        "hourly_url": props.get("forecastHourly"),
         "stations_url": props.get("observationStations"),
         "time_zone": props.get("timeZone"),
         "station_ids": None,
@@ -391,6 +395,40 @@ def build_alerts(features: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any
     return alerts[:MAX_ALERTS]
 
 
+def _period_chance(period: Dict[str, Any]) -> Optional[float]:
+    return _num(period.get("probabilityOfPrecipitation"))
+
+
+def build_hourly(periods: List[Dict[str, Any]], now: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    """The next hours (providers/hourly.py) from the hourly forecast's periods."""
+    entries = []
+    for period in periods:
+        try:
+            start = datetime.fromisoformat(period.get("startTime"))
+        except (TypeError, ValueError):
+            continue
+        if start.tzinfo is None:
+            continue
+        condition = period.get("shortForecast") or "Unknown"
+        direction = hours.COMPASS.get(str(period.get("windDirection") or "").strip().upper())
+        entries.append(hours.entry(start, _period_temp_f(period), condition,
+                                   icon_from_text(condition, bool(period.get("isDaytime", True))),
+                                   _period_chance(period), _period_wind_mph(period), direction))
+    return hours.upcoming(entries, now)
+
+
+def _hourly(point: Dict[str, Any], user_agent: str) -> List[Dict[str, Any]]:
+    """The hourly forecast, or [] when NWS doesn't give one (the rest of the update goes on)."""
+    if not point.get("hourly_url"):
+        return []
+    try:
+        data = _cached_get(point["hourly_url"], user_agent, FORECAST_REQUEST_SECONDS)
+    except Exception as error:
+        print(f"[Outpost] NWS hourly forecast unavailable ({error}); leaving it out", file=sys.stderr, flush=True)
+        return []
+    return build_hourly((data.get("properties") or {}).get("periods") or [])
+
+
 def normalize(periods: List[Dict[str, Any]],
               observation: Optional[Dict[str, Any]],
               alert_features: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
@@ -427,6 +465,7 @@ def fetch(latitude: float, longitude: float, user_agent: str) -> Dict[str, Any]:
     # A failed alert lookup must not look like "no alerts", so let it fail the update
     data = normalize(periods, observation, _alert_features(latitude, longitude, user_agent))
     data["timezone"] = point.get("time_zone")  # the location's, such as America/Chicago
+    data["hourly"] = _hourly(point, user_agent)
     return data
 
 

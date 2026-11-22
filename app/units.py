@@ -59,6 +59,10 @@ FORECAST_FIELDS = {
     "high": "temperature",
     "low": "temperature",
 }
+HOURLY_FIELDS = {
+    "temperature": "temperature",
+    "wind_speed": "speed",
+}
 
 
 def block(system: str) -> Dict[str, str]:
@@ -100,4 +104,10 @@ def present(data: Dict[str, Any], system: str) -> Dict[str, Any]:
         for field, kind in FORECAST_FIELDS.items():
             if field in day:
                 day[field] = convert(day[field], kind, system)
+    for hour in result.get("hourly") or []:
+        for field, kind in HOURLY_FIELDS.items():
+            if field in hour:
+                hour[field] = convert(hour[field], kind, system)
+        if "wind_direction" in hour:
+            hour["wind_direction"] = None if hour.get("wind_speed") == 0 else direction(hour["wind_direction"])
     return result

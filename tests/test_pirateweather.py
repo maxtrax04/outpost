@@ -317,7 +317,8 @@ class AlertTests(unittest.TestCase):
                 pirateweather.fetch_alerts(1, 2, "k", "ua")
                 pirateweather.fetch(1, 2, "k", "ua")
         self.assertEqual(urlopen.call_count, 1)  # the weather and the alerts share one call
-        self.assertIn("exclude=minutely%2Chourly", urlopen.call_args[0][0].full_url)
+        self.assertIn("exclude=minutely&", urlopen.call_args[0][0].full_url + "&")
+        self.assertNotIn("hourly", urlopen.call_args[0][0].full_url)  # the hourly forecast comes too
         self.assertNotIn("alerts", urlopen.call_args[0][0].full_url)
 
 

@@ -72,6 +72,17 @@ always matches its `schema_version`.
       "uv_index": 5
     }
   ],
+  "hourly": [
+    {
+      "time": "2026-11-12T15:00:00+00:00",
+      "temperature": 72,
+      "condition": "Partly Cloudy",
+      "icon": "partly-cloudy",
+      "precipitation_chance": 10,
+      "wind_speed": 8,
+      "wind_direction": 225
+    }
+  ],
   "alerts": [
     {
       "title": "Wind Advisory",
@@ -105,7 +116,7 @@ Any reading can be `null` when the source doesn't have it.
 | `generated_at` | When the data was fetched, as an ISO 8601 time in UTC. |
 | `update_interval_seconds` | How often the updater runs. The dashboard calls data old after three missed updates. |
 | `units` | The unit of each kind of reading (below). |
-| `current`, `forecast`, `alerts` | The weather (below). |
+| `current`, `forecast`, `hourly`, `alerts` | The weather (below). `hourly` is new in Outpost 0.8.0, so files from earlier versions don't have it. |
 | `last_error` | Why the last update failed, or `null`. |
 
 ### `sources`
@@ -123,8 +134,8 @@ The dashboard credits each source by name in its footer. Open-Meteo and MET Norw
 | Field | Used for | Imperial | Metric |
 | :--- | :--- | :--- | :--- |
 | `system` | | `imperial` | `metric` |
-| `temperature` | `temperature`, `feels_like`, `dew_point`, `high`, `low` | `°F`, whole degrees | `°C`, whole degrees |
-| `speed` | `wind_speed`, `wind_gust` | `mph`, whole numbers | `km/h`, whole numbers |
+| `temperature` | `temperature`, `feels_like`, `dew_point`, `high`, `low` (and in `hourly`) | `°F`, whole degrees | `°C`, whole degrees |
+| `speed` | `wind_speed`, `wind_gust` (and in `hourly`) | `mph`, whole numbers | `km/h`, whole numbers |
 | `pressure` | `pressure` | `inHg`, 2 decimals | `hPa`, whole numbers |
 | `distance` | `visibility` | `mi`, 1 decimal | `km`, 1 decimal |
 
@@ -164,6 +175,27 @@ One entry per day, starting today.
 | `condition`, `icon` | As in `current`, for the day. |
 | `precipitation_chance` | Chance of rain or snow, in percent. |
 | `uv_index` | The day's highest UV index. |
+
+### `hourly`
+
+One entry per hour for the next 24 hours, starting with the hour under way, in order. Shorter when the
+source forecasts fewer hours, and empty (`[]`) when it has no hourly forecast. While the file is
+`degraded`, the first entries can be hours that have already passed, so a reader should skip entries
+whose hour has ended.
+
+| Field | Meaning |
+| :--- | :--- |
+| `time` | When the hour starts, as an ISO 8601 time in UTC. |
+| `temperature` | The temperature for that hour. |
+| `condition`, `icon` | As in `current`, for that hour (night icons after dark). |
+| `precipitation_chance` | Chance of rain or snow in that hour, in percent. `null` when the source doesn't say (MET Norway gives it only for some places, and the National Weather Service not for every hour). |
+| `wind_speed` | Sustained wind speed. |
+| `wind_direction` | Where the wind comes from, in whole degrees, as in `current`. `null` when calm. |
+
+Sources: Open-Meteo, MET Norway, and Pirate Weather send hourly forecasts with the rest; the National
+Weather Service has a separate hourly forecast, asked for as often as the daily one (every 15 minutes at
+most). When that request fails, `hourly` is empty and the rest of the update goes on. The hourly
+forecast is never filled in from another source.
 
 ### `alerts`
 

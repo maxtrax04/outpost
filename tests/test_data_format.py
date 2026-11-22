@@ -153,9 +153,13 @@ class PayloadTests(unittest.TestCase):
 
     def test_schema_requires_every_field_the_updater_writes(self):
         payload = u.build_mock_payload()
-        self.assertEqual(set(SCHEMA["required"]), set(payload))
+        # Fields added to format 1 after 0.6.0 are optional in the schema, so older files still pass
+        added = {"hourly"}
+        self.assertEqual(set(SCHEMA["required"]), set(payload) - added)
+        self.assertEqual(set(SCHEMA["properties"]), set(payload))
         self.assertEqual(set(SCHEMA["properties"]["current"]["required"]), set(payload["current"]))
         self.assertEqual(set(SCHEMA["properties"]["forecast"]["items"]["required"]), set(payload["forecast"][0]))
+        self.assertEqual(set(SCHEMA["properties"]["hourly"]["items"]["required"]), set(payload["hourly"][0]))
 
     def test_icons_match_the_icon_files(self):
         icons = {path.stem for path in (ROOT / "assets" / "icons").glob("*.svg")}
@@ -167,6 +171,7 @@ class DocumentationTests(unittest.TestCase):
         doc = (ROOT / "docs" / "data-format.md").read_text(encoding="utf-8")
         payload = u.build_mock_payload()
         names = (list(payload) + list(payload["units"]) + list(payload["current"]) + list(payload["forecast"][0])
+                 + list(payload["hourly"][0])
                  + ["weather", "alerts", "fill", "fields", "title", "description", "severity", "expires", "uri"])
         for name in names:
             with self.subTest(name=name):
