@@ -21,7 +21,7 @@ A self-hosted dashboard platform for weather, alerts, sensors, power monitoring,
 - Normalized weather data format, so the display doesn't care which provider supplied it
 - Built-in health check (including stale-data detection)
 - Warning banner when data is old, degraded, or unavailable
-- Works with Home Assistant: an add-on (experimental), a Webpage card for the dashboard, sensors and a weather entity from its data ([how](docs/home-assistant.md)), and your Home Assistant sensors and home power on the dashboard ([Sensors](#sensors), [Power](#power))
+- Works with Home Assistant: an add-on (experimental), a Webpage card for the dashboard, sensors and a weather entity from its data ([how](docs/home-assistant.md)), and your Home Assistant sensors and home power on the dashboard ([Sensors](#sensors), [Power](#power)), or straight from an MQTT broker ([MQTT](#mqtt))
 - Themes: seven built in (from green-phosphor terminals to a 1950s television and black-on-white for ePaper), more from the [community](https://github.com/maxtrax04/outpost-themes), or your own, with no rebuild
 
 ## Quick start
@@ -101,15 +101,20 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_MAP_TILES` | *(OpenStreetMap)* | Another server for the map's vector tiles, such as `https://tiles.example.org/{z}/{x}/{y}.mvt`. It must use the Shortbread schema. |
 | `OUTPOST_MAP_RADAR` | `true` | Rain radar on the map: NOAA in the US, RainViewer elsewhere. See [Map](#map). |
 | `OUTPOST_MAP_RADAR_LOOP` | `false` | Play the past 2 hours of radar as a loop instead of showing the latest frame (never on ePaper or with reduced effects). |
-| `OUTPOST_SENSORS` | *(empty)* | Home Assistant entities for the sensor panel, separated by commas, such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door`. See [Sensors](#sensors). |
-| `OUTPOST_POWER_HOME` | *(empty)* | Home Assistant entity with the home's power use, for the power panel. See [Power](#power). |
+| `OUTPOST_SENSORS` | *(empty)* | Home Assistant entities or MQTT topics for the sensor panel, separated by commas, such as `sensor.living_room_temperature, Garage=binary_sensor.garage_door, Shed=mqtt:shed/temperature`. See [Sensors](#sensors) and [MQTT](#mqtt). |
+| `OUTPOST_POWER_HOME` | *(empty)* | Home Assistant entity (or `mqtt:` topic) with the home's power use, for the power panel. See [Power](#power). |
 | `OUTPOST_POWER_SOLAR` | *(empty)* | Entity with solar production. |
 | `OUTPOST_POWER_GRID` | *(empty)* | Entity with grid power, positive when importing and negative when exporting. |
 | `OUTPOST_POWER_GRID_INVERT` | `false` | `true` for a grid meter that counts exports as positive. |
 | `OUTPOST_POWER_BATTERY` | *(empty)* | Entity with the battery's charge in percent. |
-| `OUTPOST_SENSORS_INTERVAL` | `10` | Seconds between sensor and power readings (at least 5). |
+| `OUTPOST_SENSORS_INTERVAL` | `10` | Seconds between sensor and power readings from Home Assistant (at least 5). MQTT readings arrive when they change. |
 | `OUTPOST_HA_URL` | *(empty)* | Your Home Assistant, such as `http://homeassistant.local:8123`, for the sensors and power. Not needed in the add-on. |
 | `OUTPOST_HA_TOKEN` | *(empty)* | A long-lived access token for `OUTPOST_HA_URL`. Keep it private; it is only sent to Home Assistant. Not needed in the add-on. |
+| `OUTPOST_MQTT_HOST` | *(empty)* | Your MQTT broker, such as `mqtt.local` or `192.168.1.20`, for `mqtt:` readings. See [MQTT](#mqtt). The add-on uses the Mosquitto broker add-on when this is empty. |
+| `OUTPOST_MQTT_PORT` | `1883` | The broker's port (`8883` by default with TLS). |
+| `OUTPOST_MQTT_USERNAME` | *(empty)* | The broker login, if it needs one. |
+| `OUTPOST_MQTT_PASSWORD` | *(empty)* | The broker password. Keep it private; it is only sent to the broker. |
+| `OUTPOST_MQTT_TLS` | `false` | `true` to connect with TLS. The broker's certificate must be valid for `OUTPOST_MQTT_HOST`. |
 | `OUTPOST_UNITS` | `imperial` | `imperial` (°F, mph, inHg, miles) or `metric` (°C, km/h, hPa, km), for the dashboard and `weather.json`. |
 | `OUTPOST_UPDATE_INTERVAL` | `60` | Seconds between data updates (at least 60). Each weather service is still asked no more often than it allows; see [Request limits](#request-limits). |
 | `OUTPOST_CONTACT` | *(empty)* | Your email address or website, so weather services can reach you. Recommended for `nws`, `metno`, and `auto` (and NWS alerts). It is sent in the User-Agent header, after the project page that Outpost always includes. |
@@ -252,7 +257,28 @@ OUTPOST_POWER_BATTERY=sensor.battery_level
 - **Battery** shows the charge in percent, with a bar (a dial in Field Station).
 - A label before `=` replaces the name, as for sensors: `Roof=sensor.solar_power`.
 
-Power uses the same Home Assistant connection (`OUTPOST_HA_URL` and `OUTPOST_HA_TOKEN`, or nothing in the add-on) and is read with the sensors, every `OUTPOST_SENSORS_INTERVAL` seconds. On a wide screen, power and sensors sit side by side; on a landscape tablet, power goes under the forecast.
+Power uses the same Home Assistant connection (`OUTPOST_HA_URL` and `OUTPOST_HA_TOKEN`, or nothing in the add-on) and is read with the sensors, every `OUTPOST_SENSORS_INTERVAL` seconds. Any of the parts can come from MQTT instead (see below). On a wide screen, power and sensors sit side by side; on a landscape tablet, power goes under the forecast.
+
+### MQTT
+
+Without Home Assistant, or for a device that only talks MQTT (a Tasmota plug, a Zigbee2MQTT sensor, an ESP board), Outpost can read topics straight from your MQTT broker. Write `mqtt:` and the topic wherever an entity goes, in `OUTPOST_SENSORS` or a power part:
+
+```bash
+OUTPOST_SENSORS=Shed=mqtt:shed/temperature [°C], Garage=mqtt:zigbee2mqtt/garage_door#contact
+OUTPOST_POWER_HOME=mqtt:tele/house_meter/SENSOR#ENERGY.Power [W]
+OUTPOST_MQTT_HOST=mqtt.local
+OUTPOST_MQTT_USERNAME=outpost
+OUTPOST_MQTT_PASSWORD=your-broker-password
+```
+
+- **The message** is a number or text (`21.5`, `ON`), or JSON with the field named after `#`: `mqtt:zigbee2mqtt/shed#temperature` reads `{"temperature": 21.5, ...}`. A dot goes into a field inside another (`#ENERGY.Power`), and a number into a list (`#values.0`).
+- **Names and units:** MQTT has none, so give a label before `=` and a unit in brackets. Without a label the tile shows the field or the last part of the topic.
+- **On and off:** `ON`, `OFF`, `true`, and `false` read On or Off (JSON `true` and `false` too). `1` and `0` stay numbers.
+- **Exact topics only:** no `+` or `#` wildcards, so the broker sends only what is listed. Retained messages show at once; other topics show `--` until their first message.
+- **Missing:** a reading stays while the broker is connected, however long ago it changed. If the broker can't be reached for 15 minutes, its readings show `--`. Outpost connects again on its own, waiting longer each time (up to 5 minutes).
+- **In the add-on**, with the [Mosquitto broker add-on](https://github.com/home-assistant/addons/tree/master/mosquitto) installed, Outpost gets the broker and a login from Home Assistant: nothing to set. To use another broker, set **MQTT broker** and its login in the options.
+
+Outpost only subscribes: it never publishes, and the password is never logged or sent to a screen. MQTT and Home Assistant readings can be mixed in one list.
 
 ## Data and storage
 

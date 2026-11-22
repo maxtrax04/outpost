@@ -100,13 +100,13 @@ configuration:
     description: HH:MM, with the schedule mode.
   sensors:
     name: Sensors
-    description: "Home Assistant entities for the sensor panel, one per line, such as sensor.living_room_temperature. Add a label before = and a unit in brackets: Garage=binary_sensor.garage_door."
+    description: "Home Assistant entities or MQTT topics for the sensor panel, one per line, such as sensor.living_room_temperature or mqtt:shed/temperature. Add a label before = and a unit in brackets: Garage=binary_sensor.garage_door."
   sensors_interval:
     name: Sensor interval
     description: Seconds between sensor readings (at least 5; default 10).
   power_home:
     name: Power - home use
-    description: "An entity with the home's power use now, such as sensor.house_power (W or kW)."
+    description: "An entity (or mqtt: topic) with the home's power use now, such as sensor.house_power (W or kW)."
   power_solar:
     name: Power - solar
     description: An entity with solar production now.
@@ -119,6 +119,21 @@ configuration:
   power_battery:
     name: Power - battery
     description: An entity with the battery's charge in percent.
+  mqtt_host:
+    name: MQTT broker
+    description: "For mqtt: readings. Empty uses Home Assistant's MQTT service (the Mosquitto broker add-on)."
+  mqtt_port:
+    name: MQTT port
+    description: Default 1883, or 8883 with TLS.
+  mqtt_username:
+    name: MQTT username
+    description: With MQTT broker.
+  mqtt_password:
+    name: MQTT password
+    description: With MQTT broker.
+  mqtt_tls:
+    name: MQTT over TLS
+    description: Connect to the MQTT broker with TLS (its certificate must be valid).
   frame_ancestors:
     name: Sites that may frame it
     description: Only needed to show Outpost's own port in a frame elsewhere. The Outpost panel in Home Assistant works without it.

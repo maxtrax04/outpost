@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 """
-Sensors (docs/sensors-design.md): readings from Home Assistant for the sensor and power panels.
+Sensors (docs/sensors-design.md): readings from Home Assistant or MQTT for the sensor and power
+panels.
 
 OUTPOST_SENSORS lists the readings, separated by commas. Each one is a source, optionally with a
 label before "=" and a unit in brackets after it:
 
-    sensor.living_room_temperature, Garage=binary_sensor.garage_door, Attic=sensor.attic [°F]
+    sensor.living_room_temperature, Garage=binary_sensor.garage_door, Shed=mqtt:shed/climate#temperature [°F]
 
-A source is a Home Assistant entity ID. The power panel has one setting per role, each one source
-(OUTPOST_POWER_HOME, OUTPOST_POWER_SOLAR, OUTPOST_POWER_GRID, OUTPOST_POWER_BATTERY), and
+A source is a Home Assistant entity ID, or mqtt:<topic>, with #<field> for a field of a JSON
+message (#ENERGY.Power for one inside another). The power panel has one setting per role, each one
+source (OUTPOST_POWER_HOME, OUTPOST_POWER_SOLAR, OUTPOST_POWER_GRID, OUTPOST_POWER_BATTERY), and
 OUTPOST_POWER_GRID_INVERT flips the grid's sign for meters that count exports as positive.
 
-outpost_server.py reads each one every
-OUTPOST_SENSORS_INTERVAL seconds and answers /api/sensors with the latest values. Only what is
-listed here is ever read or answered, so a screen can't use Outpost to read the rest of Home
-Assistant. Outpost only reads: it never calls a Home Assistant service.
+outpost_server.py reads each Home Assistant entity every OUTPOST_SENSORS_INTERVAL seconds, gets each
+MQTT topic as the broker sends it (outpost_mqtt.py), and answers /api/sensors with the latest
+values. Only what is listed here is ever read or answered, so a screen can't use Outpost to read
+the rest of Home Assistant or the broker. Outpost only reads: it never calls a Home Assistant
+service and never publishes to MQTT.
 
 Home Assistant is reached at OUTPOST_HA_URL with the long-lived token OUTPOST_HA_TOKEN or, in the
-add-on, through the Supervisor with the token it gives the add-on. The token is never logged or
-sent to a screen, and the log names entities without their values.
+add-on, through the Supervisor with the token it gives the add-on. The broker is OUTPOST_MQTT_HOST
+(and _PORT, _USERNAME, _PASSWORD, _TLS); the add-on fills these in from Home Assistant's MQTT
+service. Tokens and passwords are never logged or sent to a screen, and the log names entities and
+topics without their values.
 
 Uses only the Python standard library.
 """
@@ -35,6 +40,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+
+import outpost_mqtt
 
 MAX_ITEMS = 24
 DEFAULT_INTERVAL = 10
@@ -62,6 +69,11 @@ POWER_LABELS = {role: label for role, label, _ in POWER_ROLES}
 # Home Assistant entity IDs are "<domain>.<object id>", in lower case
 ENTITY_ID = re.compile(r"[a-z][a-z0-9_]{0,40}\.[a-z0-9_]{1,200}")
 DEVICE_CLASS = re.compile(r"[a-z0-9_]{1,40}")
+# An MQTT topic to subscribe to: exact (no + or # wildcards), with an optional JSON field after #
+MQTT_TOPIC = re.compile(r"[^\s#+\x00=\[\],]{1,200}")
+MQTT_FIELD = re.compile(r"[A-Za-z0-9_:\-]{1,60}(?:\.[A-Za-z0-9_:\-]{1,60}){0,5}")
+# What MQTT on/off values look like (when the item has no unit; 1 and 0 stay numbers)
+MQTT_ON_OFF = ("on", "off", "true", "false")
 ITEM = re.compile(r"(?:(?P<label>[^=\[\]]*?)\s*=\s*)?(?P<source>[^\s=\[\]]+)(?:\s*\[(?P<unit>[^\[\]]*)\])?")
 
 MISSING_STATES = ("unavailable", "unknown", "none", "", "nan", "inf", "-inf")
@@ -103,6 +115,31 @@ class Item:
         self.label = label
         self.unit = unit
         self.role = role
+        # For an mqtt: source, its topic and the path to its JSON field, if any
+        self.topic = ""
+        self.field: Tuple[str, ...] = ()
+        if source.startswith("mqtt:"):
+            topic, _, field = source[5:].partition("#")
+            self.topic = topic
+            self.field = tuple(field.split(".")) if field else ()
+
+    @property
+    def mqtt(self) -> bool:
+        return bool(self.topic)
+
+    @property
+    def domain(self) -> str:
+        """The Home Assistant domain (sensor, binary_sensor, ...), or "mqtt"."""
+        return "mqtt" if self.mqtt else self.source.split(".", 1)[0]
+
+    def default_label(self) -> str:
+        """The label when neither the list nor the source gives one: for MQTT the field or the last
+        part of the topic ("Temperature" for mqtt:shed/climate#temperature), else the entity ID."""
+        if not self.mqtt:
+            return self.source
+        name = self.field[-1] if self.field else self.topic.rstrip("/").rsplit("/", 1)[-1]
+        name = plain_text(re.sub(r"[_\-]+", " ", name), MAX_LABEL_LENGTH) or "Sensor"
+        return name[:1].upper() + name[1:]
 
     def __repr__(self) -> str:
         return f"Item({self.source!r}, label={self.label!r}, unit={self.unit!r})"
@@ -126,10 +163,14 @@ def parse_items(text: Optional[str]) -> Tuple[List[Item], List[str]]:
         label = plain_text(match.group("label") or "", MAX_LABEL_LENGTH)
         unit = plain_text(match.group("unit") or "", MAX_UNIT_LENGTH)
         if source.startswith("mqtt:"):
-            problems.append(f"\"{shown}\": MQTT readings aren't supported yet")
-            continue
-        if not ENTITY_ID.fullmatch(source):
-            problems.append(f"\"{shown}\" is not a Home Assistant entity ID (such as sensor.living_room_temperature)")
+            topic, has_field, field = source[5:].partition("#")
+            if not MQTT_TOPIC.fullmatch(topic) or (has_field and not MQTT_FIELD.fullmatch(field)):
+                problems.append(f"\"{shown}\" is not an MQTT topic (such as mqtt:shed/temperature, or "
+                                f"mqtt:shed/climate#temperature for a field of a JSON message; no + or # wildcards)")
+                continue
+        elif not ENTITY_ID.fullmatch(source):
+            problems.append(f"\"{shown}\" is not a Home Assistant entity ID (such as sensor.living_room_temperature) "
+                            f"or an MQTT topic (mqtt:shed/temperature)")
             continue
         if (source, label, unit) in seen:
             continue
@@ -214,6 +255,83 @@ def connection(environ: Mapping[str, str]) -> Tuple[Optional[str], str, str]:
     return None, "", "Home Assistant is not set up (OUTPOST_HA_URL and OUTPOST_HA_TOKEN)"
 
 
+class MqttSettings:
+    """Where the broker is and how to log in. The password is left out of repr."""
+
+    def __init__(self, host: str, port: int = 1883, username: str = "", password: str = "",
+                 tls: bool = False) -> None:
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.tls = tls
+
+    def __repr__(self) -> str:
+        return f"MqttSettings({self.host!r}, {self.port}, tls={self.tls})"
+
+
+MQTT_HOST = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._\-]{0,252})|[0-9A-Fa-f:.]{2,45}")
+
+
+def mqtt_connection(environ: Mapping[str, str]) -> Tuple[Optional[MqttSettings], str]:
+    """The broker from OUTPOST_MQTT_HOST, _PORT, _USERNAME, _PASSWORD, and _TLS, or None and why not."""
+    host = (environ.get("OUTPOST_MQTT_HOST") or "").strip()
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    if not host:
+        return None, "OUTPOST_MQTT_HOST is not set"
+    if not MQTT_HOST.fullmatch(host):
+        return None, "OUTPOST_MQTT_HOST is not a host name or address (such as mqtt.local or 192.168.1.20)"
+    tls = flag(environ.get("OUTPOST_MQTT_TLS"))
+    port_text = (environ.get("OUTPOST_MQTT_PORT") or "").strip()
+    try:
+        port = int(port_text) if port_text else (8883 if tls else 1883)
+    except ValueError:
+        port = 0
+    if not 0 < port < 65536:
+        return None, "OUTPOST_MQTT_PORT is not a port number (1883, or 8883 with TLS)"
+    username = plain_text(environ.get("OUTPOST_MQTT_USERNAME") or "", 200)
+    password = (environ.get("OUTPOST_MQTT_PASSWORD") or "").strip()
+    if password and not username:
+        return None, "OUTPOST_MQTT_PASSWORD needs OUTPOST_MQTT_USERNAME too"
+    return MqttSettings(host, port, username, password, tls), "an MQTT broker"
+
+
+def mqtt_state(item: Item, payload: bytes) -> Dict[str, Any]:
+    """An MQTT message as a Home Assistant-like state, for reading(): the text, or the JSON field."""
+    try:
+        text = payload.decode("utf-8").strip()
+    except UnicodeDecodeError:
+        return {"state": "unavailable"}
+    if not item.field:
+        if len(text) >= 2 and text[0] == text[-1] == '"':
+            try:
+                quoted = json.loads(text)
+            except ValueError:
+                quoted = None
+            if isinstance(quoted, str):
+                text = quoted.strip()
+        return {"state": text}
+    try:
+        value: Any = json.loads(text)
+    except ValueError:
+        return {"state": "unavailable"}
+    for key in item.field:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        elif isinstance(value, list) and key.isdigit() and int(key) < len(value):
+            value = value[int(key)]
+        else:
+            return {"state": "unavailable"}
+    if isinstance(value, bool):
+        return {"state": "on" if value else "off"}
+    if isinstance(value, (int, float)):
+        return {"state": str(value)}
+    if isinstance(value, str):
+        return {"state": value.strip()}
+    return {"state": "unavailable"}
+
+
 class SourceError(Exception):
     """Home Assistant could not be asked at all (so the rest of the round is skipped)."""
 
@@ -255,7 +373,7 @@ def reading(item: Item, state: Mapping[str, Any]) -> Dict[str, Any]:
     """What a screen shows for an item, from a Home Assistant state."""
     attributes = state.get("attributes")
     attributes = attributes if isinstance(attributes, dict) else {}
-    label = item.label or plain_text(attributes.get("friendly_name"), MAX_LABEL_LENGTH) or item.source
+    label = item.label or plain_text(attributes.get("friendly_name"), MAX_LABEL_LENGTH) or item.default_label()
     unit = item.unit or plain_text(attributes.get("unit_of_measurement"), MAX_UNIT_LENGTH)
     device_class = attributes.get("device_class")
     device_class = device_class if isinstance(device_class, str) and DEVICE_CLASS.fullmatch(device_class) else ""
@@ -267,7 +385,7 @@ def reading(item: Item, state: Mapping[str, Any]) -> Dict[str, Any]:
     if raw.lower() in MISSING_STATES:
         return result
 
-    domain = item.source.split(".", 1)[0]
+    domain = item.domain
     try:
         number = float(raw)
     except ValueError:
@@ -281,7 +399,8 @@ def reading(item: Item, state: Mapping[str, Any]) -> Dict[str, Any]:
 
     lower = raw.lower()
     if domain == "binary_sensor" or (not unit and (lower in ON_STATES or lower in OFF_STATES)
-                                     and domain in ("switch", "light", "input_boolean", "fan")):
+                                     and domain in ("switch", "light", "input_boolean", "fan")) \
+            or (domain == "mqtt" and not unit and lower in MQTT_ON_OFF):
         on = lower in ON_STATES
         if not on and lower not in OFF_STATES:
             return result
@@ -337,7 +456,7 @@ def missing_reading(item: Item) -> Dict[str, Any]:
         if item.role == "grid":
             value["direction"] = None
         return value
-    return {"id": item.id, "label": item.label or item.source, "kind": "text", "value": None,
+    return {"id": item.id, "label": item.label or item.default_label(), "kind": "text", "value": None,
             "text": "", "unit": item.unit, "device_class": "", "missing": True}
 
 
@@ -346,15 +465,20 @@ Getter = Callable[[str, str], Dict[str, Any]]
 
 class Sensors:
     """The listed readings (the sensor list and the power roles) and their latest values, read from
-    Home Assistant by `run`."""
+    Home Assistant and MQTT by `run`."""
 
     def __init__(self, items: List[Item], url: Optional[str], token: str = "", where: str = "",
                  interval: int = DEFAULT_INTERVAL, get: Getter = http_get,
                  clock: Callable[[], float] = time.time, power: Optional[List[Item]] = None,
-                 invert_grid: bool = False) -> None:
+                 invert_grid: bool = False, mqtt: Optional[MqttSettings] = None, mqtt_where: str = "",
+                 mqtt_client: Callable[..., Any] = outpost_mqtt.Client) -> None:
         self.items = items
         self.power = list(power or [])
         self.invert_grid = invert_grid
+        self.mqtt = mqtt
+        self.mqtt_where = mqtt_where or ("an MQTT broker" if mqtt else "OUTPOST_MQTT_HOST is not set")
+        self.mqtt_client = mqtt_client
+        self._mqtt_alive: Optional[float] = None
         self.url = url
         self.token = token
         self.where = where
@@ -369,9 +493,18 @@ class Sensors:
         self._missing: set = set()
 
     @property
+    def home_assistant_items(self) -> List[Item]:
+        return [item for item in self.items + self.power if not item.mqtt]
+
+    @property
+    def mqtt_items(self) -> List[Item]:
+        return [item for item in self.items + self.power if item.mqtt]
+
+    @property
     def on(self) -> bool:
         """True when there is something to show: readings listed and somewhere to read them."""
-        return bool(self.items or self.power) and self.url is not None
+        return bool(self.home_assistant_items and self.url is not None) \
+            or bool(self.mqtt_items and self.mqtt is not None)
 
     def _report(self, problem: Optional[str]) -> None:
         if problem != self._problem:
@@ -389,11 +522,13 @@ class Sensors:
             self._missing.discard(item.source)
 
     def poll_once(self) -> None:
-        """Reads every item once. When Home Assistant can't be asked, the rest of the round is skipped."""
-        if not self.on:
+        """Reads every Home Assistant item once. When Home Assistant can't be asked, the rest of the
+        round is skipped."""
+        items = self.home_assistant_items
+        if self.url is None or not items:
             return
         problem = None
-        for item in self.items + self.power:
+        for item in items:
             url = f"{self.url}/api/states/{urllib.parse.quote(item.source)}"
             try:
                 state = self.get(url, self.token)
@@ -414,6 +549,25 @@ class Sensors:
                 self._updated = self.clock()
         self._report(problem)
 
+    def mqtt_message(self, topic: str, payload: bytes) -> None:
+        """A message from the broker: the new value of each item with that topic."""
+        now = self.clock()
+        for item in self.mqtt_items:
+            if item.topic == topic:
+                state = mqtt_state(item, payload)
+                value = power_reading(item, state, self.invert_grid) if item.role else reading(item, state)
+                with self._lock:
+                    self._readings[item.id] = value
+                    self._read_at[item.id] = now
+                    self._updated = now
+        self.mqtt_alive()
+
+    def mqtt_alive(self) -> None:
+        """The broker was heard from, so the MQTT readings are still current: it sends a topic's
+        message only when it changes, and again on every connection when it is retained."""
+        with self._lock:
+            self._mqtt_alive = self.clock()
+
     def answer(self) -> Dict[str, Any]:
         """/api/sensors: every listed reading, in the listed order, and the power roles that are set,
         in POWER_ROLES order; each marked missing when too old."""
@@ -421,7 +575,11 @@ class Sensors:
 
         def latest(item: Item) -> Dict[str, Any]:
             value = self._readings.get(item.id)
-            if value is None or now - self._read_at.get(item.id, 0) > KEEP_SECONDS:
+            read_at = self._read_at.get(item.id, 0)
+            if item.mqtt:
+                # Kept while the broker is there, however long ago the topic last changed
+                read_at = max(read_at, self._mqtt_alive or 0)
+            if value is None or now - read_at > KEEP_SECONDS:
                 return missing_reading(item)
             return dict(value)
 
@@ -438,8 +596,18 @@ class Sensors:
         }
 
     def run(self, stop: Optional[threading.Event] = None) -> None:
-        """Reads every `interval` seconds until `stop` is set; one bad round never stops it."""
+        """Starts the MQTT client, if there are MQTT readings, and reads Home Assistant every
+        `interval` seconds, until `stop` is set; one bad round never stops it."""
         stop = stop or threading.Event()
+        if self.mqtt is not None and self.mqtt_items:
+            client = self.mqtt_client(
+                self.mqtt.host, self.mqtt.port, [item.topic for item in self.mqtt_items], self.mqtt_message,
+                username=self.mqtt.username, password=self.mqtt.password, tls=self.mqtt.tls,
+                on_alive=self.mqtt_alive)
+            threading.Thread(target=client.run, args=(stop,), name="mqtt", daemon=True).start()
+        if self.url is None or not self.home_assistant_items:
+            stop.wait()
+            return
         while not stop.is_set():
             started = self.clock()
             try:
@@ -452,14 +620,26 @@ class Sensors:
         """For the startup log: how many readings and from where, never a token or a value."""
         if not self.items and not self.power:
             return "sensors off (OUTPOST_SENSORS and OUTPOST_POWER_* are empty)"
-        if self.url is None:
-            return f"sensors off: {self.where}"
+        sources, off = [], []
+        if self.home_assistant_items:
+            if self.url is None:
+                off.append(self.where)
+            else:
+                sources.append(f"{self.where}, every {self.interval} s")
+        if self.mqtt_items:
+            if self.mqtt is None:
+                off.append(f"MQTT readings off: {self.mqtt_where}")
+            else:
+                sources.append(self.mqtt_where)
+        if not sources:
+            return f"sensors off: {'; '.join(off)}"
         counts = []
         if self.items:
             counts.append(f"{len(self.items)} sensor reading{'' if len(self.items) == 1 else 's'}")
         if self.power:
             counts.append(f"power ({', '.join(item.role for item in self.power)})")
-        return f"{' and '.join(counts)} from {self.where}, every {self.interval} s"
+        text = f"{' and '.join(counts)} from {' and '.join(sources)}"
+        return f"{text}; {'; '.join(off)}" if off else text
 
 
 def from_environment(environ: Optional[Mapping[str, str]] = None) -> Sensors:
@@ -470,7 +650,10 @@ def from_environment(environ: Optional[Mapping[str, str]] = None) -> Sensors:
     power, problems = parse_power(environ)
     for problem in problems:
         _say(problem)
+    listed = items + power
     url, token, where = connection(environ)
-    return Sensors(items, url if items or power else None, token, where,
+    mqtt, mqtt_where = mqtt_connection(environ) if any(item.mqtt for item in listed) else (None, "")
+    return Sensors(items, url if any(not item.mqtt for item in listed) else None, token, where,
                    interval_setting(environ.get("OUTPOST_SENSORS_INTERVAL")), power=power,
-                   invert_grid=flag(environ.get("OUTPOST_POWER_GRID_INVERT")))
+                   invert_grid=flag(environ.get("OUTPOST_POWER_GRID_INVERT")),
+                   mqtt=mqtt, mqtt_where=mqtt_where)
