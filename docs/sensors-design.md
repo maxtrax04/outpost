@@ -182,4 +182,4 @@ Each step is its own PR and beta:
 3. **MQTT (beta.15):** `outpost_mqtt.py`, the `mqtt:` sources, the MQTT settings, and the add-on's
    Mosquitto service.
 
-Then 0.7.0.
+Then 0.7.0, released 2026-11-21.
