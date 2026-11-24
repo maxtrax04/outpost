@@ -159,3 +159,4 @@ h2 {
 :root[data-fit="on"] .hourly-time,
 :root[data-fit="on"] .hourly-rain { font-size: 0.75em; }
 :root[data-fit="on"] .forecast-icon { width: 52px; margin: 4px auto; }
+:root[data-fit="on"] .forecast-extra { font-size: 0.8em; }

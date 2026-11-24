@@ -58,7 +58,8 @@
         "temperature": { "type": "string", "description": "Label for temperature, feels_like, dew_point, high, and low (also in hourly), such as °F." },
         "speed": { "type": "string", "description": "Label for wind_speed, such as mph." },
         "pressure": { "type": "string", "description": "Label for pressure, such as inHg." },
-        "distance": { "type": "string", "description": "Label for visibility, such as mi." }
+        "distance": { "type": "string", "description": "Label for visibility, such as mi." },
+        "precipitation": { "type": "string", "description": "Label for precipitation amounts, such as in (added in Outpost 0.8.0)." }
       }
     },
     "current": {
@@ -92,6 +93,7 @@
           "condition": { "type": "string" },
           "icon": { "$ref": "#/$defs/icon" },
           "precipitation_chance": { "$ref": "#/$defs/percent" },
+          "precipitation": { "$ref": "#/$defs/amount", "description": "Rain or snow expected that day, as water, in the precipitation unit (added in Outpost 0.8.0). For today, from MET Norway, only what is still to come." },
           "uv_index": { "$ref": "#/$defs/reading" }
         }
       }
@@ -108,6 +110,7 @@
           "condition": { "type": "string" },
           "icon": { "$ref": "#/$defs/icon" },
           "precipitation_chance": { "$ref": "#/$defs/percent" },
+          "precipitation": { "$ref": "#/$defs/amount", "description": "Rain or snow expected in that hour, as water, in the precipitation unit (added in Outpost 0.8.0)." },
           "wind_speed": { "$ref": "#/$defs/reading" },
           "wind_direction": { "type": ["integer", "null"], "minimum": 0, "maximum": 359, "description": "Where the wind comes from, in whole degrees. null when calm or not given." }
         }
@@ -144,6 +147,7 @@
       ]
     },
     "reading": { "type": ["number", "null"], "description": "null when not available." },
+    "amount": { "type": ["number", "null"], "minimum": 0, "description": "A precipitation amount. null when not available." },
     "percent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
     "icon": {
       "enum": [

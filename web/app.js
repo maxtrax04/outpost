@@ -86,7 +86,8 @@ function setBanner(visible) {
     document.getElementById("alertBanner").classList.toggle("visible", visible);
 }
 
-function renderForecast(periods, system) {
+function renderForecast(periods, units) {
+    const system = units.system;
     const container = document.getElementById("forecastContainer");
     container.replaceChildren();
 
@@ -124,10 +125,18 @@ function renderForecast(periods, system) {
 
         const extra = document.createElement("div");
         extra.className = "forecast-extra";
-        extra.append(
-            text("forecast-rain", `Rain: ${valueOrDash(period.precipitation_chance, "%")}`),
-            text("forecast-uv", `UV: ${valueOrDash(period.uv_index)}`)
-        );
+        const rain = text("forecast-rain", `Rain: ${valueOrDash(period.precipitation_chance, "%")}`);
+        // The expected amount after the chance ("Rain: 40% · 0.25 in"), only when some is expected (#86).
+        // On the same line, so the cards are no taller; it wraps as a whole where a card is too narrow.
+        const amount = OutpostData.amountText(period.precipitation, units);
+        if (amount) {
+            const part = document.createElement("span");
+            part.className = "forecast-amount";
+            part.textContent = ` · ${amount}`;
+            part.title = "Expected rain or snow, as water";
+            rain.append(part);
+        }
+        extra.append(rain, text("forecast-uv", `UV: ${valueOrDash(period.uv_index)}`));
 
         card.append(day, iconWrap, condition, temps, extra);
         container.appendChild(card);
@@ -353,7 +362,7 @@ async function loadWeather(config, place) {
         setSignal(isOk ? "ok" : "degraded");
         setBanner(!isOk);
 
-        renderForecast(weather.forecast, units.system);
+        renderForecast(weather.forecast, units);
         OutpostHourly.render(document, weather, config, setIcon);
         renderAlertsSection(weather, config);
     } catch (error) {

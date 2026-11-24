@@ -20,8 +20,11 @@ CURRENT_FIELDS = [
     "visibility",
 ]
 
-# high/low can be empty for "today" once NWS has dropped the daytime period
-FORECAST_FIELDS = ["uv_index", "high", "low"]
+# high/low can be empty for "today" once NWS has dropped the daytime period; NWS has no precipitation amounts
+FORECAST_FIELDS = ["uv_index", "high", "low", "precipitation"]
+
+# Matched by the hour's start time
+HOURLY_FIELDS = ["precipitation"]
 
 
 def has_gaps(data: Dict[str, Any]) -> bool:
@@ -29,17 +32,15 @@ def has_gaps(data: Dict[str, Any]) -> bool:
     current = data.get("current") or {}
     if any(current.get(field) is None for field in CURRENT_FIELDS):
         return True
-    return any(
-        day.get(field) is None
-        for day in data.get("forecast") or []
-        for field in FORECAST_FIELDS
-    )
+    if any(day.get(field) is None for day in data.get("forecast") or [] for field in FORECAST_FIELDS):
+        return True
+    return any(hour.get(field) is None for hour in data.get("hourly") or [] for field in HOURLY_FIELDS)
 
 
 def fill(primary: Dict[str, Any], secondary: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     """
     Return (merged copy of primary, sorted list of filled field names such as
-    'current.uv_index' or 'forecast.high').
+    'current.uv_index', 'forecast.high', or 'hourly.precipitation').
     """
     merged = copy.deepcopy(primary)
     filled = set()
@@ -60,5 +61,15 @@ def fill(primary: Dict[str, Any], secondary: Dict[str, Any]) -> Tuple[Dict[str, 
             if day.get(field) is None and backup.get(field) is not None:
                 day[field] = backup[field]
                 filled.add(f"forecast.{field}")
+
+    backup_hours = {hour.get("time"): hour for hour in secondary.get("hourly") or []}
+    for hour in merged.get("hourly") or []:
+        backup = backup_hours.get(hour.get("time"))
+        if not backup:
+            continue
+        for field in HOURLY_FIELDS:
+            if hour.get(field) is None and backup.get(field) is not None:
+                hour[field] = backup[field]
+                filled.add(f"hourly.{field}")
 
     return merged, sorted(filled)

@@ -523,6 +523,7 @@ def mock_data() -> Dict[str, Any]:
             "condition": condition,
             "icon": icon,
             "precipitation_chance": random.randint(0, 60),
+            "precipitation": random.choice([0, 0, 0.04, 0.3, 1.2]),
             "uv_index": random.randint(0,8)
         })
     
@@ -539,7 +540,7 @@ def mock_data() -> Dict[str, Any]:
             icon = {"sunny": "clear-night", "partly-cloudy": "partly-cloudy-night"}.get(icon, icon)
         hourly.append(hours.entry(
             moment, base_temp - 8 + 10 * max(0.0, 1 - abs(moment.hour - 15) / 9), condition, icon,
-            random.randint(0, 60), random.randint(0, 25), random.randint(0, 359)))
+            random.randint(0, 60), random.randint(0, 25), random.randint(0, 359), random.choice([0, 0, 0.02, 0.1])))
 
     alerts = []
 

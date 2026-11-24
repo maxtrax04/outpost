@@ -8,8 +8,12 @@ def nws_like():
     return {
         "current": {"humidity": 20, "dew_point": 40, "wind_speed": 5, "pressure": 30.0, "uv_index": None, "visibility": 10.0},
         "forecast": [
-            {"day": "2026-07-15", "high": None, "low": 60, "uv_index": None},
-            {"day": "2026-07-16", "high": 85, "low": 59, "uv_index": None},
+            {"day": "2026-07-15", "high": None, "low": 60, "uv_index": None, "precipitation": None},
+            {"day": "2026-07-16", "high": 85, "low": 59, "uv_index": None, "precipitation": None},
+        ],
+        "hourly": [
+            {"time": "2026-07-15T14:00:00+00:00", "precipitation": None},
+            {"time": "2026-07-15T15:00:00+00:00", "precipitation": None},
         ],
     }
 
@@ -18,8 +22,12 @@ def backup():
     return {
         "current": {"humidity": 99, "dew_point": 99, "wind_speed": 99, "pressure": 99.0, "uv_index": 4, "visibility": 99.0},
         "forecast": [
-            {"day": "2026-07-15", "high": 90, "low": 1, "uv_index": 7},
-            {"day": "2026-07-16", "high": 1, "low": 1, "uv_index": 6},
+            {"day": "2026-07-15", "high": 90, "low": 1, "uv_index": 7, "precipitation": 0.2},
+            {"day": "2026-07-16", "high": 1, "low": 1, "uv_index": 6, "precipitation": 0.0},
+        ],
+        "hourly": [
+            {"time": "2026-07-15T15:00:00+00:00", "precipitation": 0.04},
+            {"time": "2026-07-15T16:00:00+00:00", "precipitation": 0.0},
         ],
     }
 
@@ -30,6 +38,7 @@ class GapFillTests(unittest.TestCase):
 
     def test_no_gaps(self):
         full, _ = gapfill.fill(nws_like(), backup())
+        full["hourly"][0]["precipitation"] = 0.0
         self.assertFalse(gapfill.has_gaps(full))
 
     def test_fills_only_what_is_missing(self):
@@ -37,6 +46,14 @@ class GapFillTests(unittest.TestCase):
         self.assertEqual(merged["current"]["uv_index"], 4)
         self.assertEqual(merged["forecast"][0]["high"], 90)
         self.assertEqual([d["uv_index"] for d in merged["forecast"]], [7, 6])
+
+    def test_fills_precipitation_amounts_by_day_and_hour(self):
+        merged, filled = gapfill.fill(nws_like(), backup())
+        self.assertEqual([day["precipitation"] for day in merged["forecast"]], [0.2, 0.0])
+        # Hours are matched by start time; one Open-Meteo doesn't have stays empty
+        self.assertEqual([hour["precipitation"] for hour in merged["hourly"]], [None, 0.04])
+        self.assertIn("forecast.precipitation", filled)
+        self.assertIn("hourly.precipitation", filled)
 
     def test_never_overwrites_existing_values(self):
         merged, _ = gapfill.fill(nws_like(), backup())
@@ -47,7 +64,8 @@ class GapFillTests(unittest.TestCase):
 
     def test_reports_what_was_filled(self):
         _, filled = gapfill.fill(nws_like(), backup())
-        self.assertEqual(filled, ["current.uv_index", "forecast.high", "forecast.uv_index"])
+        self.assertEqual(filled, ["current.uv_index", "forecast.high", "forecast.precipitation", "forecast.uv_index",
+                                  "hourly.precipitation"])
 
     def test_original_is_not_modified(self):
         original = nws_like()
@@ -57,6 +75,7 @@ class GapFillTests(unittest.TestCase):
     def test_days_are_matched_by_date(self):
         other = backup()
         other["forecast"] = [{"day": "2030-01-01", "high": 1, "low": 1, "uv_index": 9}]
+        other["hourly"] = [{"time": "2030-01-01T00:00:00+00:00", "precipitation": 1.0}]
         _, filled = gapfill.fill(nws_like(), other)
         self.assertEqual(filled, ["current.uv_index"])
 

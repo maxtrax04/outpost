@@ -7,7 +7,7 @@
 //   --wx-<name>  on the page root, for every reading below (for a gauge anywhere on the page)
 //   --value      on the element with data-metric="<name>", which is also marked data-gauge, and
 //                data-missing when the reading is not available (so a theme can hide its needle)
-//   --wx-high, --wx-low, --wx-rain, --wx-uv  on each forecast card
+//   --wx-high, --wx-low, --wx-rain, --wx-amount, --wx-uv  on each forecast card
 //
 // A missing or unreadable value removes the property, so `var(--value, 0)` picks the fallback.
 
@@ -34,6 +34,8 @@
         "high": ["high", -20, 120, "temperature"],
         "low": ["low", -20, 120, "temperature"],
         "rain": ["precipitation_chance", 0, 100],
+        // Expected rain or snow, as water: up to an inch (25.4 mm)
+        "amount": ["precipitation", 0, 1, "precipitation"],
         "uv": ["uv_index", 0, 11],
     };
 
@@ -43,6 +45,7 @@
         speed: (kmh) => kmh / 1.609344,
         pressure: (hpa) => hpa / 33.8638866667,
         distance: (km) => km / 1.609344,
+        precipitation: (mm) => mm / 25.4,
     };
 
     // A reading as 0..1, or null when there is no usable number

@@ -6,8 +6,23 @@ const assert = require("node:assert");
 const data = require("../web/data.js");
 
 test("unit labels come from the units block", () => {
-    const units = data.units({ units: { system: "metric", temperature: "°C", speed: "km/h", pressure: "hPa", distance: "km" } });
-    assert.deepStrictEqual(units, { system: "metric", temperature: "°C", speed: "km/h", pressure: "hPa", distance: "km" });
+    const given = { system: "metric", temperature: "°C", speed: "km/h", pressure: "hPa", distance: "km", precipitation: "mm" };
+    assert.deepStrictEqual(data.units({ units: given }), given);
+});
+
+test("a metric file from before 0.8.0 gets mm for precipitation", () => {
+    const old = { system: "metric", temperature: "°C", speed: "km/h", pressure: "hPa", distance: "km" };
+    assert.strictEqual(data.units({ units: old }).precipitation, "mm");
+    assert.strictEqual(data.units({}).precipitation, "in");
+});
+
+test("a forecast day's amount is shown only when some is expected", () => {
+    assert.strictEqual(data.amountText(0.3, data.units({})), "0.30 in");
+    assert.strictEqual(data.amountText(7.6, data.units({ units: { system: "metric" } })), "7.6 mm");
+    for (const value of [0, null, undefined, "0.3", NaN, -1]) {
+        assert.strictEqual(data.amountText(value, data.units({})), "");
+    }
+    assert.strictEqual(data.amountText(0.05), "0.05 in");
 });
 
 test("missing or unusable unit labels fall back to imperial", () => {

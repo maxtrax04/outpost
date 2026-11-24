@@ -229,6 +229,7 @@ def build_forecast(days: List[Dict[str, Any]], zone: tzinfo) -> List[Dict[str, A
             continue
         condition, icon = describe(day.get("icon"), day.get("summary"))
         uv = _number(day.get("uvIndex"))
+        intensity = _number(day.get("precipIntensity"))
         forecast.append({
             "day": datetime.fromtimestamp(start, zone).date().isoformat(),
             "high": _number(day.get("temperatureMax")),
@@ -236,6 +237,9 @@ def build_forecast(days: List[Dict[str, Any]], zone: tzinfo) -> List[Dict[str, A
             "condition": condition,
             "icon": icon,
             "precipitation_chance": _percent(day.get("precipProbability")),
+            # precipIntensity is water (snow melted), in inches an hour on average over the day;
+            # precipAccumulation counts snow at about 10:1, so it isn't used
+            "precipitation": hours.amount(intensity * 24 if intensity is not None else None),
             "uv_index": round(uv) if uv is not None else None,
         })
     return forecast
@@ -252,7 +256,8 @@ def build_hourly(entries: Any, now: Optional[datetime] = None) -> List[Dict[str,
         chance = _number(item.get("precipProbability"))
         result.append(hours.entry(datetime.fromtimestamp(start, timezone.utc), _number(item.get("temperature")),
                                   condition, icon, chance * 100 if chance is not None else None,
-                                  _number(item.get("windSpeed")), _number(item.get("windBearing"))))
+                                  _number(item.get("windSpeed")), _number(item.get("windBearing")),
+                                  _number(item.get("precipIntensity"))))
     return hours.upcoming(result, now)
 
 

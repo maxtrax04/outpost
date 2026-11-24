@@ -228,6 +228,7 @@ template:
         pressure_unit: "inHg"
         wind_speed_unit: "mph"
         visibility_unit: "mi"
+        precipitation_unit: "in"
         attribution: >-
           {{ (state_attr('sensor.outpost_weather', 'sources') or {}).get('weather', {}).get('name', '') }}
         forecast_daily: >-
@@ -239,6 +240,7 @@ template:
               'temperature': day.high,
               'templow': day.low,
               'precipitation_probability': day.precipitation_chance,
+              'precipitation': day.precipitation,
               'uv_index': day.uv_index,
             }] %}
           {% endfor %}
@@ -252,6 +254,7 @@ template:
                 'condition': conditions.get(hour.icon, 'exceptional'),
                 'temperature': hour.temperature,
                 'precipitation_probability': hour.precipitation_chance,
+                'precipitation': hour.precipitation,
                 'wind_speed': hour.wind_speed,
                 'wind_bearing': hour.wind_direction,
               }] %}

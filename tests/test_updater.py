@@ -311,7 +311,7 @@ class FormatTests(UpdaterTestCase):
             with self.subTest(payload=name):
                 self.assertEqual(payload["schema_version"], 1)
                 self.assertEqual(payload["units"], {"system": "imperial", "temperature": "°F", "speed": "mph",
-                                                    "pressure": "inHg", "distance": "mi"})
+                                                    "pressure": "inHg", "distance": "mi", "precipitation": "in"})
                 self.assertEqual(set(payload["sources"]), {"weather", "alerts", "fill"})
 
     def test_no_field_names_a_unit(self):
