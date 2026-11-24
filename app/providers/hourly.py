@@ -18,9 +18,16 @@ def number(value: Any) -> Optional[float]:
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) and value == value else None
 
 
+def amount(value: Any) -> Optional[float]:
+    """A precipitation amount in inches, never below 0, or None."""
+    value = number(value)
+    return max(0.0, value) if value is not None else None
+
+
 def entry(moment: datetime, temperature: Any, condition: str, icon: str, precipitation_chance: Any = None,
-          wind_speed: Any = None, wind_direction: Any = None) -> Dict[str, Any]:
-    """One hour. Readings are unrounded, in °F and mph, like the rest of a provider's data."""
+          wind_speed: Any = None, wind_direction: Any = None, precipitation: Any = None) -> Dict[str, Any]:
+    """One hour. Readings are unrounded, in °F, mph, and inches (the rain or snow expected in the hour,
+    as water), like the rest of a provider's data."""
     chance = number(precipitation_chance)
     return {
         "time": moment.astimezone(timezone.utc).isoformat(),
@@ -28,6 +35,7 @@ def entry(moment: datetime, temperature: Any, condition: str, icon: str, precipi
         "condition": condition,
         "icon": icon,
         "precipitation_chance": round(min(100.0, max(0.0, chance))) if chance is not None else None,
+        "precipitation": amount(precipitation),
         "wind_speed": number(wind_speed),
         "wind_direction": number(wind_direction),
     }

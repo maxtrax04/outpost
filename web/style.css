@@ -393,6 +393,7 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
 
 .forecast-icon { width: 64px; aspect-ratio: 1; margin: 6px auto; }
 .forecast-extra { display: block; }
+.forecast-amount { color: var(--text-dim); white-space: nowrap; }
 
 .forecast-condition {
     color: var(--accent);

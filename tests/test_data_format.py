@@ -158,8 +158,14 @@ class PayloadTests(unittest.TestCase):
         self.assertEqual(set(SCHEMA["required"]), set(payload) - added)
         self.assertEqual(set(SCHEMA["properties"]), set(payload))
         self.assertEqual(set(SCHEMA["properties"]["current"]["required"]), set(payload["current"]))
-        self.assertEqual(set(SCHEMA["properties"]["forecast"]["items"]["required"]), set(payload["forecast"][0]))
-        self.assertEqual(set(SCHEMA["properties"]["hourly"]["items"]["required"]), set(payload["hourly"][0]))
+        parts = {"units": payload["units"], "forecast": payload["forecast"][0], "hourly": payload["hourly"][0]}
+        for name, part in parts.items():
+            with self.subTest(part=name):
+                schema = SCHEMA["properties"][name]
+                schema = schema.get("items", schema)
+                # precipitation (#86) came in 0.8.0
+                self.assertEqual(set(schema["required"]), set(part) - {"precipitation"})
+                self.assertEqual(set(schema["properties"]), set(part))
 
     def test_icons_match_the_icon_files(self):
         icons = {path.stem for path in (ROOT / "assets" / "icons").glob("*.svg")}

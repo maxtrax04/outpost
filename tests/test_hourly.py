@@ -11,7 +11,8 @@ import units
 from providers import hourly, metno, nws, openmeteo, pirateweather
 
 NOW = datetime(2026, 7, 15, 14, 20, tzinfo=timezone.utc)
-FIELDS = {"time", "temperature", "condition", "icon", "precipitation_chance", "wind_speed", "wind_direction"}
+FIELDS = {"time", "temperature", "condition", "icon", "precipitation_chance", "precipitation", "wind_speed",
+          "wind_direction"}
 
 
 class UpcomingTests(unittest.TestCase):

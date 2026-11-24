@@ -373,6 +373,7 @@ def build_forecast(periods: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "condition": text,
             "icon": icon_from_text(text, is_day=entry["day_text"] is not None),
             "precipitation_chance": _round(max(entry["pops"])) if entry["pops"] else 0,
+            "precipitation": None,  # not in the NWS forecast; filled from Open-Meteo (gapfill.py)
             "uv_index": None,
         })
     return forecast

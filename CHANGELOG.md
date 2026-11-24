@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0-beta.3] - 2026-11-24
+
+### Added
+
+- Precipitation amounts (#86): how much rain or snow is expected, as water (snow melted), for each forecast day and each hour, in `weather.json` as `precipitation` in `forecast` and `hourly`, in inches or millimetres by `OUTPOST_UNITS` (the new `precipitation` label in `units`). Open-Meteo, MET Norway, and Pirate Weather supply it; the National Weather Service forecast has none, so with it the amounts come from Open-Meteo, in the same request that already fills in the UV index. The format stays version 1 (new fields, nothing renamed).
+- The dashboard shows the amount after the chance of rain on each forecast day when some is expected ("Rain: 40% · 0.25 in"). Every built-in theme still fits a tablet. Themes get `--wx-amount` on each forecast card and can style `.forecast-amount`.
+- docs/home-assistant.md: the `weather.outpost` entity gets the amounts in its daily and hourly forecasts (`precipitation_unit`).
+
 ## [0.8.0-beta.2] - 2026-11-22
 
 ### Added

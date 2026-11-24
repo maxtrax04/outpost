@@ -8,16 +8,30 @@
     const SCHEMA_VERSION = 1;
 
     // Used when weather.json has no "units" block (an error file, or one being written)
-    const DEFAULT_UNITS = { system: "imperial", temperature: "°F", speed: "mph", pressure: "inHg", distance: "mi" };
+    const DEFAULT_UNITS = {
+        system: "imperial", temperature: "°F", speed: "mph", pressure: "inHg", distance: "mi", precipitation: "in",
+    };
 
-    // The label for each kind of reading, from the "units" block
+    // The label for each kind of reading, from the "units" block. Files from before 0.8.0 have no
+    // precipitation label, so a metric one gets "mm".
     function units(weather) {
         const given = weather && weather.units && typeof weather.units === "object" ? weather.units : {};
         const result = {};
         for (const [kind, fallback] of Object.entries(DEFAULT_UNITS)) {
             result[kind] = typeof given[kind] === "string" && given[kind] ? given[kind] : fallback;
         }
+        if (!(typeof given.precipitation === "string" && given.precipitation) && result.system === "metric") {
+            result.precipitation = "mm";
+        }
         return result;
+    }
+
+    // A forecast day's expected rain or snow ("0.30 in", "7.6 mm"), or "" when none is expected or the
+    // source doesn't say
+    function amountText(value, unitLabels) {
+        if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "";
+        const labels = unitLabels || DEFAULT_UNITS;
+        return `${value.toFixed(labels.system === "metric" ? 1 : 2)} ${labels.precipitation}`;
     }
 
     // Names of the sources to credit, once each: weather, values filled from a second source, then alerts
@@ -141,7 +155,7 @@
 
     const api = {
         SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, WEATHER_URLS, units, sourceText, alertsSupported,
-        uncertainAlertsSource, gustText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
+        uncertainAlertsSource, gustText, amountText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
     };
 
     root.OutpostData = api;

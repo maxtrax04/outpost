@@ -258,7 +258,9 @@ Restyle them all with `.reading-note` or one by its class, or hide one with, for
 `.dew-point { display: none; }`.
 
 Each forecast card gets `--wx-high` and `--wx-low` (same scale as temperature), `--wx-rain` (chance of
-rain, 0 to 100%), and `--wx-uv`.
+rain, 0 to 100%), `--wx-amount` (expected rain or snow, as water, 0 to 1 inch or 25.4 mm), and `--wx-uv`.
+The amount is also written after the chance of rain (`.forecast-amount` inside `.forecast-rain`, such
+as " · 0.30 in") on days when some is expected.
 
 For example, a needle in the corner of every reading that has a value:
 

@@ -50,13 +50,14 @@ CURRENT_VARS = [
 # UV index and visibility are only offered hourly, so we read the current hour. The rest are for the
 # hourly forecast.
 HOURLY_VARS = ["uv_index", "visibility", "temperature_2m", "weather_code", "precipitation_probability",
-               "wind_speed_10m", "wind_direction_10m", "is_day"]
+               "precipitation", "wind_speed_10m", "wind_direction_10m", "is_day"]
 
 DAILY_VARS = [
     "weather_code",
     "temperature_2m_max",
     "temperature_2m_min",
     "precipitation_probability_max",
+    "precipitation_sum",
     "uv_index_max",
 ]
 
@@ -125,6 +126,7 @@ def fetch_raw(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
         "daily": ",".join(DAILY_VARS),
         "temperature_unit": "fahrenheit",
         "wind_speed_unit": "mph",
+        "precipitation_unit": "inch",
         "timezone": "auto",
         "forecast_days": FORECAST_DAYS,
     }
@@ -191,6 +193,7 @@ def build_hourly(raw: Dict[str, Any], now: Optional[datetime] = None) -> List[Di
 
     temps, codes, chances = column("temperature_2m"), column("weather_code"), column("precipitation_probability")
     winds, directions, days = column("wind_speed_10m"), column("wind_direction_10m"), column("is_day")
+    amounts = column("precipitation")
     entries = []
     for index, stamp in enumerate(stamps):
         moment = _observed_at(stamp, raw.get("utc_offset_seconds"))
@@ -200,14 +203,14 @@ def build_hourly(raw: Dict[str, Any], now: Optional[datetime] = None) -> List[Di
         if days[index] == 0:
             icon = NIGHT_ICONS.get(icon, icon)
         entries.append(hours.entry(datetime.fromisoformat(moment), temps[index], condition, icon,
-                                   chances[index], winds[index], directions[index]))
+                                   chances[index], winds[index], directions[index], amounts[index]))
     return hours.upcoming(entries, now)
 
 
 def normalize(raw: Dict[str, Any], now: Optional[datetime] = None) -> Dict[str, Any]:
     """
     Convert an Open-Meteo response into Outpost's normalized format. Readings are unrounded, in
-    °F, mph, inHg, and miles; the updater converts them to OUTPOST_UNITS and rounds them (app/units.py).
+    °F, mph, inHg, miles, and inches; the updater converts them to OUTPOST_UNITS and rounds them (app/units.py).
     """
     current = raw.get("current")
     daily = raw.get("daily")
@@ -248,6 +251,7 @@ def normalize(raw: Dict[str, Any], now: Optional[datetime] = None) -> Dict[str, 
             "condition": day_condition,
             "icon": day_icon,
             "precipitation_chance": (daily.get("precipitation_probability_max") or [None] * len(days))[i],
+            "precipitation": hours.amount((daily.get("precipitation_sum") or [None] * len(days))[i]),
             "uv_index": _round((daily.get("uv_index_max") or [None] * len(days))[i]),
         })
 

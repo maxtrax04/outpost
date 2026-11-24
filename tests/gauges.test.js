@@ -125,6 +125,13 @@ test("forecast temperatures in metric are placed on the same scale", () => {
     assert.strictEqual(metric.rain, 0.3);  // percentages are not converted
 });
 
+test("a forecast day's amount is placed up to an inch, in either system", () => {
+    assert.strictEqual(gauges.values({ precipitation: 0.5 }, gauges.FORECAST, "imperial").amount, 0.5);
+    assert.ok(Math.abs(gauges.values({ precipitation: 12.7 }, gauges.FORECAST, "metric").amount - 0.5) < 1e-9);
+    assert.strictEqual(gauges.values({ precipitation: 3 }, gauges.FORECAST, "imperial").amount, 1);
+    assert.strictEqual(gauges.values({}, gauges.FORECAST, "imperial").amount, null);
+});
+
 test("without a unit system, readings are treated as imperial", () => {
     assert.deepStrictEqual(gauges.values({ temperature: 50 }, gauges.CURRENT),
         gauges.values({ temperature: 50 }, gauges.CURRENT, "imperial"));

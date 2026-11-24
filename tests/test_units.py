@@ -13,9 +13,9 @@ from test_updater import UpdaterTestCase, nws_data, openmeteo_data
 class ConvertTests(unittest.TestCase):
     def test_labels(self):
         self.assertEqual(units.block("imperial"), {"system": "imperial", "temperature": "°F", "speed": "mph",
-                                                   "pressure": "inHg", "distance": "mi"})
+                                                   "pressure": "inHg", "distance": "mi", "precipitation": "in"})
         self.assertEqual(units.block("metric"), {"system": "metric", "temperature": "°C", "speed": "km/h",
-                                                 "pressure": "hPa", "distance": "km"})
+                                                 "pressure": "hPa", "distance": "km", "precipitation": "mm"})
 
     def test_metric_conversions(self):
         cases = [
@@ -23,6 +23,7 @@ class ConvertTests(unittest.TestCase):
             (10, "speed", 16), (60, "speed", 97),
             (29.92, "pressure", 1013), (30.0, "pressure", 1016),
             (10, "distance", 16.1), (0.5, "distance", 0.8),
+            (1, "precipitation", 25.4), (0.034, "precipitation", 0.9),
         ]
         for value, kind, expected in cases:
             with self.subTest(value=value, kind=kind):
@@ -32,6 +33,7 @@ class ConvertTests(unittest.TestCase):
         self.assertEqual(units.convert(84.26, "temperature", "imperial"), 84)
         self.assertEqual(units.convert(29.9234, "pressure", "imperial"), 29.92)
         self.assertEqual(units.convert(9.94, "distance", "imperial"), 9.9)
+        self.assertEqual(units.convert(0.256, "precipitation", "imperial"), 0.26)
 
     def test_whole_numbers_are_integers(self):
         self.assertIsInstance(units.convert(71.6, "temperature", "metric"), int)

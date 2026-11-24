@@ -69,6 +69,7 @@ always matches its `schema_version`.
       "condition": "Mostly Sunny",
       "icon": "sunny",
       "precipitation_chance": 20,
+      "precipitation": 0.05,
       "uv_index": 5
     }
   ],
@@ -79,6 +80,7 @@ always matches its `schema_version`.
       "condition": "Partly Cloudy",
       "icon": "partly-cloudy",
       "precipitation_chance": 10,
+      "precipitation": 0,
       "wind_speed": 8,
       "wind_direction": 225
     }
@@ -125,7 +127,7 @@ Any reading can be `null` when the source doesn't have it.
 | :--- | :--- |
 | `weather` | The source of the readings and forecast: `id` (a provider, as in `OUTPOST_PROVIDER`) and `name` (the name to credit). `null` in an error file. |
 | `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. With Pirate Weather (`pirateweather`) an empty `alerts` list can also mean the country is not covered, and alerts are in the language they were published in. `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
-| `fill` | A second source used for readings the first one left empty, with `fields` listing them (such as `current.uv_index` or `forecast.high`). `null` when nothing was filled. |
+| `fill` | A second source used for readings the first one left empty, with `fields` listing them (such as `current.uv_index`, `forecast.high`, or `hourly.precipitation`). `null` when nothing was filled. |
 
 The dashboard credits each source by name in its footer. Open-Meteo and MET Norway require that credit.
 
@@ -138,6 +140,7 @@ The dashboard credits each source by name in its footer. Open-Meteo and MET Norw
 | `speed` | `wind_speed`, `wind_gust` (and in `hourly`) | `mph`, whole numbers | `km/h`, whole numbers |
 | `pressure` | `pressure` | `inHg`, 2 decimals | `hPa`, whole numbers |
 | `distance` | `visibility` | `mi`, 1 decimal | `km`, 1 decimal |
+| `precipitation` | `precipitation` in `forecast` and `hourly` | `in`, 2 decimals | `mm`, 1 decimal |
 
 `OUTPOST_UNITS` picks the system (`imperial` by default). Every reading is converted and rounded once,
 from the source's own numbers, so switching systems does not add rounding errors.
@@ -174,6 +177,7 @@ One entry per day, starting today.
 | `high`, `low` | The day's highest and lowest temperature. |
 | `condition`, `icon` | As in `current`, for the day. |
 | `precipitation_chance` | Chance of rain or snow, in percent. |
+| `precipitation` | How much rain or snow is expected that day, as water (snow melted), in the `precipitation` unit. `0` when none is expected. For today, MET Norway gives only what is still to come; the others give the whole day. |
 | `uv_index` | The day's highest UV index. |
 
 ### `hourly`
@@ -189,13 +193,19 @@ whose hour has ended.
 | `temperature` | The temperature for that hour. |
 | `condition`, `icon` | As in `current`, for that hour (night icons after dark). |
 | `precipitation_chance` | Chance of rain or snow in that hour, in percent. `null` when the source doesn't say (MET Norway gives it only for some places, and the National Weather Service not for every hour). |
+| `precipitation` | How much rain or snow is expected in that hour, as water, in the `precipitation` unit. |
 | `wind_speed` | Sustained wind speed. |
 | `wind_direction` | Where the wind comes from, in whole degrees, as in `current`. `null` when calm. |
 
 Sources: Open-Meteo, MET Norway, and Pirate Weather send hourly forecasts with the rest; the National
 Weather Service has a separate hourly forecast, asked for as often as the daily one (every 15 minutes at
 most). When that request fails, `hourly` is empty and the rest of the update goes on. The hourly
-forecast is never filled in from another source.
+forecast is not filled in from another source, except `precipitation`.
+
+`precipitation` in `forecast` and `hourly` is new in Outpost 0.8.0, as is the `precipitation` unit
+label, so files from earlier versions don't have them. The National Weather Service forecast has no
+amounts, so with it they come from Open-Meteo (`sources.fill` lists `forecast.precipitation` and
+`hourly.precipitation`).
 
 ### `alerts`
 

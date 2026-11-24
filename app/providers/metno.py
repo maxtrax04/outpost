@@ -41,6 +41,7 @@ MIN_CACHE_SECONDS = 60
 
 MS_TO_MPH = 2.236936
 HPA_TO_INHG = 0.02952998
+MM_PER_INCH = 25.4
 
 # MET Norway weather symbols (https://api.met.no/weatherapi/weathericon/2.0/documentation), without the
 # _day, _night, or _polartwilight ending -> (condition text, icon name used by the dashboard)
@@ -248,6 +249,7 @@ def build_current(timeseries: List[Dict[str, Any]], now: datetime) -> Dict[str, 
 def build_forecast(timeseries: List[Dict[str, Any]], zone: tzinfo, today: date) -> List[Dict[str, Any]]:
     """One entry per local day from `today`: highs and lows, chance of precipitation, UV, and the daytime sky."""
     days: Dict[date, Dict[str, Any]] = {}
+    counted_until: Optional[datetime] = None
     for entry in timeseries:
         start = _time(entry)
         if start is None:
@@ -255,7 +257,7 @@ def build_forecast(timeseries: List[Dict[str, Any]], zone: tzinfo, today: date) 
         local = start.astimezone(zone)
         if local.date() < today:
             continue
-        day = days.setdefault(local.date(), {"temps": [], "pops": [], "uv": [], "symbols": []})
+        day = days.setdefault(local.date(), {"temps": [], "pops": [], "uv": [], "symbols": [], "amounts": []})
 
         instant = _details(entry, "instant")
         six = _details(entry, "next_6_hours")
@@ -269,6 +271,15 @@ def build_forecast(timeseries: List[Dict[str, Any]], zone: tzinfo, today: date) 
         uv = _number(instant.get("ultraviolet_index_clear_sky"))
         if uv is not None:
             day["uv"].append(uv)
+        # The day's precipitation: each hour's amount, then 6-hour amounts once the hours run out,
+        # counting no time twice
+        for block, length in (("next_1_hours", 1), ("next_6_hours", 6)):
+            amount = _number(_details(entry, block).get("precipitation_amount"))
+            if amount is not None:
+                if counted_until is None or start >= counted_until:
+                    day["amounts"].append(amount)
+                    counted_until = start + timedelta(hours=length)
+                break
         # The day's sky: the 12 hours from about 6:00, else the 6 hours from about noon
         symbol = _symbol(entry, "next_12_hours")
         if symbol:
@@ -288,6 +299,8 @@ def build_forecast(timeseries: List[Dict[str, Any]], zone: tzinfo, today: date) 
             "condition": condition,
             "icon": icon,
             "precipitation_chance": round(max(day["pops"])) if day["pops"] else None,
+            # Today: what is still to come
+            "precipitation": sum(day["amounts"]) / MM_PER_INCH if day["amounts"] else None,
             "uv_index": round(max(day["uv"])) if day["uv"] else None,
         })
     return forecast
@@ -306,10 +319,12 @@ def build_hourly(timeseries: List[Dict[str, Any]], now: datetime) -> List[Dict[s
         condition, icon = describe(symbol)
         temperature = _number(instant.get("air_temperature"))
         wind = _number(instant.get("wind_speed"))
+        millimeters = _number(_details(entry, "next_1_hours").get("precipitation_amount"))
         entries.append(hours.entry(
             start, C_TO_F(temperature) if temperature is not None else None, condition, icon,
             _number(_details(entry, "next_1_hours").get("probability_of_precipitation")),
-            wind * MS_TO_MPH if wind is not None else None, _number(instant.get("wind_from_direction"))))
+            wind * MS_TO_MPH if wind is not None else None, _number(instant.get("wind_from_direction")),
+            millimeters / MM_PER_INCH if millimeters is not None else None))
     return hours.upcoming(entries, now)
 
 
