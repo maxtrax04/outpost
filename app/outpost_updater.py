@@ -453,6 +453,7 @@ def mock_sample_alerts(now: datetime) -> List[Dict[str, Any]]:
             "title": "Severe Thunderstorm Warning",
             "description": "Sample alert: storms with 60 mph wind gusts and quarter-size hail moving east at 30 mph.",
             "severity": "severe",
+            "onset": until(0),
             "expires": until(2),
             "uri": None,
         },
@@ -460,6 +461,7 @@ def mock_sample_alerts(now: datetime) -> List[Dict[str, Any]]:
             "title": "Wind Advisory",
             "description": "Sample alert: southwest winds 25 to 35 mph with gusts to 50 mph.",
             "severity": "moderate",
+            "onset": until(0),
             "expires": until(6),
             "uri": None,
         },
@@ -467,6 +469,8 @@ def mock_sample_alerts(now: datetime) -> List[Dict[str, Any]]:
             "title": "Air Quality Alert",
             "description": "Sample alert: smoke may cause unhealthy air for sensitive groups.",
             "severity": "minor",
+            # Starts later, to show an alert that hasn't begun
+            "onset": until(3),
             "expires": until(12),
             "uri": None,
         },
@@ -549,6 +553,7 @@ def mock_data() -> Dict[str, Any]:
             "title": "Outpost Test Alert",
             "description": "Mock alert generated for dashboard validation.",
             "severity": "test",
+            "onset": None,
             "expires": None,
             "uri": None
         })

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0-beta.4] - 2026-11-24
+
+### Added
+
+- Alert start times (#87): each alert in `weather.json` has `onset`, when it starts, next to `expires`, from every alerts source: the National Weather Service (`onset`, or when it took effect), MET Norway's MetAlerts, and Pirate Weather. The format stays version 1 (a new field, nothing renamed).
+- An alert that hasn't started yet says so on the dashboard: "From Nov 25, 6:00 AM until Nov 26, 6:00 PM" instead of only "Until ...", so a warning for tomorrow no longer looks as if it is in effect now. It still shows, and still turns the alerts panel red when serious. Themes can style it with `.alert-item[data-upcoming]`.
+
 ## [0.8.0-beta.3] - 2026-11-24
 
 ### Added

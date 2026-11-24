@@ -327,6 +327,7 @@ def build_alerts(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
             "title": title,
             "description": description,
             "severity": severity if severity in SEVERITIES else "unknown",
+            "onset": _alert_time(alert.get("time")),
             "expires": expires,
             "uri": uri if isinstance(uri, str) and uri.startswith(("https://", "http://")) else None,
         })

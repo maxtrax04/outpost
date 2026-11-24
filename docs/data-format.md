@@ -90,6 +90,7 @@ always matches its `schema_version`.
       "title": "Wind Advisory",
       "description": "Wind Advisory issued November 12 at 9:00AM until November 12 at 6:00PM",
       "severity": "moderate",
+      "onset": "2026-11-12T09:00:00-07:00",
       "expires": "2026-11-12T18:00:00-07:00",
       "uri": "https://api.weather.gov/alerts/example"
     }
@@ -217,5 +218,6 @@ Official alerts, most serious first. Empty when there are none, or when the sour
 | `title` | The kind of alert, such as `Wind Advisory`. |
 | `description` | The alert's headline. |
 | `severity` | `extreme`, `severe`, `moderate`, `minor`, or `unknown` (mock data also uses `test`). |
+| `onset` | When it starts, as an ISO 8601 time, or `null`. It can be in the future: a warning for tomorrow morning is sent today. New in Outpost 0.8.0, so files from earlier versions don't have it. |
 | `expires` | When it ends, as an ISO 8601 time, or `null`. |
 | `uri` | A link to the full alert, or `null`. |

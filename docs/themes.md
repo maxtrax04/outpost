@@ -373,7 +373,9 @@ when it is exporting.
 
 Each alert is a `.alert-item` (also a `.detail-box`) with a `.severity-<level>` class: `extreme`, `severe`,
 `moderate`, `minor`, or `unknown`. Inside it are `.alert-title`, `.alert-description`, and `.alert-expires`
-(the end time, when there is one), separated by `<br>`. The alerts panel (`#alertsPanel`) gets `.alert-active`
+(when it is: "Until <end>", or "From <start> until <end>" for one that hasn't started), separated by `<br>`.
+An alert that hasn't started yet also gets `data-upcoming`, so a theme can show it more quietly, for
+example `.alert-item[data-upcoming] { opacity: 0.7; }`. The alerts panel (`#alertsPanel`) gets `.alert-active`
 when any alert is severe or extreme. `#alerts` gets `--alert-chars`, the amount of alert text, so a theme
 that scrolls alerts like a news crawl can keep the speed readable, for example
 `animation-duration: calc(var(--alert-chars) * 0.12s)`.

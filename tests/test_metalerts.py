@@ -64,12 +64,14 @@ class ParsingTests(unittest.TestCase):
     def test_fields(self):
         snow = self.alerts[2]
         self.assertTrue(snow["description"].startswith("Parts of the mountins in Southern Norway: Local blowing snow"))
+        self.assertEqual(snow["onset"], "2026-11-14T08:00:00+00:00")
         self.assertEqual(snow["expires"], "2026-11-15T08:00:00+00:00")
         self.assertTrue(snow["uri"].startswith("https://www.met.no/"))
 
     def test_without_a_description_the_consequences_are_used(self):
         surge = self.alerts[0]
         self.assertEqual(surge["description"], "Example coast: Flooding of low-lying areas near the sea.")
+        self.assertEqual(surge["onset"], "2026-11-13T12:00:00+00:00")
         self.assertIsNone(surge["expires"])  # no end time given
         self.assertIsNone(surge["uri"])  # not a web link
 

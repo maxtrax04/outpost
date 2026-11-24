@@ -16,6 +16,22 @@ test("a metric file from before 0.8.0 gets mm for precipitation", () => {
     assert.strictEqual(data.units({}).precipitation, "in");
 });
 
+test("an alert's time line says when it starts if it hasn't yet", () => {
+    const now = Date.parse("2026-07-15T12:00:00Z");
+    const format = (date) => date.toISOString().slice(11, 16);
+    const later = { onset: "2026-07-15T18:00:00Z", expires: "2026-07-16T03:00:00Z" };
+    assert.deepStrictEqual(data.alertTime(later, now, format), { text: "From 18:00 until 03:00", upcoming: true });
+    assert.deepStrictEqual(data.alertTime({ onset: later.onset, expires: null }, now, format),
+        { text: "From 18:00", upcoming: true });
+    // Started already, or no start given: as before
+    for (const onset of ["2026-07-15T09:00:00Z", null, undefined, "soon"]) {
+        assert.deepStrictEqual(data.alertTime({ onset, expires: later.expires }, now, format),
+            { text: "Until 03:00", upcoming: false });
+    }
+    assert.deepStrictEqual(data.alertTime({ onset: null, expires: null }, now, format), { text: "", upcoming: false });
+    assert.deepStrictEqual(data.alertTime(null, now, format), { text: "", upcoming: false });
+});
+
 test("a forecast day's amount is shown only when some is expected", () => {
     assert.strictEqual(data.amountText(0.3, data.units({})), "0.30 in");
     assert.strictEqual(data.amountText(7.6, data.units({ units: { system: "metric" } })), "7.6 mm");
