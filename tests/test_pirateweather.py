@@ -289,6 +289,7 @@ class AlertTests(unittest.TestCase):
         wind = self.alerts[1]
         self.assertEqual(wind["severity"], "moderate")
         self.assertEqual(wind["description"], "South winds 25 to 35 mph with gusts up to 50 mph.")
+        self.assertEqual(wind["onset"], "2026-11-13T20:00:00+00:00")
         self.assertEqual(wind["expires"], "2026-11-14T02:00:00+00:00")
         self.assertEqual(wind["uri"], "https://alerts.example.gov/wind")
 
@@ -305,6 +306,7 @@ class AlertTests(unittest.TestCase):
                 self.assertEqual(pirateweather.build_alerts(raw), [])
 
     def test_at_most_five(self):
+        self.assertIsNone(pirateweather.build_alerts({"alerts": [{"title": "Frost", "time": -999}]})[0]["onset"])
         many = {"alerts": [{"title": f"Alert {n}", "severity": "Minor", "expires": -999} for n in range(9)]}
         self.assertEqual(len(pirateweather.build_alerts(many)), pirateweather.MAX_ALERTS)
 

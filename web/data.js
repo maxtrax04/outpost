@@ -34,6 +34,27 @@
         return `${value.toFixed(labels.system === "metric" ? 1 : 2)} ${labels.precipitation}`;
     }
 
+    // An alert's time line (#87), with `format` turning a Date into text: "Until <end>" for one in
+    // effect, "From <start> until <end>" (or "From <start>") for one that hasn't started at `now`, or ""
+    // when neither time is known. upcoming is true for one that hasn't started.
+    function alertTime(alert, now, format) {
+        const time = (value) => {
+            if (typeof value !== "string" || !value) return null;
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date;
+        };
+        const onset = time(alert && alert.onset);
+        const expires = time(alert && alert.expires);
+        const upcoming = Boolean(onset && onset.getTime() > now);
+        let text = "";
+        if (upcoming) {
+            text = expires ? `From ${format(onset)} until ${format(expires)}` : `From ${format(onset)}`;
+        } else if (expires) {
+            text = `Until ${format(expires)}`;
+        }
+        return { text, upcoming };
+    }
+
     // Names of the sources to credit, once each: weather, values filled from a second source, then alerts
     function sourceText(weather) {
         const sources = (weather && weather.sources) || {};
@@ -155,7 +176,7 @@
 
     const api = {
         SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, WEATHER_URLS, units, sourceText, alertsSupported,
-        uncertainAlertsSource, gustText, amountText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
+        uncertainAlertsSource, alertTime, gustText, amountText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
     };
 
     root.OutpostData = api;

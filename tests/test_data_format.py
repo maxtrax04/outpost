@@ -178,7 +178,7 @@ class DocumentationTests(unittest.TestCase):
         payload = u.build_mock_payload()
         names = (list(payload) + list(payload["units"]) + list(payload["current"]) + list(payload["forecast"][0])
                  + list(payload["hourly"][0])
-                 + ["weather", "alerts", "fill", "fields", "title", "description", "severity", "expires", "uri"])
+                 + ["weather", "alerts", "fill", "fields", "title", "description", "severity", "onset", "expires", "uri"])
         for name in names:
             with self.subTest(name=name):
                 self.assertRegex(doc, rf"`{re.escape(name)}`")

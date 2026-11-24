@@ -130,6 +130,11 @@ class AlertTests(unittest.TestCase):
     def test_sorted_by_severity(self):
         self.assertEqual([a["severity"] for a in self.alerts], ["severe", "moderate"])
 
+    def test_start_is_the_onset_else_when_it_took_effect(self):
+        self.assertEqual(self.alerts[1]["onset"], "2026-07-15T18:00:00+00:00")
+        self.assertEqual(self.alerts[0]["onset"], "2026-07-15T16:00:00+00:00")
+        self.assertIsNone(nws.build_alerts([{"properties": {"event": "Flood Watch"}}])[0]["onset"])
+
     def test_end_time_is_preferred_over_expiry(self):
         self.assertEqual(self.alerts[0]["expires"], "2026-07-16T03:30:00+00:00")
         self.assertEqual(self.alerts[1]["expires"], "2026-07-16T03:00:00+00:00")

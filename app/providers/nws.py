@@ -389,6 +389,8 @@ def build_alerts(features: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any
             "title": props.get("event") or "Weather alert",
             "description": props.get("headline") or "",
             "severity": (props.get("severity") or "unknown").lower(),
+            # When the weather starts (onset); effective is when the alert was issued
+            "onset": props.get("onset") or props.get("effective"),
             "expires": props.get("ends") or props.get("expires"),
             "uri": feature.get("id") or props.get("@id"),
         })

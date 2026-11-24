@@ -2,7 +2,7 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -199,6 +199,9 @@ class MockProviderTests(UpdaterTestCase):
             with self.subTest(alert=alert["title"]):
                 self.assertTrue(alert["description"].startswith("Sample alert"))
                 datetime.fromisoformat(alert["expires"])  # a valid time the page can show
+                self.assertLess(datetime.fromisoformat(alert["onset"]), datetime.fromisoformat(alert["expires"]))
+        # One starts later, to show an alert that hasn't begun
+        self.assertGreater(datetime.fromisoformat(samples[2]["onset"]), datetime.now(timezone.utc))
 
     def test_feels_like_is_close_to_the_temperature(self):
         for _ in range(50):

@@ -177,8 +177,11 @@ function renderAlerts(alerts) {
         box.append(part("strong", "alert-title", alert.title || "Alert"));
         box.append(document.createElement("br"), part("span", "alert-description", alert.description || ""));
 
-        if (alert.expires) {
-            box.append(document.createElement("br"), part("span", "alert-expires", `Until ${formatDateTime(alert.expires)}`));
+        // "Until ..." or, for one that hasn't started, "From ... until ..." (#87)
+        const when = OutpostData.alertTime(alert, Date.now(), (date) => OutpostClock.dateTime(date));
+        box.toggleAttribute("data-upcoming", when.upcoming);
+        if (when.text) {
+            box.append(document.createElement("br"), part("span", "alert-expires", when.text));
         }
 
         container.appendChild(box);

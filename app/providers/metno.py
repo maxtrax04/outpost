@@ -401,6 +401,7 @@ def build_alerts(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
         if area:
             description = f"{area}: {description}" if description else area
         interval = ((feature or {}).get("when") or {}).get("interval") or []
+        onset = interval[0] if interval and isinstance(interval[0], str) else None
         expires = interval[1] if len(interval) > 1 and isinstance(interval[1], str) else None
         key = (title.lower(), expires, area.lower())
         if key in seen:
@@ -411,6 +412,7 @@ def build_alerts(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
             "title": title,
             "description": description,
             "severity": _alert_severity(props),
+            "onset": onset,
             "expires": expires,
             "uri": web if web.startswith(("https://", "http://")) else None,
         })

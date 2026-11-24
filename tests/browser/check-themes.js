@@ -470,7 +470,9 @@ async function checkScreenFit(browser, theme) {
                 if (body.current) body.current.condition = "Partly cloudy";
                 // Rain or snow expected every day adds a line to each forecast card (the tallest cards)
                 for (const day of body.forecast || []) day.precipitation = 0.25;
-                body.alerts = [{ title: "Wind Advisory", severity: "moderate", expires: "2099-01-01T00:00:00Z",
+                // One that hasn't started, so its time line is the longer "From ... until ..."
+                body.alerts = [{ title: "Wind Advisory", severity: "moderate", onset: "2098-12-31T18:00:00Z",
+                    expires: "2099-01-01T00:00:00Z",
                     description: "Wind Advisory issued for the area until tomorrow evening by the local office.",
                     uri: "https://example.invalid/alert" }];
                 await route.fulfill({ response, json: body });
@@ -486,6 +488,7 @@ async function checkScreenFit(browser, theme) {
             && !document.getElementById("hourlyPanel").hidden
             && document.querySelectorAll("#hourly .hourly-hour").length >= 12
             && document.querySelectorAll("#forecastContainer .forecast-amount").length === 5
+            && /^From .+ until /.test((document.querySelector("#alerts .alert-item[data-upcoming] .alert-expires") || {}).textContent || "")
             && /\d/.test(document.getElementById("temperature").textContent), null, 5000);
         if (!shown) problems.push(`${name}: the map, power, sensors, the hourly forecast, the amounts, and the alert were not shown`);
         await page.waitForTimeout(500); // fit.js measures on the next frame, and again when fonts load

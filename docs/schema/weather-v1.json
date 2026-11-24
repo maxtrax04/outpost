@@ -125,6 +125,7 @@
           "title": { "type": "string" },
           "description": { "type": "string" },
           "severity": { "type": "string", "description": "extreme, severe, moderate, minor, or unknown (test in mock data)." },
+          "onset": { "type": ["string", "null"], "format": "date-time", "description": "When it starts (added in Outpost 0.8.0). null when the source doesn't say." },
           "expires": { "type": ["string", "null"], "format": "date-time" },
           "uri": { "type": ["string", "null"] }
         }
