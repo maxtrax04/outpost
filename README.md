@@ -89,6 +89,8 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_CLOCK_TOGGLE` | `true` | Show the "24-hour clock" checkbox in the theme panel. Set `false` so viewers cannot change `OUTPOST_CLOCK`. |
 | `OUTPOST_SUBTITLE` | *(empty)* | Optional line under the title. Empty hides it; `{date}` and `{time}` show the current date and time. |
 | `OUTPOST_HOURLY` | `true` | The hourly forecast at the top of the forecast panel: the next hours with their temperature and chance of rain. `false` hides it. |
+| `OUTPOST_AIR_QUALITY` | `true` | Air quality and pollen in `weather.json`, from the Copernicus Atmosphere Monitoring Service's forecasts through Open-Meteo. `false` turns it off. See [Air quality](#air-quality). |
+| `OUTPOST_AIR_QUALITY_INDEX` | `auto` | `us` (US AQI) or `european` (European Air Quality Index); `auto` uses the European one in Europe and the US one elsewhere. |
 | `OUTPOST_ALERTS_ALWAYS_SHOW` | `false` | `false` hides the Alerts panel when there are none; `true` always shows it. See [Alerts](#alerts). |
 | `OUTPOST_MOCK_ALERTS` | `false` | With the `mock` provider, `true` always includes sample alerts (one of each severity), for trying how alerts look. See [Alerts](#alerts). |
 | `OUTPOST_LOCATION_NAME` | `Goodsprings, NV` | Name shown at the top of the dashboard. |
@@ -160,8 +162,21 @@ However short you set `OUTPOST_UPDATE_INTERVAL`, Outpost asks each weather servi
 | National Weather Service | Forecast every 15 minutes, station readings every 5, alerts every minute | NWS asks clients to cache; forecasts change about hourly, alerts at any time |
 | MET Norway (weather and warnings) | When MET Norway says the data may have changed (about every 30 minutes for the forecast) | Its terms require following the `Expires` header |
 | Pirate Weather | Every 10 minutes | The free tier allows 10,000 calls a month |
+| Open-Meteo air quality | Once an hour, a few minutes after the hour | Its values are hourly |
 
 `OUTPOST_UPDATE_INTERVAL` itself is at least 60 seconds; a shorter value is raised to 60, with a warning in the log. A shorter interval than these limits is still useful: alerts and fallbacks are checked on every update.
+
+### Air quality
+
+With `OUTPOST_AIR_QUALITY` on (the default), `weather.json` also has the air quality for the hour
+under way: an air quality index, its band (such as "moderate"), fine particles (PM2.5 and PM10),
+ozone, and other gases, and pollen in Europe during the season. It comes from the
+[Copernicus Atmosphere Monitoring Service](https://atmosphere.copernicus.eu)'s forecasts through
+[Open-Meteo's air quality API](https://open-meteo.com/en/docs/air-quality-api), which needs no key;
+the footer credits both, as their terms (CC BY 4.0) require. These are model forecasts on a grid
+(about 11 km in Europe, 45 km elsewhere), not readings from a monitor near you. The index is the
+European Air Quality Index in Europe and the US AQI everywhere else; `OUTPOST_AIR_QUALITY_INDEX`
+picks one for every place. See "air_quality" in [docs/data-format.md](docs/data-format.md).
 
 ### Other places
 

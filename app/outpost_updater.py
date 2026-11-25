@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 import outpost_map
 import regions
 import units
-from providers import gapfill, metno, nws, openmeteo, pirateweather
+from providers import airquality, gapfill, metno, nws, openmeteo, pirateweather
 from providers import hourly as hours
 
 DATA_PATH = Path("/data/weather.json")
@@ -439,7 +439,8 @@ def write_config() -> None:
         coordinates = "NOT SET, using the built-in example coordinates (set OUTPOST_LATITUDE and OUTPOST_LONGITUDE)"
     print(
         f"[Outpost] Settings written. Location: {LOCATION_NAME}; coordinates {coordinates}; "
-        f"theme: {theme}; provider: {PROVIDER}; alerts: {ALERTS_PROVIDER}",
+        f"theme: {theme}; provider: {PROVIDER}; alerts: {ALERTS_PROVIDER}; "
+        f"air quality: {AIR_QUALITY_INDEX if AIR_QUALITY else 'off'}",
         flush=True
     )
 
@@ -590,8 +591,8 @@ def mock_data() -> Dict[str, Any]:
     }
 
 def build_mock_payload() -> Dict[str, Any]:
-    """weather.json from mock data, with the mock's own alerts."""
-    return build_live_payload("mock", mock_data())
+    """weather.json from mock data, with the mock's own alerts and sample air quality."""
+    return build_live_payload("mock", mock_data(), air=resolve_air_quality("mock"))
 
 def source_entry(source_id: str, name: str, **extra: Any) -> Dict[str, Any]:
     """One entry of the "sources" block: the provider's id (as in OUTPOST_PROVIDER) and the name to credit."""
@@ -680,6 +681,7 @@ def build_payload(
     timezone: Optional[str] = None,
     location: Optional[Location] = None,
     hourly: Optional[List[Dict[str, Any]]] = None,
+    air_quality: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     weather.json, in the format described in docs/data-format.md, for `location` (home by default).
@@ -708,13 +710,14 @@ def build_payload(
         "forecast": readings["forecast"],
         "hourly": readings["hourly"],
         "alerts": alerts,
+        "air_quality": air_quality,
         "last_error": last_error
     }
 
 def build_error_payload(error_message: str, location: Optional[Location] = None) -> Dict[str, Any]:
     return build_payload(
         status="error",
-        sources={"weather": None, "alerts": None, "fill": None},
+        sources={"weather": None, "alerts": None, "fill": None, "air_quality": None},
         current={
             "temperature": None,
             "feels_like": None,
@@ -748,26 +751,31 @@ def own_alerts(provider_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
 
 def build_live_payload(provider_name: str, data: Dict[str, Any],
                        alerts: Optional[Dict[str, Any]] = None,
-                       location: Optional[Location] = None) -> Dict[str, Any]:
+                       location: Optional[Location] = None,
+                       air: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Wrap normalized provider data with Outpost metadata. `alerts` comes from resolve_alerts; without
-    it, the provider's own alerts are used.
+    it, the provider's own alerts are used. `air` comes from resolve_air_quality (none without it).
     """
     alerts = alerts if alerts is not None else own_alerts(provider_name, data)
+    air = air if air is not None else NO_AIR_QUALITY
+    errors = [error for error in (alerts["error"], air["error"]) if error]
     return build_payload(
         # A failed alerts lookup is shown as degraded, so it is never mistaken for "no alerts"
-        status="degraded" if alerts["error"] else "ok",
+        status="degraded" if errors else "ok",
         sources={
             "weather": source_entry(provider_name, data.get("source") or provider_name),
             # null when there is no source of official alerts (the dashboard then says so)
             "alerts": alerts["source"],
             "fill": data.get("fill"),
+            "air_quality": air["source"],
         },
         current=data["current"],
         forecast=data["forecast"],
         hourly=data.get("hourly") or [],
         alerts=alerts["alerts"],
-        last_error=alerts["error"],
+        air_quality=air["air_quality"],
+        last_error="; ".join(errors) or None,
         timezone=location_timezone(data),
         location=location,
     )
@@ -903,6 +911,69 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
     if pirate_key(location):
         return pirateweather_alerts(location, state)
     return NO_ALERTS
+
+AIR_QUALITY_INDEX_VALUES = ("auto", "us", "european")
+
+def air_quality_index_setting(value: Optional[str]) -> str:
+    """
+    OUTPOST_AIR_QUALITY_INDEX: which index weather.json's air_quality.index is on.
+      auto (default)  the European Air Quality Index in Europe (the area of the CAMS European
+                      forecast), the US AQI everywhere else
+      us, european    that one everywhere
+    """
+    value = (value or "auto").strip().lower()
+    if value in AIR_QUALITY_INDEX_VALUES:
+        return value
+    print(f"[Outpost] Unknown OUTPOST_AIR_QUALITY_INDEX \"{value}\" (use auto, us, or european); using auto",
+          file=sys.stderr, flush=True)
+    return "auto"
+
+AIR_QUALITY = env_flag("OUTPOST_AIR_QUALITY", True)
+AIR_QUALITY_INDEX = air_quality_index_setting(os.getenv("OUTPOST_AIR_QUALITY_INDEX"))
+
+NO_AIR_QUALITY = {"source": None, "air_quality": None, "error": None}
+
+def air_quality_scale(location: Optional[Location] = None) -> str:
+    """The index for `location`: "us" or "european" (OUTPOST_AIR_QUALITY_INDEX)."""
+    if AIR_QUALITY_INDEX != "auto":
+        return AIR_QUALITY_INDEX
+    location = location or home_location()
+    return "european" if regions.in_cams_europe(location.latitude, location.longitude) else "us"
+
+def previous_air_quality(state: Optional[LocationState] = None) -> Optional[Dict[str, Any]]:
+    """The air quality in the place's last payload, if it came from the same source (else None)."""
+    previous = (state or HomeState()).read() or {}
+    try:
+        if ((previous.get("sources") or {}).get("air_quality") or {}).get("id") == "openmeteo-air-quality":
+            block = previous.get("air_quality")
+            return block if isinstance(block, dict) else None
+    except Exception:
+        pass
+    return None
+
+def resolve_air_quality(provider_name: str, location: Optional[Location] = None,
+                        state: Optional[LocationState] = None) -> Dict[str, Any]:
+    """
+    This update's air quality (OUTPOST_AIR_QUALITY), as
+    {"source": sources.air_quality entry or None, "air_quality": block or None, "error": message or None}.
+    The mock provider gets sample readings. A failed lookup keeps the last ones (their observed_at
+    shows their age) and reports the error, which marks the file degraded but never fails the update.
+    """
+    if not AIR_QUALITY:
+        return NO_AIR_QUALITY
+    location = location or home_location()
+    scale = air_quality_scale(location)
+    if provider_name == "mock":
+        return {"source": source_entry("mock", "Sample air quality"),
+                "air_quality": airquality.sample(datetime.now(timezone.utc), scale), "error": None}
+    source = source_entry("openmeteo-air-quality", airquality.SOURCE)
+    try:
+        block = airquality.fetch(location.latitude, location.longitude, scale, USER_AGENT)
+    except Exception as error:
+        print(f"[Outpost] Air quality lookup failed: {error}", file=sys.stderr, flush=True)
+        return {"source": source, "air_quality": previous_air_quality(state),
+                "error": f"Air quality unavailable: {error}"}
+    return {"source": source if block else None, "air_quality": block, "error": None}
 
 def fetch_weather(location: Optional[Location] = None,
                   state: Optional[LocationState] = None) -> Tuple[str, Dict[str, Any]]:
@@ -1120,7 +1191,7 @@ def update_once(location: Optional[Location] = None,
 
         provider_name, data = fetch_weather(location, state)
         payload = build_live_payload(provider_name, data, resolve_alerts(provider_name, data, location, state),
-                                     location)
+                                     location, resolve_air_quality(provider_name, location, state))
 
         state.write(payload)
 
@@ -1149,7 +1220,8 @@ def request_limits_text() -> str:
             f"observations every {minutes(nws.OBSERVATION_REQUEST_SECONDS)}, "
             f"alerts every {minutes(nws.ALERTS_REQUEST_SECONDS)}; "
             "MET Norway when its forecast is due to change; "
-            f"Pirate Weather every {minutes(pirateweather.MIN_CACHE_SECONDS)}")
+            f"Pirate Weather every {minutes(pirateweather.MIN_CACHE_SECONDS)}; "
+            "Open-Meteo air quality once an hour")
 
 def run_loop() -> None:
     print(f"[Outpost] Updater loop started. Interval={UPDATE_INTERVAL}s", flush=True)

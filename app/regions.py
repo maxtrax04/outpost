@@ -32,6 +32,11 @@ NOT_NORDIC: List[Box] = [
 ]
 
 
+# The area of the CAMS European air quality forecast (Europe, with nearby parts of North Africa and the
+# Middle East), where pollen is forecast and the European Air Quality Index is the usual one
+CAMS_EUROPE: Box = (30.0, 72.0, -25.0, 45.0)
+
+
 def _inside(latitude: float, longitude: float, box: Box) -> bool:
     south, north, west, east = box
     return south <= latitude <= north and west <= longitude <= east
@@ -107,6 +112,11 @@ NOT_NOAA_RADAR: List[Box] = [
     (24.4, 25.8, -99.4, -97.5),      # Tamaulipas
     (24.4, 27.3, -79.3, -72.0),      # The Bahamas
 ]
+
+
+def in_cams_europe(latitude: float, longitude: float) -> bool:
+    """True inside the area of the CAMS European air quality forecast (CAMS_EUROPE)."""
+    return _inside(latitude, longitude, CAMS_EUROPE)
 
 
 def noaa_radar_area(latitude: float, longitude: float) -> Optional[str]:
