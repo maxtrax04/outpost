@@ -20,6 +20,8 @@ os.environ["OUTPOST_LATITUDE"] = "10.0"
 os.environ["OUTPOST_LONGITUDE"] = "20.0"
 os.environ["OUTPOST_LOCATION_NAME"] = "Test Site"
 os.environ["OUTPOST_THEME"] = "retro-crt"
+# Off, so no test asks the air quality service; tests/test_air_quality.py turns it on with a stand-in
+os.environ["OUTPOST_AIR_QUALITY"] = "false"
 
 sys.path.insert(0, str(APP_DIR))
 

@@ -83,6 +83,12 @@ configuration:
   alerts_always_show:
     name: Always show alerts panel
     description: Show the alerts panel even when there are no alerts.
+  air_quality:
+    name: Air quality
+    description: Air quality and pollen from the Copernicus Atmosphere Monitoring Service, through Open-Meteo (no key).
+  air_quality_index:
+    name: Air quality index
+    description: auto uses the European index in Europe and the US AQI elsewhere; or always us or european.
   auto_dim:
     name: Night dimming
     description: Dim the dashboard at night (default on).

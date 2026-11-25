@@ -8,13 +8,14 @@ Schema the file uses, rather than a library.
 import json
 import re
 import unittest
+from datetime import datetime, timezone
 from unittest import mock
 
 import helpers
 from helpers import ROOT
 
 import outpost_updater as u
-from providers import openmeteo
+from providers import airquality, openmeteo
 from test_updater import metno_data, nws_data, openmeteo_data
 
 SCHEMA = json.loads((ROOT / "docs" / "schema" / "weather-v1.json").read_text(encoding="utf-8"))
@@ -154,7 +155,7 @@ class PayloadTests(unittest.TestCase):
     def test_schema_requires_every_field_the_updater_writes(self):
         payload = u.build_mock_payload()
         # Fields added to format 1 after 0.6.0 are optional in the schema, so older files still pass
-        added = {"hourly"}
+        added = {"hourly", "air_quality"}
         self.assertEqual(set(SCHEMA["required"]), set(payload) - added)
         self.assertEqual(set(SCHEMA["properties"]), set(payload))
         self.assertEqual(set(SCHEMA["properties"]["current"]["required"]), set(payload["current"]))
@@ -178,7 +179,9 @@ class DocumentationTests(unittest.TestCase):
         payload = u.build_mock_payload()
         names = (list(payload) + list(payload["units"]) + list(payload["current"]) + list(payload["forecast"][0])
                  + list(payload["hourly"][0])
-                 + ["weather", "alerts", "fill", "fields", "title", "description", "severity", "onset", "expires", "uri"])
+                 + ["weather", "alerts", "fill", "fields", "title", "description", "severity", "onset", "expires", "uri"]
+                 + [name for name in airquality.sample(datetime.now(timezone.utc), "us") if name != "pollen"]
+                 + list(airquality.POLLEN) + list(airquality.UNITS))
         for name in names:
             with self.subTest(name=name):
                 self.assertRegex(doc, rf"`{re.escape(name)}`")

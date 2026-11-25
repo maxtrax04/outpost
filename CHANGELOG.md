@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0-beta.5] - 2026-11-25
+
+### Added
+
+- Air quality and pollen in `weather.json` (#88): `air_quality` has an air quality index with its band (such as "moderate") and a level from 0 to 5, both the US AQI and the European Air Quality Index, PM2.5, PM10, ozone, nitrogen dioxide, sulphur dioxide, and carbon monoxide, and, in Europe during the season, alder, birch, grass, mugwort, olive, and ragweed pollen. It comes from the Copernicus Atmosphere Monitoring Service's forecasts through Open-Meteo's air quality API (no key), asked once an hour per place, and is credited in `sources.air_quality`. Other places get their own. The format stays version 1 (new fields, nothing renamed). See "air_quality" in docs/data-format.md. The dashboard shows it in a later beta.
+- `OUTPOST_AIR_QUALITY` (default `true`) turns it off, and `OUTPOST_AIR_QUALITY_INDEX` picks the index: `auto` (the European one in Europe, the US AQI elsewhere), `us`, or `european`. Both are also Home Assistant add-on options.
+- If the air quality lookup fails, the last readings stay and the file is marked degraded, as with alerts; the weather still updates.
+
 ## [0.8.0-beta.4] - 2026-11-24
 
 ### Added

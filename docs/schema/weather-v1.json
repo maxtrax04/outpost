@@ -35,7 +35,8 @@
               }
             }
           ]
-        }
+        },
+        "air_quality": { "$ref": "#/$defs/source", "description": "Where air_quality came from (added in Outpost 0.8.0). null when it is off or there is none." }
       }
     },
     "location": { "type": "string" },
@@ -131,6 +132,62 @@
         }
       }
     },
+    "air_quality": {
+      "description": "Air quality and pollen now (added in Outpost 0.8.0; older files leave it out). null when OUTPOST_AIR_QUALITY is off or there are no readings.",
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["index", "scale", "category", "level", "us_aqi", "european_aqi", "pm2_5", "pm10", "ozone",
+                       "nitrogen_dioxide", "sulphur_dioxide", "carbon_monoxide", "pollen", "units", "observed_at"],
+          "properties": {
+            "index": { "type": ["integer", "null"], "minimum": 0, "description": "The air quality index on scale." },
+            "scale": { "enum": ["us", "european"], "description": "us: the US AQI; european: the European Air Quality Index (OUTPOST_AIR_QUALITY_INDEX)." },
+            "category": {
+              "enum": [null, "good", "fair", "moderate", "unhealthy-sensitive", "unhealthy", "very-unhealthy", "hazardous",
+                       "poor", "very-poor", "extremely-poor"],
+              "description": "The index's band on its scale."
+            },
+            "level": { "type": ["integer", "null"], "minimum": 0, "maximum": 5, "description": "The band's place on its scale, from 0 (good) to 5 (the worst)." },
+            "us_aqi": { "type": ["integer", "null"], "minimum": 0 },
+            "european_aqi": { "type": ["integer", "null"], "minimum": 0 },
+            "pm2_5": { "$ref": "#/$defs/concentration" },
+            "pm10": { "$ref": "#/$defs/concentration" },
+            "ozone": { "$ref": "#/$defs/concentration" },
+            "nitrogen_dioxide": { "$ref": "#/$defs/concentration" },
+            "sulphur_dioxide": { "$ref": "#/$defs/concentration" },
+            "carbon_monoxide": { "$ref": "#/$defs/concentration" },
+            "pollen": {
+              "description": "Pollen in grains/m³. null where none is forecast (outside Europe, or out of season).",
+              "anyOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "required": ["alder", "birch", "grass", "mugwort", "olive", "ragweed"],
+                  "properties": {
+                    "alder": { "$ref": "#/$defs/concentration" },
+                    "birch": { "$ref": "#/$defs/concentration" },
+                    "grass": { "$ref": "#/$defs/concentration" },
+                    "mugwort": { "$ref": "#/$defs/concentration" },
+                    "olive": { "$ref": "#/$defs/concentration" },
+                    "ragweed": { "$ref": "#/$defs/concentration" }
+                  }
+                }
+              ]
+            },
+            "units": {
+              "type": "object",
+              "required": ["pollutants", "pollen"],
+              "properties": {
+                "pollutants": { "type": "string", "description": "µg/m³, whatever OUTPOST_UNITS is." },
+                "pollen": { "type": "string", "description": "grains/m³." }
+              }
+            },
+            "observed_at": { "type": ["string", "null"], "format": "date-time", "description": "The hour these values are for (ISO 8601, UTC)." }
+          }
+        }
+      ]
+    },
     "last_error": { "type": ["string", "null"] }
   },
   "$defs": {
@@ -149,6 +206,7 @@
     },
     "reading": { "type": ["number", "null"], "description": "null when not available." },
     "amount": { "type": ["number", "null"], "minimum": 0, "description": "A precipitation amount. null when not available." },
+    "concentration": { "type": ["number", "null"], "minimum": 0, "description": "An amount in the air. null when not available." },
     "percent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
     "icon": {
       "enum": [

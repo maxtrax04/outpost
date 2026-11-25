@@ -223,7 +223,8 @@ class LiveProviderTests(UpdaterTestCase):
             u.update_once()
         data = self.output()
         self.assertEqual((data["status"], data["provider"]), ("ok", "openmeteo"))
-        self.assertEqual(data["sources"], {"weather": {"id": "openmeteo", "name": "Open-Meteo.com"}, "alerts": None, "fill": None})
+        self.assertEqual(data["sources"], {"weather": {"id": "openmeteo", "name": "Open-Meteo.com"}, "alerts": None, "fill": None,
+                                           "air_quality": None})
         self.assertEqual(data["alerts"], [])
 
     def test_nws_does_not_gap_fill(self):
@@ -254,7 +255,7 @@ class LiveProviderTests(UpdaterTestCase):
         data = self.output()
         self.assertEqual(data["status"], "error")
         self.assertEqual(data["current"]["condition"], "DATA LINK LOST")
-        self.assertEqual(data["sources"], {"weather": None, "alerts": None, "fill": None})
+        self.assertEqual(data["sources"], {"weather": None, "alerts": None, "fill": None, "air_quality": None})
         self.assertEqual(data["schema_version"], u.SCHEMA_VERSION)
 
     def test_old_data_for_another_location_is_not_reused(self):
@@ -315,7 +316,7 @@ class FormatTests(UpdaterTestCase):
                 self.assertEqual(payload["schema_version"], 1)
                 self.assertEqual(payload["units"], {"system": "imperial", "temperature": "°F", "speed": "mph",
                                                     "pressure": "inHg", "distance": "mi", "precipitation": "in"})
-                self.assertEqual(set(payload["sources"]), {"weather", "alerts", "fill"})
+                self.assertEqual(set(payload["sources"]), {"weather", "alerts", "fill", "air_quality"})
 
     def test_no_field_names_a_unit(self):
         payload = u.build_live_payload("nws", nws_data())

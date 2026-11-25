@@ -38,7 +38,8 @@ always matches its `schema_version`.
   "sources": {
     "weather": { "id": "nws", "name": "National Weather Service (weather.gov)" },
     "alerts": { "id": "nws", "name": "National Weather Service (weather.gov)" },
-    "fill": { "id": "openmeteo", "name": "Open-Meteo.com", "fields": ["current.uv_index", "forecast.uv_index"] }
+    "fill": { "id": "openmeteo", "name": "Open-Meteo.com", "fields": ["current.uv_index", "forecast.uv_index"] },
+    "air_quality": { "id": "openmeteo-air-quality", "name": "Copernicus Atmosphere Monitoring Service (CAMS) via Open-Meteo.com" }
   },
   "location": "Cinder Flats",
   "coordinates": { "latitude": 10.0, "longitude": 20.0 },
@@ -95,6 +96,23 @@ always matches its `schema_version`.
       "uri": "https://api.weather.gov/alerts/example"
     }
   ],
+  "air_quality": {
+    "index": 42,
+    "scale": "us",
+    "category": "good",
+    "level": 0,
+    "us_aqi": 42,
+    "european_aqi": 25,
+    "pm2_5": 8.1,
+    "pm10": 12.4,
+    "ozone": 61.0,
+    "nitrogen_dioxide": 9.4,
+    "sulphur_dioxide": 1.8,
+    "carbon_monoxide": 184.0,
+    "pollen": null,
+    "units": { "pollutants": "µg/m³", "pollen": "grains/m³" },
+    "observed_at": "2026-11-12T15:00:00+00:00"
+  },
   "last_error": null
 }
 ```
@@ -109,7 +127,7 @@ Any reading can be `null` when the source doesn't have it.
 | :--- | :--- |
 | `$schema` | The address of this format's [JSON Schema](schema/weather-v1.json), for editors (see "Editors" above). |
 | `schema_version` | The format version, `1`. |
-| `status` | `ok`; `degraded` (the last update failed, so this is the last good data, and `generated_at` shows its age; or the readings are fresh but the alerts lookup failed, so `alerts` are the last ones known, and `last_error` says so); or `error` (no usable data, with every reading `null`). |
+| `status` | `ok`; `degraded` (the last update failed, so this is the last good data, and `generated_at` shows its age; or the readings are fresh but the alerts or air quality lookup failed, so `alerts` or `air_quality` are the last ones known, and `last_error` says so); or `error` (no usable data, with every reading `null`). |
 | `app`, `version` | `Outpost` and the version that wrote the file. |
 | `provider` | The `OUTPOST_PROVIDER` setting, such as `auto`. The provider actually used is in `sources`. |
 | `sources` | Where the data came from (below). |
@@ -120,6 +138,7 @@ Any reading can be `null` when the source doesn't have it.
 | `update_interval_seconds` | How often the updater runs. The dashboard calls data old after three missed updates. |
 | `units` | The unit of each kind of reading (below). |
 | `current`, `forecast`, `hourly`, `alerts` | The weather (below). `hourly` is new in Outpost 0.8.0, so files from earlier versions don't have it. |
+| `air_quality` | Air quality and pollen now (below), or `null`. New in Outpost 0.8.0. |
 | `last_error` | Why the last update failed, or `null`. |
 
 ### `sources`
@@ -129,8 +148,9 @@ Any reading can be `null` when the source doesn't have it.
 | `weather` | The source of the readings and forecast: `id` (a provider, as in `OUTPOST_PROVIDER`) and `name` (the name to credit). `null` in an error file. |
 | `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. With Pirate Weather (`pirateweather`) an empty `alerts` list can also mean the country is not covered, and alerts are in the language they were published in. `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
 | `fill` | A second source used for readings the first one left empty, with `fields` listing them (such as `current.uv_index`, `forecast.high`, or `hourly.precipitation`). `null` when nothing was filled. |
+| `air_quality` | The source of `air_quality`, in the same form: the Copernicus Atmosphere Monitoring Service's forecasts, through Open-Meteo (`openmeteo-air-quality`), or `mock`. `null` when `air_quality` is. New in Outpost 0.8.0. |
 
-The dashboard credits each source by name in its footer. Open-Meteo and MET Norway require that credit.
+The dashboard credits each source by name in its footer. Open-Meteo, MET Norway, and the Copernicus Atmosphere Monitoring Service require that credit.
 
 ### `units`
 
@@ -221,3 +241,21 @@ Official alerts, most serious first. Empty when there are none, or when the sour
 | `onset` | When it starts, as an ISO 8601 time, or `null`. It can be in the future: a warning for tomorrow morning is sent today. New in Outpost 0.8.0, so files from earlier versions don't have it. |
 | `expires` | When it ends, as an ISO 8601 time, or `null`. |
 | `uri` | A link to the full alert, or `null`. |
+
+### `air_quality`
+
+Air quality and pollen for the hour under way, from the Copernicus Atmosphere Monitoring Service's
+forecasts (a model, not a nearby monitor). New in Outpost 0.8.0, so files from earlier versions don't
+have it. `null` when `OUTPOST_AIR_QUALITY=false` or the service has nothing for the place.
+
+| Field | Meaning |
+| :--- | :--- |
+| `index` | The air quality index on `scale`, a whole number. |
+| `scale` | `us` (the US AQI) or `european` (the European Air Quality Index), from `OUTPOST_AIR_QUALITY_INDEX`. With `auto`, the European one in Europe, the US one elsewhere. |
+| `category` | The index's band. US AQI: `good` (0 to 50), `moderate` (to 100), `unhealthy-sensitive` (unhealthy for sensitive groups, to 150), `unhealthy` (to 200), `very-unhealthy` (to 300), `hazardous`. European: `good` (0 to 20), `fair` (to 40), `moderate` (to 60), `poor` (to 80), `very-poor` (to 100), `extremely-poor`. |
+| `level` | The band's place on its scale, from `0` (good) to `5` (the worst), the same for both scales. |
+| `us_aqi`, `european_aqi` | Both indexes, whichever `scale` is. |
+| `pm2_5`, `pm10`, `ozone`, `nitrogen_dioxide`, `sulphur_dioxide`, `carbon_monoxide` | Fine particles, coarser particles, and gases, in µg/m³ (`units.pollutants`) whatever `OUTPOST_UNITS` is. |
+| `pollen` | `alder`, `birch`, `grass`, `mugwort`, `olive`, and `ragweed` pollen, in grains/m³ (`units.pollen`). `null` where none is forecast: it is only forecast for Europe, in season. |
+| `units` | `pollutants` (`µg/m³`) and `pollen` (`grains/m³`). |
+| `observed_at` | The hour these values are for, as an ISO 8601 time in UTC. After a failed lookup the last values stay (with `status` `degraded`), so this shows their age. |
