@@ -56,6 +56,26 @@ test("the source line credits each source once", () => {
     assert.strictEqual(data.sourceText({ sources: { weather: nws, alerts: nws, fill } }),
         "National Weather Service (weather.gov); Open-Meteo.com");
     assert.strictEqual(data.sourceText({ sources: { weather: { id: "a", name: "A" }, alerts: { id: "b", name: "B" } } }), "A; B");
+    // Air quality is credited last (#88)
+    assert.strictEqual(data.sourceText({ sources: { weather: fill, alerts: null, fill: null,
+        air_quality: { id: "openmeteo-air-quality", name: "CAMS via Open-Meteo.com" } } }),
+        "Open-Meteo.com; CAMS via Open-Meteo.com");
+});
+
+test("the air quality box shows the index, its band, its scale, and the most pollen", () => {
+    const air = { index: 57.2, scale: "us", category: "unhealthy-sensitive", level: 2, pollen: null };
+    assert.deepStrictEqual(data.airQualityText(air), { value: "57 Unhealthy for sensitive groups", note: "US AQI" });
+    const europe = { index: 34, scale: "european", category: "fair", level: 1,
+        pollen: { alder: 0, birch: 12.4, grass: 48.5, mugwort: 0.4, olive: null, ragweed: 3.2 } };
+    assert.deepStrictEqual(data.airQualityText(europe),
+        { value: "34 Fair", note: "European AQI · Pollen: grass 49, birch 12" });
+    // No pollen worth naming
+    assert.strictEqual(data.airQualityText({ ...europe, pollen: { grass: 0.4 } }).note, "European AQI");
+    // An unknown band or scale still shows the number
+    assert.deepStrictEqual(data.airQualityText({ index: 10, scale: "other", category: "new" }), { value: "10", note: "AQI" });
+    for (const missing of [null, undefined, {}, { index: null }, { index: "40" }, "air"]) {
+        assert.strictEqual(data.airQualityText(missing), null);
+    }
 });
 
 test("the source line is a dash when nothing is known", () => {

@@ -917,8 +917,8 @@ AIR_QUALITY_INDEX_VALUES = ("auto", "us", "european")
 def air_quality_index_setting(value: Optional[str]) -> str:
     """
     OUTPOST_AIR_QUALITY_INDEX: which index weather.json's air_quality.index is on.
-      auto (default)  the European Air Quality Index in Europe (the area of the CAMS European
-                      forecast), the US AQI everywhere else
+      auto (default)  the US AQI in the United States and its territories (by the place's time zone),
+                      the European Air Quality Index everywhere else, and wherever the zone is unknown
       us, european    that one everywhere
     """
     value = (value or "auto").strip().lower()
@@ -933,12 +933,12 @@ AIR_QUALITY_INDEX = air_quality_index_setting(os.getenv("OUTPOST_AIR_QUALITY_IND
 
 NO_AIR_QUALITY = {"source": None, "air_quality": None, "error": None}
 
-def air_quality_scale(location: Optional[Location] = None) -> str:
-    """The index for `location`: "us" or "european" (OUTPOST_AIR_QUALITY_INDEX)."""
+def air_quality_scale(zone: Optional[str]) -> str:
+    """The index for a place in time zone `zone`: "us" or "european" (OUTPOST_AIR_QUALITY_INDEX)."""
     if AIR_QUALITY_INDEX != "auto":
         return AIR_QUALITY_INDEX
-    location = location or home_location()
-    return "european" if regions.in_cams_europe(location.latitude, location.longitude) else "us"
+    # US formats only inside the US
+    return "us" if regions.in_us_time_zone(zone) else "european"
 
 def previous_air_quality(state: Optional[LocationState] = None) -> Optional[Dict[str, Any]]:
     """The air quality in the place's last payload, if it came from the same source (else None)."""
@@ -962,13 +962,15 @@ def resolve_air_quality(provider_name: str, location: Optional[Location] = None,
     if not AIR_QUALITY:
         return NO_AIR_QUALITY
     location = location or home_location()
-    scale = air_quality_scale(location)
     if provider_name == "mock":
         return {"source": source_entry("mock", "Sample air quality"),
-                "air_quality": airquality.sample(datetime.now(timezone.utc), scale), "error": None}
+                "air_quality": airquality.sample(datetime.now(timezone.utc), air_quality_scale(location_timezone())),
+                "error": None}
     source = source_entry("openmeteo-air-quality", airquality.SOURCE)
     try:
-        block = airquality.fetch(location.latitude, location.longitude, scale, USER_AGENT)
+        raw = airquality.fetch_raw(location.latitude, location.longitude, USER_AGENT)
+        block = airquality.build(raw.get("current"), air_quality_scale(raw.get("timezone")),
+                                 raw.get("utc_offset_seconds"))
     except Exception as error:
         print(f"[Outpost] Air quality lookup failed: {error}", file=sys.stderr, flush=True)
         return {"source": source, "air_quality": previous_air_quality(state),

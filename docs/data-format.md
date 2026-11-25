@@ -251,7 +251,7 @@ have it. `null` when `OUTPOST_AIR_QUALITY=false` or the service has nothing for 
 | Field | Meaning |
 | :--- | :--- |
 | `index` | The air quality index on `scale`, a whole number. |
-| `scale` | `us` (the US AQI) or `european` (the European Air Quality Index), from `OUTPOST_AIR_QUALITY_INDEX`. With `auto`, the European one in Europe, the US one elsewhere. |
+| `scale` | `us` (the US AQI) or `european` (the European Air Quality Index), from `OUTPOST_AIR_QUALITY_INDEX`. With `auto`, the US one in the United States and its territories (by the place's time zone), the European one everywhere else. |
 | `category` | The index's band. US AQI: `good` (0 to 50), `moderate` (to 100), `unhealthy-sensitive` (unhealthy for sensitive groups, to 150), `unhealthy` (to 200), `very-unhealthy` (to 300), `hazardous`. European: `good` (0 to 20), `fair` (to 40), `moderate` (to 60), `poor` (to 80), `very-poor` (to 100), `extremely-poor`. |
 | `level` | The band's place on its scale, from `0` (good) to `5` (the worst), the same for both scales. |
 | `us_aqi`, `european_aqi` | Both indexes, whichever `scale` is. |

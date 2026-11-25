@@ -88,7 +88,7 @@ configuration:
     description: Air quality and pollen from the Copernicus Atmosphere Monitoring Service, through Open-Meteo (no key).
   air_quality_index:
     name: Air quality index
-    description: auto uses the European index in Europe and the US AQI elsewhere; or always us or european.
+    description: auto uses the US AQI in the US and the European index everywhere else; or always us or european.
   auto_dim:
     name: Night dimming
     description: Dim the dashboard at night (default on).

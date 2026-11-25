@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0-beta.6] - 2026-11-25
+
+### Added
+
+- Air quality on the dashboard (#88): under the current condition, "Air quality 34 Fair", then the index's name and, in Europe during the season, the two most plentiful kinds of pollen ("European AQI · Pollen: grass 49, birch 12"). It is hidden when there is none, or with `OUTPOST_AIR_QUALITY=false`. The footer credits the Copernicus Atmosphere Monitoring Service and Open-Meteo. Every built-in theme still fits a tablet with it shown. Themes can color it by band with `data-level` (0 to 5) or `data-category`, and get `--wx-air-quality`; see docs/themes.md.
+
+### Changed
+
+- `OUTPOST_AIR_QUALITY_INDEX=auto` (the default) now uses the US AQI only for places in the United States and its territories, and the European Air Quality Index everywhere else, including wherever that can't be told. It goes by the time zone the air quality service reports for the place, so places just across the border, such as Toronto or Tijuana, get the European index. In beta.5 every place outside Europe got the US AQI.
+
 ## [0.8.0-beta.5] - 2026-11-25
 
 ### Added

@@ -8,6 +8,10 @@
 //   --value      on the element with data-metric="<name>", which is also marked data-gauge, and
 //                data-missing when the reading is not available (so a theme can hide its needle)
 //   --wx-high, --wx-low, --wx-rain, --wx-amount, --wx-uv  on each forecast card
+//   --wx-air-quality  on the page root, and --value on data-metric="air-quality": the air quality
+//                     band from 0 (good) to 1 (the worst), the same for the US and European scales.
+//                     It is not marked data-gauge, so a theme's dial for every reading box leaves it
+//                     alone; a theme can draw one for it by its data-metric.
 //
 // A missing or unreadable value removes the property, so `var(--value, 0)` picks the fallback.
 
@@ -90,6 +94,18 @@
         return result;
     }
 
+    // Sets the air quality band (weather.json air_quality.level, 0 to 5) as 0..1; returns it
+    function applyAirQuality(air, doc) {
+        doc = doc || document;
+        const value = scale(air && typeof air === "object" ? air.level : null, 0, 5);
+        setValue(doc.documentElement, "--wx-air-quality", value);
+        for (const element of doc.querySelectorAll('[data-metric="air-quality"]')) {
+            setValue(element, "--value", value);
+            element.toggleAttribute("data-missing", value === null);
+        }
+        return value;
+    }
+
     // Sets one forecast period's values on its card; returns the 0..1 values
     function applyForecast(card, period, system) {
         const result = values(period, FORECAST, system);
@@ -99,7 +115,7 @@
         return result;
     }
 
-    const api = { CURRENT, FORECAST, FROM_METRIC, scale, values, applyCurrent, applyForecast };
+    const api = { CURRENT, FORECAST, FROM_METRIC, scale, values, applyCurrent, applyAirQuality, applyForecast };
 
     root.OutpostGauges = api;
 

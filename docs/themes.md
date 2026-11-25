@@ -257,6 +257,18 @@ reading leaves it alone, and each is hidden when it has nothing to say:
 Restyle them all with `.reading-note` or one by its class, or hide one with, for example,
 `.dew-point { display: none; }`.
 
+**Air quality.** Under the condition, `#airQualityBox.air-quality` (`data-metric="air-quality"`) reads
+"Air quality 34 Fair": a `.air-label`, then the index and its band. Under that, `.air-note` gives the
+index's scale and, in Europe during the season, the two most plentiful kinds of pollen
+("European AQI · Pollen: grass 49, birch 12"), each part a `.air-part` kept on one line. It is hidden
+when there is no air quality (`OUTPOST_AIR_QUALITY=false`, or none for the place). It has
+`data-level`, from `0` (good) to `5` (the worst) on either scale, and `data-category` (such as
+`moderate`; see "air_quality" in [data-format.md](data-format.md)), so a theme can color it by band:
+`.air-quality[data-level="3"] { color: var(--danger); }`. The page gets `--wx-air-quality` and the
+element `--value`, the level as `0` to `1`. It is not a reading box and has no `data-gauge`, so a rule
+that draws a dial in every reading leaves it alone. It is in the same column as the temperature, so in
+a wide layout it adds no height; fitted to a screen, it wraps to that column's width.
+
 Each forecast card gets `--wx-high` and `--wx-low` (same scale as temperature), `--wx-rain` (chance of
 rain, 0 to 100%), `--wx-amount` (expected rain or snow, as water, 0 to 1 inch or 25.4 mm), and `--wx-uv`.
 The amount is also written after the chance of rain (`.forecast-amount` inside `.forecast-rain`, such

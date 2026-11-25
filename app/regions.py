@@ -32,9 +32,18 @@ NOT_NORDIC: List[Box] = [
 ]
 
 
-# The area of the CAMS European air quality forecast (Europe, with nearby parts of North Africa and the
-# Middle East), where pollen is forecast and the European Air Quality Index is the usual one
-CAMS_EUROPE: Box = (30.0, 72.0, -25.0, 45.0)
+# The time zones of the United States and its territories (IANA names, with the old aliases), for
+# choosing US-only formats such as the US AQI. A time zone follows borders exactly, unlike the
+# rectangles here: Toronto and Vancouver are south of the 49th parallel but in Canadian zones.
+US_TIME_ZONES = frozenset({
+    "America/New_York", "America/Detroit", "America/Chicago", "America/Menominee", "America/Denver",
+    "America/Boise", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "America/Juneau",
+    "America/Sitka", "America/Metlakatla", "America/Yakutat", "America/Nome", "America/Adak",
+    "Pacific/Honolulu", "America/Puerto_Rico", "America/St_Thomas", "Pacific/Guam", "Pacific/Saipan",
+    "Pacific/Pago_Pago", "Pacific/Midway", "Pacific/Wake",
+    "America/Shiprock", "America/Atka", "America/Virgin", "Pacific/Johnston", "Pacific/Samoa",
+})
+US_TIME_ZONE_PREFIXES = ("America/Indiana/", "America/Kentucky/", "America/North_Dakota/", "US/")
 
 
 def _inside(latitude: float, longitude: float, box: Box) -> bool:
@@ -114,9 +123,12 @@ NOT_NOAA_RADAR: List[Box] = [
 ]
 
 
-def in_cams_europe(latitude: float, longitude: float) -> bool:
-    """True inside the area of the CAMS European air quality forecast (CAMS_EUROPE)."""
-    return _inside(latitude, longitude, CAMS_EUROPE)
+def in_us_time_zone(name: object) -> bool:
+    """True for a time zone of the United States or its territories (US_TIME_ZONES); False otherwise."""
+    if not isinstance(name, str):
+        return False
+    name = name.strip()
+    return name in US_TIME_ZONES or name.startswith(US_TIME_ZONE_PREFIXES)
 
 
 def noaa_radar_area(latitude: float, longitude: float) -> Optional[str]:

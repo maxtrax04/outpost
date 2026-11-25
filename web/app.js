@@ -310,11 +310,41 @@ function showLoading(place) {
         setText(id, "--");
     }
     for (const id of ["dewPoint", "windGust", "readingTime"]) setNote(id, "");
+    renderAirQuality(null);
     setText("condition", "Loading...");
     setIcon(document.getElementById("currentIcon"), "unknown", "Loading");
     OutpostGauges.applyCurrent({}, document);
     document.getElementById("forecastContainer").replaceChildren();
     OutpostHourly.clear(document);
+}
+
+// The air quality line under the condition (#88), hidden when there is no air quality to show.
+// data-level (0 to 5) and data-category let a theme color it by band.
+function renderAirQuality(air) {
+    const box = document.getElementById("airQualityBox");
+    if (!box) return;
+    const text = OutpostData.airQualityText(air);
+    box.hidden = !text;
+    setText("airQuality", text ? text.value : "--");
+    // The scale, then pollen: each part kept on one line, wrapping only between them
+    const note = document.getElementById("airNote");
+    const parts = text && text.note ? text.note.split(" · ") : [];
+    note.replaceChildren(...parts.flatMap((part, index) => {
+        const span = document.createElement("span");
+        span.className = "air-part";
+        span.textContent = part;
+        return index ? [" · ", span] : [span];
+    }));
+    note.hidden = parts.length === 0;
+    const level = text && Number.isInteger(air.level) ? String(air.level) : null;
+    if (level === null) {
+        delete box.dataset.level;
+        delete box.dataset.category;
+    } else {
+        box.dataset.level = level;
+        box.dataset.category = String(air.category);
+    }
+    OutpostGauges.applyAirQuality(text ? air : null, document);
 }
 
 async function loadWeather(config, place) {
@@ -354,6 +384,7 @@ async function loadWeather(config, place) {
 
         setIcon(document.getElementById("currentIcon"), current.icon, current.condition);
         OutpostGauges.applyCurrent(current, document, units.system);
+        renderAirQuality(weather.air_quality);
 
         // Data is stale after 3 missed updates (interval comes from the updater)
         const staleAfterMs = Math.max(MIN_STALE_MS, (weather.update_interval_seconds || 60) * 3 * 1000);

@@ -286,6 +286,24 @@ h2 { margin-top: 0; letter-spacing: 0.1em; }
     font-size: clamp(1.7rem, 4vw, 3.2rem);
 }
 
+/* Air quality (#88), under the condition: "Air quality 34 Fair", then the scale and pollen (each
+   .air-part kept on one line). Fitted to a screen, it takes the width the temperature and condition
+   give it (contain: inline-size) and wraps inside it, so it never widens that column, and in a wide
+   layout it sits beside the readings, adding no height. */
+.air-quality {
+    margin-top: 0.6em;
+    font-size: 1.05rem;
+    line-height: 1.3;
+}
+.air-quality .air-label { color: var(--text-dim); }
+.air-note {
+    display: block;
+    color: var(--text-dim);
+    font-size: 0.85em;
+}
+.air-part { white-space: nowrap; }
+:where(:root[data-fit="on"]) .air-quality { contain: inline-size; }
+
 .details {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

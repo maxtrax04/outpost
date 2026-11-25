@@ -361,6 +361,17 @@ main:has(> #alertsPanel:not([hidden])) {
         grid-template-rows: auto;
     }
     :root[data-fit="on"]:not([data-effects="reduced"]) main:has(> #mapPanel[hidden]):has(> #homePanels[hidden]):has(> #alertsPanel:not([hidden])) { display: block; }
+
+    /* The current conditions are half the width here, with the readings under the temperature, so the
+       air quality goes beside the temperature, where there is room, instead of under the condition */
+    :root[data-fit="on"] .current-main > div:has(> .air-quality:not([hidden])) {
+        display: grid;
+        grid-template-columns: auto minmax(10em, 1fr);
+        column-gap: 1.2em;
+        align-items: end;
+    }
+    :root[data-fit="on"] .current-main .condition { grid-column: 1 / -1; justify-self: start; }
+    :root[data-fit="on"] .current-main .air-quality { grid-row: 1; grid-column: 2; margin: 0 0 0.4em; }
 }
 
 /* ---- Smaller screens: a slimmer cabinet --------------------------------------------- */

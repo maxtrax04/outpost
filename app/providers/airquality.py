@@ -6,7 +6,8 @@ Data:  Copernicus Atmosphere Monitoring Service (CAMS) forecasts, served by Open
        CC BY 4.0; both are credited (SOURCE, shown in the dashboard footer). No API key.
        Its "current" values are hourly, so each place is asked at most once an hour: the answer is
        kept until a few minutes into the next hour (cache_until), whatever OUTPOST_UPDATE_INTERVAL is.
-       Pollen is only forecast for Europe, in season; elsewhere it is null.
+       Pollen is only forecast for Europe, in season; elsewhere it is null. The answer also names the
+       place's time zone, which picks the index for OUTPOST_AIR_QUALITY_INDEX=auto (see the updater).
 
 Uses only the Python standard library.
 """
@@ -18,7 +19,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 API_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -61,7 +62,8 @@ def fetch_raw(latitude: float, longitude: float, user_agent: str) -> Dict[str, A
         "latitude": latitude,
         "longitude": longitude,
         "current": ",".join(CURRENT_VARS),
-        "timezone": "GMT",
+        # The place's own time zone, so the answer names it (and gives local times with their offset)
+        "timezone": "auto",
     }
     url = f"{API_URL}?{urllib.parse.urlencode(params, safe=',')}"
     now = time.time()
@@ -109,8 +111,8 @@ def category(scale: str, value: Optional[float]) -> Dict[str, Any]:
     return {"category": None, "level": None}  # pragma: no cover (the last band has no top)
 
 
-def _observed_at(stamp: Any) -> Optional[str]:
-    """Open-Meteo's "2026-11-25T14:00" (GMT, as asked) as an ISO 8601 time in UTC."""
+def _observed_at(stamp: Any, offset_seconds: Any = 0) -> Optional[str]:
+    """Open-Meteo's local "2026-11-25T08:00", `offset_seconds` ahead of UTC, as an ISO 8601 time in UTC."""
     if not isinstance(stamp, str):
         return None
     try:
@@ -118,14 +120,16 @@ def _observed_at(stamp: Any) -> Optional[str]:
     except ValueError:
         return None
     if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
+        offset = offset_seconds if isinstance(offset_seconds, int) and not isinstance(offset_seconds, bool) else 0
+        when = when.replace(tzinfo=timezone.utc) - timedelta(seconds=offset)
     return when.astimezone(timezone.utc).isoformat()
 
 
-def build(current: Optional[Dict[str, Any]], scale: str) -> Optional[Dict[str, Any]]:
+def build(current: Optional[Dict[str, Any]], scale: str, offset_seconds: Any = 0) -> Optional[Dict[str, Any]]:
     """
     weather.json "air_quality" from the Air Quality API's "current" block, with the index on `scale`
-    ("us" or "european"), or None when it has no readings at all.
+    ("us" or "european"), or None when it has no readings at all. `offset_seconds` is the answer's
+    utc_offset_seconds (its times are local).
     """
     current = current if isinstance(current, dict) else {}
     us_aqi = _number(current.get("us_aqi"), 0)
@@ -145,13 +149,8 @@ def build(current: Optional[Dict[str, Any]], scale: str) -> Optional[Dict[str, A
         # null where none is forecast (outside Europe, or out of season)
         "pollen": pollen if any(value is not None for value in pollen.values()) else None,
         "units": dict(UNITS),
-        "observed_at": _observed_at(current.get("time")),
+        "observed_at": _observed_at(current.get("time"), offset_seconds),
     }
-
-
-def fetch(latitude: float, longitude: float, scale: str, user_agent: str) -> Optional[Dict[str, Any]]:
-    """weather.json "air_quality" for a place (see build)."""
-    return build(fetch_raw(latitude, longitude, user_agent).get("current"), scale)
 
 
 def sample(now: datetime, scale: str) -> Dict[str, Any]:

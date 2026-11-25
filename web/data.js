@@ -55,11 +55,40 @@
         return { text, upcoming };
     }
 
-    // Names of the sources to credit, once each: weather, values filled from a second source, then alerts
+    // Air quality (#88): the names of the index scales and of their bands (weather.json air_quality)
+    const AIR_SCALES = { us: "US AQI", european: "European AQI" };
+    const AIR_CATEGORIES = {
+        "good": "Good", "fair": "Fair", "moderate": "Moderate", "unhealthy-sensitive": "Unhealthy for sensitive groups",
+        "unhealthy": "Unhealthy", "very-unhealthy": "Very unhealthy", "hazardous": "Hazardous", "poor": "Poor",
+        "very-poor": "Very poor", "extremely-poor": "Extremely poor",
+    };
+    const POLLEN_NAMES = { alder: "alder", birch: "birch", grass: "grass", mugwort: "mugwort", olive: "olive", ragweed: "ragweed" };
+
+    // The air quality box's text: { value: "57 Moderate", note: "US AQI · Pollen: grass 49, birch 12" },
+    // or null when there is no index to show (the box is then hidden). Pollen lists the two most
+    // plentiful kinds, only when there is some (at least 1 grain/m³).
+    function airQualityText(air) {
+        if (!air || typeof air !== "object") return null;
+        const index = typeof air.index === "number" && Number.isFinite(air.index) ? Math.round(air.index) : null;
+        if (index === null) return null;
+        const band = AIR_CATEGORIES[air.category];
+        const parts = [AIR_SCALES[air.scale] || "AQI"];
+        const pollen = air.pollen && typeof air.pollen === "object" ? air.pollen : {};
+        const kinds = Object.keys(POLLEN_NAMES)
+            .filter((kind) => typeof pollen[kind] === "number" && pollen[kind] >= 1)
+            .sort((a, b) => pollen[b] - pollen[a])
+            .slice(0, 2)
+            .map((kind) => `${POLLEN_NAMES[kind]} ${Math.round(pollen[kind])}`);
+        if (kinds.length) parts.push(`Pollen: ${kinds.join(", ")}`);
+        return { value: band ? `${index} ${band}` : String(index), note: parts.join(" · ") };
+    }
+
+    // Names of the sources to credit, once each: weather, values filled from a second source, alerts,
+    // then air quality
     function sourceText(weather) {
         const sources = (weather && weather.sources) || {};
         const names = [];
-        for (const entry of [sources.weather, sources.fill, sources.alerts]) {
+        for (const entry of [sources.weather, sources.fill, sources.alerts, sources.air_quality]) {
             const name = entry && typeof entry.name === "string" ? entry.name.trim() : "";
             if (name && !names.includes(name)) names.push(name);
         }
@@ -176,7 +205,7 @@
 
     const api = {
         SCHEMA_VERSION, DEFAULT_UNITS, OLD_READING_MS, WEATHER_URLS, units, sourceText, alertsSupported,
-        uncertainAlertsSource, alertTime, gustText, amountText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
+        uncertainAlertsSource, alertTime, airQualityText, gustText, amountText, compass, windText, dewPointText, oldReadingTime, fetchWeather, apiError,
     };
 
     root.OutpostData = api;
