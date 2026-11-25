@@ -22,7 +22,6 @@ CURRENT = {
     "mugwort_pollen": None, "olive_pollen": None, "ragweed_pollen": None,
 }
 EUROPE = u.Location(50.0, 10.0, "Fictional Europe")
-AMERICA = u.Location(40.0, -100.0, "Fictional Plains")
 
 
 class BuildTests(unittest.TestCase):
@@ -34,6 +33,8 @@ class BuildTests(unittest.TestCase):
         self.assertIsNone(block["pollen"])
         self.assertEqual(block["units"], {"pollutants": "µg/m³", "pollen": "grains/m³"})
         self.assertEqual(block["observed_at"], "2026-11-25T14:00:00+00:00")
+        # The answer's times are local, with the place's offset from UTC
+        self.assertEqual(airquality.build(CURRENT, "us", -6 * 3600)["observed_at"], "2026-11-25T20:00:00+00:00")
 
     def test_the_european_index(self):
         block = airquality.build(CURRENT, "european")
@@ -90,13 +91,13 @@ class FetchTests(unittest.TestCase):
         response.__enter__.return_value = response
         with mock.patch.object(airquality.urllib.request, "urlopen", return_value=response) as urlopen, \
                 mock.patch.object(airquality.json, "load", return_value={"current": CURRENT}):
-            first = airquality.fetch(10.0, 20.0, "us", "Outpost/test")
-            second = airquality.fetch(10.0, 20.0, "us", "Outpost/test")
+            first = airquality.fetch_raw(10.0, 20.0, "Outpost/test")
+            second = airquality.fetch_raw(10.0, 20.0, "Outpost/test")
         self.assertEqual(urlopen.call_count, 1)
         self.assertEqual(first, second)
         url = urlopen.call_args[0][0].full_url
         self.assertTrue(url.startswith(airquality.API_URL))
-        for name in ("us_aqi", "pm2_5", "birch_pollen"):
+        for name in ("us_aqi", "pm2_5", "birch_pollen", "timezone=auto"):
             self.assertIn(name, url)
 
     def test_an_error_answer(self):
@@ -105,7 +106,7 @@ class FetchTests(unittest.TestCase):
         with mock.patch.object(airquality.urllib.request, "urlopen", return_value=response), \
                 mock.patch.object(airquality.json, "load", return_value={"error": True, "reason": "Bad latitude"}):
             with self.assertRaisesRegex(RuntimeError, "Bad latitude"):
-                airquality.fetch(10.0, 20.0, "us", "Outpost/test")
+                airquality.fetch_raw(10.0, 20.0, "Outpost/test")
 
 
 class SettingTests(unittest.TestCase):
@@ -117,18 +118,33 @@ class SettingTests(unittest.TestCase):
             self.assertEqual(u.air_quality_index_setting("aqhi"), "auto")
         self.assertIn("OUTPOST_AIR_QUALITY_INDEX", printed.call_args[0][0])
 
-    def test_auto_picks_by_region(self):
+    def test_auto_gives_the_us_aqi_only_in_the_us(self):
         with mock.patch.object(u, "AIR_QUALITY_INDEX", "auto"):
-            self.assertEqual(u.air_quality_scale(EUROPE), "european")
-            self.assertEqual(u.air_quality_scale(AMERICA), "us")
+            self.assertEqual(u.air_quality_scale("America/Chicago"), "us")
+            for zone in ("Europe/Berlin", "America/Toronto", "Australia/Sydney", None, ""):
+                with self.subTest(zone=zone):
+                    self.assertEqual(u.air_quality_scale(zone), "european")
         with mock.patch.object(u, "AIR_QUALITY_INDEX", "us"):
-            self.assertEqual(u.air_quality_scale(EUROPE), "us")
+            self.assertEqual(u.air_quality_scale("Europe/Berlin"), "us")
+        with mock.patch.object(u, "AIR_QUALITY_INDEX", "european"):
+            self.assertEqual(u.air_quality_scale("America/Chicago"), "european")
 
-    def test_the_european_area(self):
-        self.assertTrue(regions.in_cams_europe(59.9, 10.7))
-        self.assertTrue(regions.in_cams_europe(37.0, -8.0))
-        self.assertFalse(regions.in_cams_europe(40.0, -100.0))
-        self.assertFalse(regions.in_cams_europe(-33.9, 18.4))
+    def test_us_time_zones(self):
+        for zone in ("America/New_York", "America/Indiana/Knox", "America/Kentucky/Louisville",
+                     "America/North_Dakota/Beulah", "Pacific/Honolulu", "America/Puerto_Rico", "Pacific/Guam",
+                     "US/Eastern", " America/Phoenix "):
+            with self.subTest(zone=zone):
+                self.assertTrue(regions.in_us_time_zone(zone))
+        for zone in ("America/Toronto", "America/Vancouver", "America/Mexico_City", "America/Tijuana",
+                     "Europe/Oslo", "UTC", "", None, 5):
+            with self.subTest(zone=zone):
+                self.assertFalse(regions.in_us_time_zone(zone))
+
+    def test_every_us_zone_is_a_real_one(self):
+        from zoneinfo import available_timezones
+        known = available_timezones()
+        if known:  # empty without the time zone database
+            self.assertEqual(set(regions.US_TIME_ZONES) - known, set())
 
     def test_off_by_default_in_tests_on_otherwise(self):
         # helpers.py turns it off so no test reaches the service; the setting's own default is on
@@ -151,7 +167,13 @@ class UpdateTests(UpdaterTestCase):
         mock.patch.object(u, "AIR_QUALITY_INDEX", "auto").start()
         mock.patch.object(u, "PROVIDER", "openmeteo").start()
         mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()).start()
-        self.fetch = mock.patch.object(u.airquality, "fetch_raw", return_value={"current": CURRENT}).start()
+        zones = {(50.0, 10.0): ("Europe/Berlin", 3600)}
+
+        def answer(latitude, longitude, user_agent):
+            zone, offset = zones.get((latitude, longitude), ("America/Chicago", -6 * 3600))
+            return {"current": CURRENT, "timezone": zone, "utc_offset_seconds": offset}
+
+        self.fetch = mock.patch.object(u.airquality, "fetch_raw", side_effect=answer).start()
 
     def test_in_the_file_and_credited(self):
         u.update_once()
@@ -160,8 +182,9 @@ class UpdateTests(UpdaterTestCase):
         self.assertEqual(data["sources"]["air_quality"],
                          {"id": "openmeteo-air-quality", "name": airquality.SOURCE})
         self.assertEqual(data["air_quality"]["index"], 40)
-        # Fictional home at 10, 20 is outside Europe
+        # The answer names a US time zone, and its local time is turned into UTC
         self.assertEqual(data["air_quality"]["scale"], "us")
+        self.assertEqual(data["air_quality"]["observed_at"], "2026-11-25T20:00:00+00:00")
         self.assertEqual(validate(data, SCHEMA), [])
 
     def test_other_places_get_their_own(self):

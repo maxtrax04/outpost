@@ -79,6 +79,18 @@ test("no weather data at all clears everything", () => {
     assert.equal(doc.documentElement.props.size, 0);
 });
 
+test("the air quality band is given to themes as 0..1", () => {
+    const doc = fakeDocument(["air-quality"]);
+    assert.equal(gauges.applyAirQuality({ level: 2 }, doc), 0.4);
+    assert.equal(doc.documentElement.props.get("--wx-air-quality"), "0.400");
+    assert.equal(doc.elements["air-quality"].props.get("--value"), "0.400");
+    // Not a gauge, so themes' dials for every reading leave it alone
+    assert.ok(!doc.elements["air-quality"].attrs.has("data-gauge"));
+    assert.equal(gauges.applyAirQuality(null, doc), null);
+    assert.ok(!doc.documentElement.props.has("--wx-air-quality"));
+    assert.ok(doc.elements["air-quality"].attrs.has("data-missing"));
+});
+
 test("forecast values go on the card", () => {
     const card = fakeElement();
     gauges.applyForecast(card, { high: 50, low: -20, precipitation_chance: 100, uv_index: null });
