@@ -889,7 +889,7 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
 
     auto: the weather provider's own alerts; else NWS (the official source in the US, including
     Alaska, Hawaii, and the territories); else MET Norway's in Norway (the official source there);
-    else OpenWeatherMap's when the weather came from it (the same answer, so no extra call); else
+    else OpenWeatherMap's when the weather came from it (its requests already list them); else
     Pirate Weather's when a key is set; else none.
     """
     location = location or home_location()
@@ -1258,8 +1258,11 @@ def request_limits_text() -> str:
             f"alerts every {minutes(nws.ALERTS_REQUEST_SECONDS)}; "
             "MET Norway when its forecast is due to change; "
             f"Pirate Weather every {minutes(pirateweather.MIN_CACHE_SECONDS)}; "
-            f"OpenWeatherMap every {minutes(openweathermap.MIN_CACHE_SECONDS)} "
-            f"(at most {openweathermap.DAILY_CALL_LIMIT} a day); "
+            "OpenWeatherMap current conditions every "
+            f"{minutes(openweathermap.CACHE_SECONDS['current'])}, hours every "
+            f"{minutes(openweathermap.CACHE_SECONDS['timeline/1h'])}, days every "
+            f"{minutes(openweathermap.CACHE_SECONDS['timeline/1day'])} "
+            f"(at most {openweathermap.DAILY_CALL_LIMIT} calls a day); "
             "Open-Meteo air quality once an hour")
 
 def run_loop() -> None:

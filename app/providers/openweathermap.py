@@ -1,13 +1,16 @@
 """
-OpenWeatherMap provider (One Call API 3.0, api.openweathermap.org).
+OpenWeatherMap provider (One Call API 4.0, api.openweathermap.org/data/4.0/onecall).
 
-Docs:  https://openweathermap.org/api/one-call-3
-Terms: needs an API key from https://openweathermap.org with a "One Call by Call" subscription
+Docs:  https://openweathermap.org/api/one-call-4
+Terms: needs an API key from https://openweathermap.org with a "One Call API" subscription
        (OUTPOST_OPENWEATHERMAP_API_KEY). 1,000 calls a day are free, but a payment card must be on
        file and calls beyond that are billed, so it is never part of OUTPOST_PROVIDER=auto, and only
-       home uses it. Outpost keeps each answer for at least 10 minutes (at most 144 calls a day
-       however often it updates) and never makes more than DAILY_CALL_LIMIT calls in a UTC day.
-       OpenWeather asks for credit, which the dashboard footer gives (sources.weather).
+       home uses it. OpenWeather asks for credit, which the dashboard footer gives (sources.weather).
+
+Version 4.0 has an endpoint per kind of data, and each request is a call. Outpost asks for the current
+conditions at most every 10 minutes, the hourly timeline every 30, and the daily timeline every hour
+(about 216 calls a day however often it updates), each alert's details once, and never makes more than
+DAILY_CALL_LIMIT calls in a UTC day.
 
 The key has to go in the address (appid=). The address is never logged or put in an error message,
 and the response cache is keyed without it.
@@ -15,9 +18,10 @@ and the response cache is keyed without it.
 Requested with units=imperial: °F and mph. Pressure still comes in hPa, visibility in metres, and
 rain and snow in millimetres (snow as water), so those are converted here to inHg, miles, and inches.
 
-Alerts (fetch_alerts) come in the same response: the official warnings national weather services
-send OpenWeather. It gives no severity, so it is worked out from the event's name, and an empty list
-can also mean the country is not covered.
+Alerts (fetch_alerts): the records list the IDs of the alerts in effect, and each alert's details are
+a call of their own. They are the official warnings national weather services send OpenWeather, with no
+severity, so it is worked out from the event's name; an empty list can also mean the country is not
+covered.
 
 Uses only the Python standard library.
 """
@@ -33,14 +37,18 @@ from typing import Any, Dict, List, Optional, Tuple
 from providers import hourly as hours
 from zoneinfo import ZoneInfo
 
-API_URL = "https://api.openweathermap.org/data/3.0/onecall"
+API_URL = "https://api.openweathermap.org/data/4.0/onecall"
 SOURCE = "OpenWeather"
 # Its alerts (fetch_alerts) are not counted: in the US the updater asks NWS first
 CAPABILITIES = frozenset({"current", "forecast", "uv"})
 TIMEOUT_SECONDS = 20
 FORECAST_DAYS = 5
-# Keep an answer at least this long: at most 144 calls a day, well inside the free 1,000
-MIN_CACHE_SECONDS = 600
+# How long each answer is kept, by endpoint: about 216 calls a day, well inside the free 1,000
+CACHE_SECONDS = {"current": 600, "timeline/1h": 1800, "timeline/1day": 3600}
+MIN_CACHE_SECONDS = min(CACHE_SECONDS.values())
+# An alert's details are kept until it ends, at least an hour and at most a day
+ALERT_CACHE_MIN_SECONDS = 3600
+ALERT_CACHE_MAX_SECONDS = 24 * 3600
 # Never more calls than this in a UTC day (OpenWeather's free calls are counted per UTC day)
 DAILY_CALL_LIMIT = 900
 # After the key is refused, wait this long before trying it again (a new key can take a while to work)
@@ -52,8 +60,8 @@ HPA_TO_INHG = 0.02952998
 METRES_PER_MILE = 1609.344
 MM_PER_INCH = 25.4
 
-# (latitude, longitude) -> {"expires": unix time, "raw": decoded JSON}
-_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+# (endpoint, latitude, longitude) or ("alert", id) -> {"expires": unix time, "raw": decoded JSON}
+_cache: Dict[Tuple[str, ...], Dict[str, Any]] = {}
 # No requests before this time (after a refused key or too many requests)
 _blocked_until = 0.0
 _blocked_reason = ""
@@ -122,40 +130,30 @@ def calls_today(now: Optional[float] = None) -> int:
     return _calls["calls"] if _calls["day"] == _today(now) else 0
 
 
-def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
-    """The One Call JSON, kept for at least MIN_CACHE_SECONDS."""
+def _request(path: str, params: Dict[str, str], api_key: str, user_agent: str, now: float) -> Any:
+    """One call to the API (counted). Errors never include the address, which has the key in it."""
     global _blocked_until, _blocked_reason
 
-    if not api_key:
-        raise RuntimeError("OpenWeatherMap needs an API key: set OUTPOST_OPENWEATHERMAP_API_KEY")
-
-    place = (f"{latitude:.4f}", f"{longitude:.4f}")
-    now = time.time()
-    cached = _cache.get(place)
-    if cached and now < cached["expires"]:
-        return cached["raw"]
     if now < _blocked_until:
         raise RuntimeError(_blocked_reason)
     if calls_today(now) >= DAILY_CALL_LIMIT:
         raise RuntimeError(f"OpenWeatherMap: {DAILY_CALL_LIMIT} calls made today, the most Outpost makes in a day "
                            "(it resets at midnight UTC)")
-
-    params = {"lat": place[0], "lon": place[1], "units": "imperial", "exclude": "minutely", "appid": api_key}
-    # Never log or show this address: it has the key in it
-    url = f"{API_URL}?{urllib.parse.urlencode(params)}"
+    # Never log or show this address
+    url = f"{API_URL}/{path}?{urllib.parse.urlencode({**params, 'units': 'imperial', 'appid': api_key})}"
     request = urllib.request.Request(url, headers={"User-Agent": user_agent, "Accept": "application/json"})
     if _calls["day"] != _today(now):
         _calls.update({"day": _today(now), "calls": 0})
     _calls["calls"] += 1
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            raw = json.load(response)
+            return json.load(response)
     except urllib.error.HTTPError as error:
-        # Only the status goes in messages: the error also holds the address, with the key
+        # Only the status goes in messages: the error also holds the address
         if error.code == 401:
             _blocked_until = now + REFUSED_KEY_WAIT_SECONDS
             _blocked_reason = ("OpenWeatherMap refused the API key (check OUTPOST_OPENWEATHERMAP_API_KEY, and that it "
-                               "has a One Call by Call subscription); trying again in "
+                               "has a One Call API subscription); trying again in "
                                f"{REFUSED_KEY_WAIT_SECONDS // 60} minutes")
             raise RuntimeError(f"OpenWeatherMap HTTP 401: {_blocked_reason}") from None
         if error.code == 429:
@@ -171,8 +169,46 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
         raise RuntimeError("OpenWeatherMap returned invalid JSON") from None
     except OSError as error:
         raise RuntimeError(f"OpenWeatherMap unreachable: {error.strerror or type(error).__name__}") from None
-    _cache[place] = {"expires": now + MIN_CACHE_SECONDS, "raw": raw}
+
+
+def _endpoint(path: str, latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
+    """One endpoint's answer for a place, kept for CACHE_SECONDS[path]."""
+    place = (f"{latitude:.4f}", f"{longitude:.4f}")
+    key = (path,) + place
+    now = time.time()
+    cached = _cache.get(key)
+    if cached and now < cached["expires"]:
+        return cached["raw"]
+    raw = _request(path, {"lat": place[0], "lon": place[1]}, api_key, user_agent, now)
+    if not isinstance(raw, dict):
+        raise RuntimeError("OpenWeatherMap returned an unexpected answer")
+    _cache[key] = {"expires": now + CACHE_SECONDS[path], "raw": raw}
     return raw
+
+
+def _records(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+    data = raw.get("data")
+    return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+
+
+def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
+    """
+    The current conditions and the hourly and daily timelines, as
+    {"timezone", "timezone_offset", "current": record, "hourly": [...], "daily": [...]}.
+    """
+    if not api_key:
+        raise RuntimeError("OpenWeatherMap needs an API key: set OUTPOST_OPENWEATHERMAP_API_KEY")
+    current = _endpoint("current", latitude, longitude, api_key, user_agent)
+    hourly = _endpoint("timeline/1h", latitude, longitude, api_key, user_agent)
+    daily = _endpoint("timeline/1day", latitude, longitude, api_key, user_agent)
+    records = _records(current)
+    return {
+        "timezone": current.get("timezone"),
+        "timezone_offset": current.get("timezone_offset"),
+        "current": records[0] if records else None,
+        "hourly": _records(hourly),
+        "daily": _records(daily),
+    }
 
 
 # ---------------------------------------------------------------- normalizing
@@ -193,14 +229,24 @@ def _iso(value: Any) -> Optional[str]:
 
 def _inches(*amounts: Any) -> Optional[float]:
     """Millimetres of rain and snow (as water) together, in inches; None when neither is given."""
-    numbers = [_number(value) for value in amounts]
-    given = [value for value in numbers if value is not None]
+    given = [value for value in (_number(amount) for amount in amounts) if value is not None]
     return sum(given) / MM_PER_INCH if given else None
 
 
 def _hour_amount(block: Any) -> Any:
-    """The "1h" amount of an hour's rain or snow block."""
+    """The millimetres in an hour from a rain or snow block ({"1h": mm/h})."""
     return block.get("1h") if isinstance(block, dict) else None
+
+
+def _day_amount(block: Any) -> Any:
+    """
+    The millimetres in a day from a daily record's rain or snow. OpenWeather's pages disagree on its
+    form: a number is the day's total, and {"1h": mm/h} the average rate over the day.
+    """
+    if isinstance(block, dict):
+        rate = _number(block.get("1h"))
+        return rate * 24 if rate is not None else None
+    return block
 
 
 def _zone(raw: Dict[str, Any]) -> tzinfo:
@@ -260,7 +306,7 @@ def build_forecast(days: Any, zone: tzinfo) -> List[Dict[str, Any]]:
             "condition": condition,
             "icon": icon,
             "precipitation_chance": _percent(day.get("pop")),
-            "precipitation": hours.amount(_inches(day.get("rain"), day.get("snow"))),
+            "precipitation": hours.amount(_inches(_day_amount(day.get("rain")), _day_amount(day.get("snow")))),
             "uv_index": round(uv) if uv is not None else None,
         })
         if len(forecast) == FORECAST_DAYS:
@@ -269,7 +315,7 @@ def build_forecast(days: Any, zone: tzinfo) -> List[Dict[str, Any]]:
 
 
 def build_hourly(entries: Any, now: Optional[datetime] = None) -> List[Dict[str, Any]]:
-    """The next hours (providers/hourly.py) from the hourly list."""
+    """The next hours (providers/hourly.py) from the hourly timeline (up to 20 hours)."""
     result = []
     for item in entries if isinstance(entries, list) else []:
         start = _time(item.get("dt")) if isinstance(item, dict) else None
@@ -286,8 +332,8 @@ def build_hourly(entries: Any, now: Optional[datetime] = None) -> List[Dict[str,
 
 def normalize(raw: Dict[str, Any], now: Optional[datetime] = None) -> Dict[str, Any]:
     """
-    Outpost's normalized format. Readings are unrounded, in °F, mph, inHg, miles, and inches; the
-    updater converts them to OUTPOST_UNITS and rounds them (app/units.py).
+    Outpost's normalized format, from fetch_raw's answer. Readings are unrounded, in °F, mph, inHg,
+    miles, and inches; the updater converts them to OUTPOST_UNITS and rounds them (app/units.py).
     """
     raw = raw if isinstance(raw, dict) else {}
     current = raw.get("current")
@@ -306,7 +352,7 @@ def normalize(raw: Dict[str, Any], now: Optional[datetime] = None) -> Dict[str, 
 
 
 def fetch(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
-    """Fetch (or reuse, for at least 10 minutes) and normalize the forecast for a location."""
+    """Fetch (or reuse) and normalize the forecast for a location."""
     return normalize(fetch_raw(latitude, longitude, api_key, user_agent))
 
 
@@ -340,35 +386,88 @@ def severity(event: str) -> str:
     return "unknown"
 
 
-def build_alerts(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _description(value: Any) -> str:
+    """The alert's text: English when there is a choice ([{language, description}]), else the first."""
+    if isinstance(value, str):
+        return _text(value)
+    texts = [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+    english = [item for item in texts if str(item.get("language", "")).lower().startswith("en")]
+    for item in english + texts:
+        text = _text(item.get("description"))
+        if text:
+            return text
+    return ""
+
+
+def alert_ids(raw: Dict[str, Any]) -> List[str]:
+    """The IDs of the alerts listed in the current conditions and the hourly timeline, in order, once each."""
+    raw = raw if isinstance(raw, dict) else {}
+    records = ([raw.get("current")] if isinstance(raw.get("current"), dict) else []) + \
+              [item for item in raw.get("hourly") or [] if isinstance(item, dict)]
+    ids: List[str] = []
+    for record in records:
+        for alert_id in record.get("alerts") or []:
+            if isinstance(alert_id, str) and alert_id.strip() and alert_id not in ids:
+                ids.append(alert_id)
+    return ids
+
+
+def build_alert(detail: Dict[str, Any]) -> Dict[str, Any]:
+    """One alert in Outpost's format, from the alert endpoint's answer."""
+    tags = [_text(tag) for tag in detail.get("tags") or [] if _text(tag)] if isinstance(detail.get("tags"), list) else []
+    title = _text(detail.get("event")) or (tags[0] if tags else "") or "Weather alert"
+    return {
+        "title": title,
+        "description": _description(detail.get("description")),
+        "severity": severity(title),
+        "onset": _iso(detail.get("start")),
+        "expires": _iso(detail.get("end")),
+        "uri": None,
+    }
+
+
+def build_alerts(details: Any) -> List[Dict[str, Any]]:
     """Outpost's alert format, most serious first. Repeats of the same alert are dropped."""
     alerts: List[Dict[str, Any]] = []
     seen = set()
-    for alert in (raw if isinstance(raw, dict) else {}).get("alerts") or []:
-        if not isinstance(alert, dict):
+    for detail in details if isinstance(details, list) else []:
+        if not isinstance(detail, dict):
             continue
-        title = _text(alert.get("event")) or "Weather alert"
-        description = _text(alert.get("description"))
-        expires = _iso(alert.get("end"))
-        key = (title.lower(), expires, description.lower())
+        alert = build_alert(detail)
+        key = (alert["title"].lower(), alert["expires"], alert["description"].lower())
         if key in seen:
             continue
         seen.add(key)
-        alerts.append({
-            "title": title,
-            "description": description,
-            "severity": severity(title),
-            "onset": _iso(alert.get("start")),
-            "expires": expires,
-            "uri": None,
-        })
+        alerts.append(alert)
     alerts.sort(key=lambda a: SEVERITY_ORDER[a["severity"]])
     return alerts[:MAX_ALERTS]
 
 
+def _alert_detail(alert_id: str, api_key: str, user_agent: str) -> Dict[str, Any]:
+    """One alert's details, kept until it ends (one call each)."""
+    key = ("alert", alert_id)
+    now = time.time()
+    cached = _cache.get(key)
+    if cached and now < cached["expires"]:
+        return cached["raw"]
+    raw = _request(f"alert/{urllib.parse.quote(alert_id, safe='')}", {}, api_key, user_agent, now)
+    if not isinstance(raw, dict):
+        raise RuntimeError("OpenWeatherMap returned an unexpected alert")
+    end = _number(raw.get("end"))
+    keep = min(ALERT_CACHE_MAX_SECONDS, max(ALERT_CACHE_MIN_SECONDS, (end or 0) - now))
+    _cache[key] = {"expires": now + keep, "raw": raw}
+    return raw
+
+
 def fetch_alerts(latitude: float, longitude: float, api_key: str, user_agent: str) -> List[Dict[str, Any]]:
     """
-    The location's alerts. They come with the forecast, so when the weather is from OpenWeatherMap
-    too this reuses the same response (no extra call).
+    The location's alerts. Their IDs come with the current conditions and the hourly timeline (shared
+    with the weather when it is from OpenWeatherMap too), and each one's details are a call, made once.
     """
-    return build_alerts(fetch_raw(latitude, longitude, api_key, user_agent))
+    if not api_key:
+        raise RuntimeError("OpenWeatherMap needs an API key: set OUTPOST_OPENWEATHERMAP_API_KEY")
+    # Only the two endpoints that list alerts, so alerts alone don't ask for the daily timeline
+    current = _records(_endpoint("current", latitude, longitude, api_key, user_agent))
+    hourly = _records(_endpoint("timeline/1h", latitude, longitude, api_key, user_agent))
+    ids = alert_ids({"current": current[0] if current else None, "hourly": hourly})[:MAX_ALERTS * 2]
+    return build_alerts([_alert_detail(alert_id, api_key, user_agent) for alert_id in ids])
