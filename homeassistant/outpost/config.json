@@ -41,9 +41,10 @@
     "mqtt_tls": false
   },
   "schema": {
-    "provider": "list(auto|openmeteo|nws|metno|pirateweather)",
+    "provider": "list(auto|openmeteo|nws|metno|pirateweather|openweathermap)",
     "pirateweather_api_key": "password?",
-    "alerts_provider": "list(auto|nws|metno|pirateweather|none)?",
+    "openweathermap_api_key": "password?",
+    "alerts_provider": "list(auto|nws|metno|pirateweather|openweathermap|none)?",
     "contact": "str?",
     "location_name": "str?",
     "latitude": "float(-90,90)?",

@@ -2,7 +2,8 @@
 """
 Outpost updater.
 
-Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, pirateweather, or auto) and alerts from
+Fetches the weather from OUTPOST_PROVIDER (mock, openmeteo, nws, metno, pirateweather, openweathermap, or auto)
+and alerts from
 OUTPOST_ALERTS_PROVIDER, and writes /data/weather.json (docs/data-format.md) and /data/config.json
 for the dashboard. On a failed update the last good data is kept, marked degraded.
 """
@@ -24,7 +25,7 @@ from zoneinfo import ZoneInfo
 import outpost_map
 import regions
 import units
-from providers import airquality, gapfill, metno, nws, openmeteo, pirateweather
+from providers import airquality, gapfill, metno, nws, openmeteo, openweathermap, pirateweather
 from providers import hourly as hours
 
 DATA_PATH = Path("/data/weather.json")
@@ -157,6 +158,9 @@ CONTACT, USER_AGENT = load_contact_settings()
 
 # Pirate Weather API key (never written to weather.json or config.json, and sent only in a request header)
 PIRATEWEATHER_API_KEY = clean_header_text("OUTPOST_PIRATEWEATHER_API_KEY", os.getenv("OUTPOST_PIRATEWEATHER_API_KEY", ""))
+# OpenWeatherMap API key (never written to weather.json, config.json, or the log; it has to go in the
+# request's address, which is never logged either)
+OPENWEATHERMAP_API_KEY = clean_header_text("OUTPOST_OPENWEATHERMAP_API_KEY", os.getenv("OUTPOST_OPENWEATHERMAP_API_KEY", ""))
 
 DEFAULT_THEME = "retro-crt"
 THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
@@ -485,6 +489,7 @@ CAPABILITIES = {
     "nws": nws.CAPABILITIES,
     "metno": metno.CAPABILITIES,
     "pirateweather": pirateweather.CAPABILITIES,
+    "openweathermap": openweathermap.CAPABILITIES,
 }
 
 def mock_data() -> Dict[str, Any]:
@@ -641,6 +646,14 @@ def pirate_key(location: Optional[Location] = None) -> str:
     seconds_per_home_call = max(UPDATE_INTERVAL, pirateweather.MIN_CACHE_SECONDS)
     return PIRATEWEATHER_API_KEY if pirateweather.spare_calls(seconds_per_home_call) > 0 else ""
 
+def openweathermap_key(location: Optional[Location] = None) -> str:
+    """
+    The OpenWeatherMap key to use for `location`, or "" for none. Only home gets it: calls beyond
+    the free 1,000 a day are billed, so other places use Open-Meteo instead.
+    """
+    location = location or home_location()
+    return OPENWEATHERMAP_API_KEY if location.home else ""
+
 class LocationState:
     """
     The last payload written for one place. A failed update falls back on it (write_degraded_or_error),
@@ -780,17 +793,18 @@ def build_live_payload(provider_name: str, data: Dict[str, Any],
         location=location,
     )
 
-ALERTS_PROVIDER_VALUES = ("auto", "nws", "metno", "pirateweather", "none")
+ALERTS_PROVIDER_VALUES = ("auto", "nws", "metno", "pirateweather", "openweathermap", "none")
 
 def alerts_provider_setting(value: Optional[str]) -> str:
     """
     OUTPOST_ALERTS_PROVIDER: where official alerts come from.
       auto (default)   the weather provider's own (NWS); else NWS where it covers the location (the US);
-                       else MET Norway in Norway; else Pirate Weather when OUTPOST_PIRATEWEATHER_API_KEY
-                       is set; else none
+                       else MET Norway in Norway; else OpenWeatherMap's when the weather is from it; else
+                       Pirate Weather when OUTPOST_PIRATEWEATHER_API_KEY is set; else none
       nws              always the National Weather Service (US only)
       metno            always MET Norway's warnings (Norway only)
       pirateweather    always Pirate Weather (needs OUTPOST_PIRATEWEATHER_API_KEY)
+      openweathermap   always OpenWeatherMap (needs OUTPOST_OPENWEATHERMAP_API_KEY; home only)
       none             no alerts
     """
     value = (value or "").strip().lower()
@@ -798,7 +812,7 @@ def alerts_provider_setting(value: Optional[str]) -> str:
         return "auto"
     if value in ALERTS_PROVIDER_VALUES:
         return value
-    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, metno, pirateweather, or none); using auto",
+    print(f"[Outpost] Unknown OUTPOST_ALERTS_PROVIDER \"{value}\" (use auto, nws, metno, pirateweather, openweathermap, or none); using auto",
           file=sys.stderr, flush=True)
     return "auto"
 
@@ -862,6 +876,11 @@ def pirateweather_alerts(location: Optional[Location] = None, state: Optional[Lo
     return lookup_alerts("pirateweather", pirateweather.SOURCE, lambda: pirateweather.fetch_alerts(
         location.latitude, location.longitude, pirate_key(location), USER_AGENT), state)
 
+def openweathermap_alerts(location: Optional[Location] = None, state: Optional[LocationState] = None) -> Dict[str, Any]:
+    location = location or home_location()
+    return lookup_alerts("openweathermap", openweathermap.SOURCE, lambda: openweathermap.fetch_alerts(
+        location.latitude, location.longitude, openweathermap_key(location), USER_AGENT), state)
+
 def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[Location] = None,
                    state: Optional[LocationState] = None) -> Dict[str, Any]:
     """
@@ -870,7 +889,8 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
 
     auto: the weather provider's own alerts; else NWS (the official source in the US, including
     Alaska, Hawaii, and the territories); else MET Norway's in Norway (the official source there);
-    else Pirate Weather's when a key is set; else none.
+    else OpenWeatherMap's when the weather came from it (the same answer, so no extra call); else
+    Pirate Weather's when a key is set; else none.
     """
     location = location or home_location()
     state = state or HomeState()
@@ -885,6 +905,14 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
                                  "OUTPOST_PIRATEWEATHER_API_KEY; showing no alerts")
             return NO_ALERTS
         return pirateweather_alerts(location, state)
+
+    if ALERTS_PROVIDER == "openweathermap":
+        if not openweathermap_key(location):
+            if location.home:
+                warn_alerts_once("openweathermap-key", "OUTPOST_ALERTS_PROVIDER=openweathermap needs "
+                                 "OUTPOST_OPENWEATHERMAP_API_KEY; showing no alerts")
+            return NO_ALERTS
+        return openweathermap_alerts(location, state)
 
     if ALERTS_PROVIDER == "metno":
         if not regions.in_norway(location.latitude, location.longitude):
@@ -908,6 +936,8 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
     # auto, outside the US
     if regions.in_norway(location.latitude, location.longitude):
         return metno_alerts(location, state)
+    if provider_name == "openweathermap" and openweathermap_key(location):
+        return openweathermap_alerts(location, state)
     if pirate_key(location):
         return pirateweather_alerts(location, state)
     return NO_ALERTS
@@ -998,10 +1028,15 @@ def fetch_weather(location: Optional[Location] = None,
             # No spare quota for another place: Open-Meteo instead, so home's quota lasts the month
             return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
         return "pirateweather", pirateweather.fetch(lat, lon, key, USER_AGENT)
+    if PROVIDER == "openweathermap":
+        if not location.home:
+            # Calls beyond the free ones are billed, so only home uses the key
+            return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
+        return "openweathermap", openweathermap.fetch(lat, lon, openweathermap_key(location), USER_AGENT)
     if PROVIDER == "auto":
         return fetch_auto(location, state)
     raise RuntimeError(
-        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, pirateweather, or auto."
+        f"Provider '{PROVIDER}' is not implemented yet. Use OUTPOST_PROVIDER=mock, openmeteo, nws, metno, pirateweather, openweathermap, or auto."
     )
 
 def fetch_pirateweather(location: Optional[Location] = None) -> Tuple[str, Dict[str, Any]]:
@@ -1223,6 +1258,8 @@ def request_limits_text() -> str:
             f"alerts every {minutes(nws.ALERTS_REQUEST_SECONDS)}; "
             "MET Norway when its forecast is due to change; "
             f"Pirate Weather every {minutes(pirateweather.MIN_CACHE_SECONDS)}; "
+            f"OpenWeatherMap every {minutes(openweathermap.MIN_CACHE_SECONDS)} "
+            f"(at most {openweathermap.DAILY_CALL_LIMIT} a day); "
             "Open-Meteo air quality once an hour")
 
 def run_loop() -> None:

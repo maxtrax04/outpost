@@ -82,19 +82,26 @@ A small API that enables location search, browser location, a weather map, and H
 
 More of what the weather services already send.
 
-- [ ] Hourly forecast
-- [ ] Precipitation amounts
-- [ ] Show when alerts start
-- [ ] Air quality and pollen
+- [x] Hourly forecast
+- [x] Precipitation amounts
+- [x] Show when alerts start
+- [x] Air quality and pollen
 
-### v1.0.0 - First stable release
+### v0.9.0 - Ready for 1.0
 
-Stable data format, published image, unRAID template, and a full public-beta review.
+The last features and the reviews before the first stable release.
 
+- [x] Add the OpenWeatherMap provider
+- [ ] Calendar versions (YYYY.M.PATCH) from the first stable release
 - [ ] unRAID Community Apps template
 - [ ] Add screenshots of every theme to the README
 - [ ] Public beta checklist: privacy, license, and content audit
 - [ ] Freeze the weather.json schema and publish upgrade notes
+
+### First stable release
+
+No new features: the last good release candidate of 0.9.0, released again as the first stable
+version, with a calendar version such as 2027.1.0.
 
 ## Ideas (not scheduled)
 

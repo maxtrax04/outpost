@@ -133,7 +133,7 @@ Any reading can be `null` when the source doesn't have it.
 | `sources` | Where the data came from (below). |
 | `location` | `OUTPOST_LOCATION_NAME`. |
 | `coordinates` | `latitude` and `longitude` from the settings. |
-| `timezone` | The location's time zone, such as `Europe/Oslo`, from the weather service (Open-Meteo, NWS, Pirate Weather) or else the container's `TZ` setting. The dashboard shows times in it. `null` when unknown. |
+| `timezone` | The location's time zone, such as `Europe/Oslo`, from the weather service (Open-Meteo, NWS, Pirate Weather, OpenWeatherMap) or else the container's `TZ` setting. The dashboard shows times in it. `null` when unknown. |
 | `generated_at` | When the data was fetched, as an ISO 8601 time in UTC. |
 | `update_interval_seconds` | How often the updater runs. The dashboard calls data old after three missed updates. |
 | `units` | The unit of each kind of reading (below). |
@@ -146,7 +146,7 @@ Any reading can be `null` when the source doesn't have it.
 | Field | Meaning |
 | :--- | :--- |
 | `weather` | The source of the readings and forecast: `id` (a provider, as in `OUTPOST_PROVIDER`) and `name` (the name to credit). `null` in an error file. |
-| `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. With Pirate Weather (`pirateweather`) an empty `alerts` list can also mean the country is not covered, and alerts are in the language they were published in. `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
+| `alerts` | The source of `alerts`, in the same form. It can differ from `weather` (`OUTPOST_ALERTS_PROVIDER`), for example Open-Meteo weather with National Weather Service alerts. With Pirate Weather (`pirateweather`) and OpenWeatherMap (`openweathermap`) an empty `alerts` list can also mean the country is not covered, and alerts are in the language they were published in. OpenWeatherMap gives no severity, so it is worked out from the alert's name (`unknown` when the name doesn't say). `null` when there is no source of official alerts, which is different from having none right now (`alerts` is then `[]` either way). |
 | `fill` | A second source used for readings the first one left empty, with `fields` listing them (such as `current.uv_index`, `forecast.high`, or `hourly.precipitation`). `null` when nothing was filled. |
 | `air_quality` | The source of `air_quality`, in the same form: the Copernicus Atmosphere Monitoring Service's forecasts, through Open-Meteo (`openmeteo-air-quality`), or `mock`. `null` when `air_quality` is. New in Outpost 0.8.0. |
 
@@ -218,7 +218,7 @@ whose hour has ended.
 | `wind_speed` | Sustained wind speed. |
 | `wind_direction` | Where the wind comes from, in whole degrees, as in `current`. `null` when calm. |
 
-Sources: Open-Meteo, MET Norway, and Pirate Weather send hourly forecasts with the rest; the National
+Sources: Open-Meteo, MET Norway, Pirate Weather, and OpenWeatherMap send hourly forecasts with the rest; the National
 Weather Service has a separate hourly forecast, asked for as often as the daily one (every 15 minutes at
 most). When that request fails, `hourly` is empty and the rest of the update goes on. The hourly
 forecast is not filled in from another source, except `precipitation`.
