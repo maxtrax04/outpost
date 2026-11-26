@@ -482,5 +482,174 @@ class UpdaterTests(UpdaterTestCase):
         self.assertIn("Warning: Retiring soon.", self.printed())
 
 
+def owm_free_data():
+    return owm.normalize_free(load_fixture("openweathermap-free-weather.json"),
+                              load_fixture("openweathermap-free-forecast.json"), now=NOW)
+
+
+class FreeNormalizeTests(unittest.TestCase):
+    """The free plan (#122): current weather and the 5 day / 3 hour forecast."""
+
+    def test_current(self):
+        current = owm_free_data()["current"]
+        self.assertEqual((current["temperature"], current["feels_like"], current["humidity"]), (63.0, 61.5, 50))
+        self.assertEqual((current["wind_speed"], current["wind_gust"], current["wind_direction"]), (8.1, 15.0, 200))
+        self.assertEqual((current["condition"], current["icon"]), ("Few clouds", "partly-cloudy"))
+        self.assertEqual(current["observed_at"], "2026-11-13T20:00:00+00:00")
+        # Worked out from temperature and humidity; no UV index on the free plan
+        self.assertEqual(round(current["dew_point"]), 44)
+        self.assertIsNone(current["uv_index"])
+        shown = units.present({"current": current, "forecast": []}, "imperial")["current"]
+        self.assertEqual((shown["pressure"], shown["visibility"]), (29.92, 6.2))
+        data = owm_free_data()
+        self.assertEqual((data["source"], data["timezone"], data["alerts"]), ("OpenWeather", None, []))
+        self.assertEqual(owm.FREE_CAPABILITIES, {"current", "forecast"})
+
+    def test_days_from_the_three_hour_steps(self):
+        forecast = owm_free_data()["forecast"]
+        # By local day (UTC-6)
+        self.assertEqual([day["day"] for day in forecast], ["2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16"])
+        # Today's high includes the temperature now (63)
+        self.assertEqual([(day["high"], day["low"]) for day in forecast], [(63.0, 48), (57, 44), (45, 39), (38, 37)])
+        self.assertEqual([day["precipitation_chance"] for day in forecast], [20, 70, 0, 0])
+        # The most significant daylight condition; the night's snow doesn't count, a night-only day gets day icons
+        self.assertEqual([day["icon"] for day in forecast], ["partly-cloudy", "rain", "cloudy", "sunny"])
+        self.assertEqual(forecast[1]["condition"], "Light rain")
+        # All the day's rain and snow (1.27 + 2.54 + 1.27 mm)
+        self.assertEqual([round(day["precipitation"], 2) for day in forecast], [0, 0.2, 0, 0])
+        self.assertEqual({day["uv_index"] for day in forecast}, {None})
+
+    def test_hourly_in_three_hour_steps(self):
+        hourly = owm_free_data()["hourly"]
+        self.assertEqual(len(hourly), owm.FREE_HOURLY_STEPS)
+        # 18:00 UTC ended (for the strip) at 19:00, so 21:00 comes first
+        self.assertEqual(hourly[0]["time"], "2026-11-13T21:00:00+00:00")
+        self.assertEqual(hourly[-1]["time"], "2026-11-14T18:00:00+00:00")
+        self.assertEqual((hourly[-1]["condition"], hourly[-1]["precipitation_chance"]), ("Light rain", 70))
+        self.assertEqual(round(hourly[-1]["precipitation"], 2), 0.05)
+        self.assertEqual(hourly[0]["precipitation"], 0)
+
+    def test_missing_data(self):
+        forecast = load_fixture("openweathermap-free-forecast.json")
+        for weather, steps in (({}, forecast), (load_fixture("openweathermap-free-weather.json"), {"list": []}),
+                               (None, None)):
+            with self.assertRaisesRegex(RuntimeError, "missing"):
+                owm.normalize_free(weather, steps, now=NOW)
+
+    def test_dew_point(self):
+        self.assertAlmostEqual(owm.dew_point(68, 100), 68, places=6)
+        for humidity in (None, 0, -5, 120):
+            self.assertIsNone(owm.dew_point(68, humidity))
+        self.assertIsNone(owm.dew_point(None, 50))
+
+
+class FreeRequestTests(unittest.TestCase):
+    setUp = RequestTests.setUp
+    urlopen = RequestTests.urlopen
+    http_error = RequestTests.http_error
+
+    def free(self):
+        return [FakeResponse(load_fixture("openweathermap-free-weather.json")),
+                FakeResponse(load_fixture("openweathermap-free-forecast.json"))]
+
+    def test_two_calls_kept_ten_minutes(self):
+        self.responses = self.free() + self.free()
+        owm.fetch_free(39.123456, -98.5, KEY, "Outpost/1")
+        urls = [request.full_url for request in self.requests]
+        self.assertTrue(urls[0].startswith(owm.FREE_WEATHER_URL + "?"))
+        self.assertTrue(urls[1].startswith(owm.FREE_FORECAST_URL + "?"))
+        for url in urls:
+            for part in ("lat=39.1235", "lon=-98.5000", "units=imperial", f"appid={KEY}"):
+                self.assertIn(part, url)
+            self.assertNotIn("exclude", url)
+        self.clock += 599
+        owm.fetch_free(39.123456, -98.5, KEY, "Outpost/1")
+        self.assertEqual(len(self.requests), 2)
+        self.clock += 2
+        owm.fetch_free(39.123456, -98.5, KEY, "Outpost/1")
+        self.assertEqual(len(self.requests), 4)
+        self.assertNotIn(KEY, repr(owm._cache.keys()))
+        self.assertEqual(owm.calls_today(self.clock), 4)
+
+    def test_one_minute_updates_stay_well_inside_the_limit(self):
+        self.responses = [response for _ in range(150) for response in self.free()]
+        for _ in range(24 * 60):
+            owm.fetch_free(1, 2, KEY, "ua")
+            self.clock += 60
+        self.assertLessEqual(len(self.requests), 290)
+
+    def test_a_refused_one_call_key_suggests_the_free_plan(self):
+        self.responses = [self.http_error(401, "Unauthorized")]
+        with self.assertRaisesRegex(RuntimeError, "OUTPOST_OPENWEATHERMAP_PLAN=free"):
+            owm.fetch_raw(1, 2, KEY, "ua")
+        owm._blocked_until = 0.0
+        self.responses = [self.http_error(401, "Unauthorized")]
+        with self.assertRaises(RuntimeError) as caught:
+            owm.fetch_free(1, 2, KEY, "ua")
+        self.assertNotIn("subscription", str(caught.exception))
+        self.assertNotIn(KEY, str(caught.exception))
+
+    def test_gone_names_the_free_services(self):
+        self.responses = [self.http_error(410, "Gone")]
+        with self.assertRaisesRegex(RuntimeError, "free weather services"):
+            owm.fetch_free(1, 2, KEY, "ua")
+
+    def test_free_answers_say_nothing_about_one_call_retiring(self):
+        mock.patch.object(owm, "_retirement", {"notice": ""}).start()
+        self.responses = self.free()
+        self.responses[0].headers = {"Sunset": "Wed, 01 Jan 2031 00:00:00 GMT"}
+        owm.fetch_free(1, 2, KEY, "ua")
+        self.assertEqual(owm.retirement_notice(), "")
+
+
+class FreeUpdaterTests(UpdaterTestCase):
+    def run_update(self, alerts_provider="auto", plan="free"):
+        with mock.patch.object(u, "PROVIDER", "openweathermap"), mock.patch.object(u, "ALERTS_PROVIDER", alerts_provider), \
+                mock.patch.object(u, "OPENWEATHERMAP_API_KEY", KEY), mock.patch.object(u, "OPENWEATHERMAP_PLAN", plan), \
+                mock.patch.object(u.openmeteo, "fetch", return_value=openmeteo_data()), \
+                mock.patch.object(u.openweathermap, "fetch", return_value=owm_data()) as fetch, \
+                mock.patch.object(u.openweathermap, "fetch_free", return_value=owm_free_data()) as fetch_free:
+            u.update_once()
+        return self.output(), fetch, fetch_free
+
+    def printed(self):
+        return " ".join(str(arg) for call in self.print.call_args_list for arg in call.args)
+
+    def test_the_setting(self):
+        self.assertEqual(u.openweathermap_plan_setting(None), "onecall")
+        self.assertEqual(u.openweathermap_plan_setting(" Free "), "free")
+        self.assertEqual(u.openweathermap_plan_setting("pro"), "onecall")
+        self.assertIn("OUTPOST_OPENWEATHERMAP_PLAN", self.printed())
+
+    def test_the_free_plan(self):
+        data, fetch, fetch_free = self.run_update()
+        fetch.assert_not_called()
+        fetch_free.assert_called_once_with(u.LATITUDE, u.LONGITUDE, KEY, u.USER_AGENT)
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["sources"]["weather"]["id"], "openweathermap")
+        # UV index and the time zone name from Open-Meteo, credited
+        self.assertIsNotNone(data["current"]["uv_index"])
+        self.assertEqual(data["timezone"], "UTC")
+        self.assertEqual(data["sources"]["fill"]["id"], "openmeteo")
+        self.assertIn("current.uv_index", data["sources"]["fill"]["fields"])
+        self.assertEqual(len(data["hourly"]), owm.FREE_HOURLY_STEPS)
+
+    def test_no_openweathermap_alerts_on_the_free_plan(self):
+        data, _, _ = self.run_update()
+        self.owm_alerts.assert_not_called()
+        self.assertIsNone(data["sources"]["alerts"])
+        self.run_update(alerts_provider="openweathermap")
+        data, _, _ = self.run_update(alerts_provider="openweathermap")
+        self.owm_alerts.assert_not_called()
+        self.assertIsNone(data["sources"]["alerts"])
+        self.assertEqual(self.printed().count("OUTPOST_OPENWEATHERMAP_PLAN=onecall"), 1)
+
+    def test_one_call_is_the_default(self):
+        self.assertEqual(u.OPENWEATHERMAP_PLAN, "onecall")
+        _, fetch, fetch_free = self.run_update(plan="onecall")
+        fetch.assert_called_once()
+        fetch_free.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

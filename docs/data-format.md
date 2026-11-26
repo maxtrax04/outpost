@@ -204,7 +204,9 @@ One entry per day, starting today.
 ### `hourly`
 
 One entry per hour for the next 24 hours, starting with the hour under way, in order. Shorter when the
-source forecasts fewer hours, and empty (`[]`) when it has no hourly forecast. While the file is
+source forecasts fewer hours, and empty (`[]`) when it has no hourly forecast. OpenWeatherMap's free
+plan forecasts in 3-hour steps, so it gives one entry per 3 hours (8 of them), each `time` the start of
+its 3 hours and `precipitation` the amount for all 3. While the file is
 `degraded`, the first entries can be hours that have already passed, so a reader should skip entries
 whose hour has ended.
 

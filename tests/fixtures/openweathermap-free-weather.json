@@ -1,0 +1,32 @@
+{
+ "coord": {
+  "lat": 10.0,
+  "lon": 20.0
+ },
+ "weather": [
+  {
+   "id": 801,
+   "main": "x",
+   "description": "few clouds",
+   "icon": "02d"
+  }
+ ],
+ "main": {
+  "temp": 63.0,
+  "feels_like": 61.5,
+  "temp_min": 61.0,
+  "temp_max": 64.0,
+  "pressure": 1013.2,
+  "humidity": 50
+ },
+ "visibility": 10000,
+ "wind": {
+  "speed": 8.1,
+  "deg": 200,
+  "gust": 15.0
+ },
+ "dt": 1794600000,
+ "timezone": -21600,
+ "name": "Fictional Town",
+ "cod": 200
+}

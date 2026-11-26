@@ -44,6 +44,7 @@
     "provider": "list(auto|openmeteo|nws|metno|pirateweather|openweathermap)",
     "pirateweather_api_key": "password?",
     "openweathermap_api_key": "password?",
+    "openweathermap_plan": "list(onecall|free)?",
     "alerts_provider": "list(auto|nws|metno|pirateweather|openweathermap|none)?",
     "contact": "str?",
     "location_name": "str?",

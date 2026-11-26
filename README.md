@@ -75,6 +75,7 @@ All settings are environment variables, set in `.env` (Compose) or in your conta
 | `OUTPOST_PROVIDER` | `mock` | Weather data source. See [Weather providers](#weather-providers). |
 | `OUTPOST_PIRATEWEATHER_API_KEY` | *(empty)* | Your free [Pirate Weather](https://pirateweather.net) API key, for `pirateweather`, or for `auto` to use Pirate Weather outside the Nordic countries and the US (and as a fallback there). Keep it private; it is only sent to Pirate Weather. |
 | `OUTPOST_OPENWEATHERMAP_API_KEY` | *(empty)* | Your [OpenWeatherMap](https://openweathermap.org) API key with a "One Call by Call" subscription, for `openweathermap`. Only home uses it. Keep it private; it is only sent to OpenWeatherMap. See [OpenWeatherMap](#openweathermap). |
+| `OUTPOST_OPENWEATHERMAP_PLAN` | `onecall` | Which OpenWeatherMap services your key can use: `onecall` (One Call API 3.0, which needs the "One Call by Call" subscription) or `free` (the free services, which need only an account). See [OpenWeatherMap](#openweathermap). |
 | `OUTPOST_ALERTS_PROVIDER` | `auto` | Where official alerts come from: `auto` (the weather provider's own; else NWS in the US; else MET Norway in Norway; else OpenWeatherMap when the weather is from it; else Pirate Weather when you have a key), `nws`, `metno`, `pirateweather`, `openweathermap`, or `none`. See [Alerts](#alerts). |
 | `OUTPOST_THEME` | `retro-crt` | Dashboard look. See [Themes](#themes). |
 | `OUTPOST_THEME_SWITCHER` | `true` | Show the on-screen button for the panel with the location search, themes, and display options. Set `false` for a kiosk display. |
@@ -164,6 +165,14 @@ OpenWeatherMap does), and only home uses the key: other places get Open-Meteo. T
 ever billed, also set a daily call limit of 1,000 in your OpenWeatherMap account. A refused key is tried
 again after 10 minutes, and after "too many requests" Outpost waits an hour. The key has to go in the
 request's address, so Outpost never logs that address or puts it in an error message.
+
+**Without a subscription:** set `OUTPOST_OPENWEATHERMAP_PLAN=free` to use OpenWeatherMap's free
+services instead, which need only an account (no payment card): the current weather and the 5 day /
+3 hour forecast. That is two calls every 10 minutes (at most 288 a day). The free services give less:
+the hourly forecast comes in 3-hour steps, each day's high, low, chance, and amount are worked out from
+those steps, the dew point is worked out from temperature and humidity, the UV index and the time zone
+come from Open-Meteo (the footer credits it), and there are no OpenWeatherMap alerts (`auto` still uses
+NWS in the US and MET Norway in Norway). If One Call refuses your key, the error suggests this setting.
 
 OpenWeatherMap recommends its newer One Call API 4.0 for new integrations, but 4.0 needs about three
 times as many calls for the same data, so Outpost uses 3.0, which OpenWeatherMap says remains available
@@ -402,7 +411,7 @@ The Alerts panel lists active weather warnings. `OUTPOST_ALERTS_PROVIDER` picks 
 - **`nws`:** always from the National Weather Service, whatever the weather provider. Outside the US there are none, and the log says so once.
 - **`metno`:** always MET Norway's warnings (MetAlerts), the official ones for Norway, for land (not the gale warnings for sea areas). Outpost works out from your coordinates whether you are in Norway, since MET Norway has no warnings elsewhere; outside Norway there are none, and the log says so once.
 - **`pirateweather`:** always from Pirate Weather (needs `OUTPOST_PIRATEWEATHER_API_KEY`). Pirate Weather passes on the official warnings that national weather services publish to the WMO's global alert hub (in Europe through MeteoAlarm), plus the National Weather Service's for the lower 48 US states. Which countries take part changes over time, and an empty list looks the same whether there are no alerts or your country isn't covered, so the dashboard then says "none reported by Pirate Weather" rather than "none". Alerts are in the language the weather service published them in. If you also get the weather from Pirate Weather, the alerts come in the same request and use none of your quota.
-- **`openweathermap`:** always from OpenWeatherMap (needs `OUTPOST_OPENWEATHERMAP_API_KEY`; home only). With `auto` they are used when the weather comes from OpenWeatherMap too, outside the US and Norway, since they come in the same request. They are the official warnings that national weather services send OpenWeatherMap, which gives no severity, so Outpost works it out from the name ("Warning" is severe, "Watch" moderate, "Advisory" minor, and MeteoAlarm's red, orange, and yellow extreme, severe, and moderate). As with Pirate Weather, an empty list can also mean the country isn't covered, so the dashboard then says "none reported by OpenWeather".
+- **`openweathermap`:** always from OpenWeatherMap (needs `OUTPOST_OPENWEATHERMAP_API_KEY` and `OUTPOST_OPENWEATHERMAP_PLAN=onecall`, since the free plan has no alerts; home only). With `auto` they are used when the weather comes from OpenWeatherMap too, outside the US and Norway, since they come in the same request. They are the official warnings that national weather services send OpenWeatherMap, which gives no severity, so Outpost works it out from the name ("Warning" is severe, "Watch" moderate, "Advisory" minor, and MeteoAlarm's red, orange, and yellow extreme, severe, and moderate). As with Pirate Weather, an empty list can also mean the country isn't covered, so the dashboard then says "none reported by OpenWeather".
 - **`none`:** no alerts.
 
 If the alerts lookup fails while the weather comes through, the dashboard keeps the last alerts it had and shows the degraded warning, so a failed check never looks like "no alerts". The footer names the alerts source when it differs from the weather source.

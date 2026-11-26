@@ -199,7 +199,7 @@ def nginx_snippet(addon: bool) -> str:
 
 
 # Options whose values are choices from a list, so the log can show them
-CHOICE_OPTIONS = ("provider", "alerts_provider", "air_quality_index", "units", "effects", "clock", "dim_mode")
+CHOICE_OPTIONS = ("provider", "openweathermap_plan", "alerts_provider", "air_quality_index", "units", "effects", "clock", "dim_mode")
 
 
 def options_summary(options: Mapping[str, Any]) -> str:

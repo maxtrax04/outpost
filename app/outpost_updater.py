@@ -162,6 +162,25 @@ PIRATEWEATHER_API_KEY = clean_header_text("OUTPOST_PIRATEWEATHER_API_KEY", os.ge
 # request's address, which is never logged either)
 OPENWEATHERMAP_API_KEY = clean_header_text("OUTPOST_OPENWEATHERMAP_API_KEY", os.getenv("OUTPOST_OPENWEATHERMAP_API_KEY", ""))
 
+OPENWEATHERMAP_PLAN_VALUES = ("onecall", "free")
+
+def openweathermap_plan_setting(value: Optional[str]) -> str:
+    """
+    OUTPOST_OPENWEATHERMAP_PLAN: which OpenWeatherMap services the key can use.
+      onecall (default)  One Call API 3.0 (a "One Call by Call" subscription): one call, hourly steps,
+                         UV index and alerts
+      free               the free current weather and 5 day / 3 hour forecast (an account, no
+                         subscription): two calls, 3-hour steps, UV from Open-Meteo, no alerts
+    """
+    value = (value or "onecall").strip().lower()
+    if value in OPENWEATHERMAP_PLAN_VALUES:
+        return value
+    print(f"[Outpost] Unknown OUTPOST_OPENWEATHERMAP_PLAN \"{value}\" (use onecall or free); using onecall",
+          file=sys.stderr, flush=True)
+    return "onecall"
+
+OPENWEATHERMAP_PLAN = openweathermap_plan_setting(os.getenv("OUTPOST_OPENWEATHERMAP_PLAN"))
+
 DEFAULT_THEME = "retro-crt"
 THEME = get_env("OUTPOST_THEME", DEFAULT_THEME).strip().lower()
 THEMES_DIR = Path("/usr/share/nginx/html/themes")
@@ -927,6 +946,10 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
                 warn_alerts_once("openweathermap-key", "OUTPOST_ALERTS_PROVIDER=openweathermap needs "
                                  "OUTPOST_OPENWEATHERMAP_API_KEY; showing no alerts")
             return NO_ALERTS
+        if OPENWEATHERMAP_PLAN == "free":
+            warn_alerts_once("openweathermap-free", "OUTPOST_ALERTS_PROVIDER=openweathermap needs "
+                             "OUTPOST_OPENWEATHERMAP_PLAN=onecall (the free plan has no alerts); showing no alerts")
+            return NO_ALERTS
         return openweathermap_alerts(location, state)
 
     if ALERTS_PROVIDER == "metno":
@@ -951,7 +974,7 @@ def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[
     # auto, outside the US
     if regions.in_norway(location.latitude, location.longitude):
         return metno_alerts(location, state)
-    if provider_name == "openweathermap" and openweathermap_key(location):
+    if provider_name == "openweathermap" and OPENWEATHERMAP_PLAN == "onecall" and openweathermap_key(location):
         return openweathermap_alerts(location, state)
     if pirate_key(location):
         return pirateweather_alerts(location, state)
@@ -1047,6 +1070,10 @@ def fetch_weather(location: Optional[Location] = None,
         if not location.home:
             # Calls beyond the free ones are billed, so only home uses the key
             return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
+        if OPENWEATHERMAP_PLAN == "free":
+            # No UV index and no time zone name: both from Open-Meteo
+            return "openweathermap", with_gap_fill(openweathermap.fetch_free(
+                lat, lon, openweathermap_key(location), USER_AGENT), location, timezone_too=True)
         try:
             return "openweathermap", openweathermap.fetch(lat, lon, openweathermap_key(location), USER_AGENT)
         finally:
@@ -1184,16 +1211,21 @@ def write_degraded_or_error(error_message: str, location: Optional[Location] = N
     state.write(payload)
     return payload
 
-def with_gap_fill(data: Dict[str, Any], location: Optional[Location] = None) -> Dict[str, Any]:
+def with_gap_fill(data: Dict[str, Any], location: Optional[Location] = None,
+                  timezone_too: bool = False) -> Dict[str, Any]:
     """
     Provider data, plus Open-Meteo for anything the provider left empty (such as UV index from NWS,
-    or visibility from MET Norway). If Open-Meteo is unavailable, the data is used as-is.
+    or visibility from MET Norway). If Open-Meteo is unavailable, the data is used as-is. With
+    `timezone_too`, a missing time zone name is taken from Open-Meteo as well (OpenWeatherMap's free
+    plan gives only an offset; MET Norway's days follow TZ, so it keeps TZ).
     """
     location = location or home_location()
 
-    if gapfill.has_gaps(data):
+    if gapfill.has_gaps(data) or (timezone_too and not data.get("timezone")):
         try:
             backup = openmeteo.fetch(location.latitude, location.longitude, USER_AGENT)
+            if timezone_too and not data.get("timezone") and valid_timezone(backup.get("timezone")):
+                data = {**data, "timezone": backup["timezone"]}
             data, filled = gapfill.fill(data, backup)
             if filled:
                 data["fill"] = source_entry("openmeteo", openmeteo.SOURCE, fields=filled)
@@ -1277,7 +1309,7 @@ def request_limits_text() -> str:
             "MET Norway when its forecast is due to change; "
             f"Pirate Weather every {minutes(pirateweather.MIN_CACHE_SECONDS)}; "
             f"OpenWeatherMap every {minutes(openweathermap.MIN_CACHE_SECONDS)} "
-            f"(at most {openweathermap.DAILY_CALL_LIMIT} a day); "
+            f"(two calls on the free plan; at most {openweathermap.DAILY_CALL_LIMIT} a day); "
             "Open-Meteo air quality once an hour")
 
 def run_loop() -> None:
