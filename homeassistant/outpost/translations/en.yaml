@@ -7,7 +7,7 @@ configuration:
     description: A free key from pirateweather.net, for Pirate Weather (and auto outside the Nordic countries and the US).
   openweathermap_api_key:
     name: OpenWeatherMap API key
-    description: A key from openweathermap.org with a One Call API subscription, for OpenWeatherMap (1,000 calls a day free, then billed; Outpost makes about 220).
+    description: A key from openweathermap.org with a One Call by Call subscription, for OpenWeatherMap (1,000 calls a day free, then billed; Outpost makes at most 144).
   alerts_provider:
     name: Alerts source
     description: Where official weather alerts come from. auto uses the weather source's own, or the best official one for the place.

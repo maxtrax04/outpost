@@ -1,103 +1,65 @@
 {
+ "lat": 10.0,
+ "lon": 20.0,
+ "timezone": "America/Chicago",
+ "timezone_offset": -21600,
  "current": {
-  "lat": 10.0,
-  "lon": 20.0,
-  "timezone": "America/Chicago",
-  "timezone_offset": -21600,
-  "data": [
-   {
-    "dt": 1794600000,
-    "sunrise": 1794574200,
-    "sunset": 1794610500,
-    "temp": 58.3,
-    "feels_like": 56.9,
-    "pressure": 1013.2,
-    "humidity": 47,
-    "dew_point": 38.2,
-    "uvi": 2.6,
-    "clouds": 40,
-    "visibility": 10000,
-    "wind_speed": 11.6,
-    "wind_deg": 210,
-    "wind_gust": 20.3,
-    "weather": [
-     {"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}
-    ],
-    "alerts": ["2.49.0.0.840.0.EX.1.wind"]
-   }
+  "dt": 1794600000,
+  "sunrise": 1794574200,
+  "sunset": 1794610500,
+  "temp": 58.3,
+  "feels_like": 56.9,
+  "pressure": 1013.2,
+  "humidity": 47,
+  "dew_point": 38.2,
+  "uvi": 2.6,
+  "clouds": 40,
+  "visibility": 10000,
+  "wind_speed": 11.6,
+  "wind_deg": 210,
+  "wind_gust": 20.3,
+  "weather": [
+   {"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}
   ]
  },
- "timeline/1h": {
-  "lat": 10.0,
-  "lon": 20.0,
-  "timezone": "America/Chicago",
-  "timezone_offset": -21600,
-  "data": [
-   {"dt": 1794600000, "temp": 58.3, "pop": 0.05, "wind_speed": 11.6, "wind_deg": 210,
-    "weather": [{"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}],
-    "alerts": ["2.49.0.0.840.0.EX.1.wind"]},
-   {"dt": 1794603600, "temp": 57.1, "pop": 0.4, "wind_speed": 12.0, "wind_deg": 220,
-    "rain": {"1h": 0.76},
-    "weather": [{"id": 500, "main": "Rain", "description": "light rain", "icon": "10d"}],
-    "alerts": ["2.49.0.0.840.0.EX.1.wind"]},
-   {"dt": 1794607200, "temp": 55.0, "pop": 0.6, "wind_speed": 13.2, "wind_deg": 230,
-    "rain": {"1h": 1.27}, "snow": {"1h": 1.27},
-    "weather": [{"id": 616, "main": "Snow", "description": "rain and snow", "icon": "13n"}],
-    "alerts": ["2.49.0.0.840.0.EX.1.wind", "2.49.0.0.840.0.EX.2.storm"]},
-   {"dt": 1794610800, "temp": 52.4, "pop": 0, "wind_speed": 9.8, "wind_deg": 240,
-    "weather": [{"id": 800, "main": "Clear", "description": "clear sky", "icon": "01n"}],
-    "alerts": []}
-  ],
-  "next": "https://api.example.com/next",
-  "prev": "https://api.example.com/prev"
- },
- "timeline/1day": {
-  "lat": 10.0,
-  "lon": 20.0,
-  "timezone": "America/Chicago",
-  "timezone_offset": -21600,
-  "data": [
-   {"dt": 1794592800, "temp": {"day": 60.0, "min": 39.6, "max": 61.7},
-    "pop": 0.05, "uvi": 3.2,
-    "weather": [{"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}]},
-   {"dt": 1794679200, "temp": {"day": 50.0, "min": 44.1, "max": 52.9},
-    "pop": 0.9, "rain": 6.35, "uvi": 1.1,
-    "weather": [{"id": 501, "main": "Rain", "description": "moderate rain", "icon": "10d"}]},
-   {"dt": 1794765600, "temp": {"day": 49.0, "min": 40.2, "max": 51.0},
-    "pop": 0.62, "rain": {"1h": 0.10583333}, "uvi": 2.4,
-    "weather": [{"id": 211, "main": "Thunderstorm", "description": "thunderstorm with heavy drizzle and hail", "icon": "11d"}]},
-   {"dt": 1794852000, "temp": {"day": 30.0, "min": 25.5, "max": 33.8},
-    "pop": 0.48, "snow": 5.08, "uvi": 0.6,
-    "weather": [{"id": 601, "main": "Snow", "description": "snow", "icon": "13d"}]},
-   {"dt": 1794938400, "temp": {"day": 40.0, "min": 28.0, "max": 44.6},
-    "pop": 0, "uvi": 4.0,
-    "weather": [{"id": 800, "main": "Clear", "description": "clear sky", "icon": "01d"}]},
-   {"dt": 1795024800, "temp": {"day": 41.0, "min": 29.0, "max": 45.0},
-    "pop": 0, "uvi": 4.0,
-    "weather": [{"id": 800, "main": "Clear", "description": "clear sky", "icon": "01d"}]}
-  ]
- },
- "alerts": {
-  "2.49.0.0.840.0.EX.1.wind": {
-   "id": "2.49.0.0.840.0.EX.1.wind",
-   "sender_name": "Example Weather Office",
-   "event": "Wind Advisory",
-   "start": 1794600000,
-   "end": 1794621600,
-   "description": [
-    {"language": "fr-FR", "description": "Vents du sud de 40 a 55 km/h."},
-    {"language": "en-US", "description": "South winds 25 to 35 mph\nwith gusts up to 50 mph."}
-   ],
-   "tags": ["Wind"]
-  },
-  "2.49.0.0.840.0.EX.2.storm": {
-   "id": "2.49.0.0.840.0.EX.2.storm",
-   "sender_name": "Example Weather Office",
-   "event": "Winter Storm Warning",
-   "start": 1794643200,
-   "end": 1794729600,
-   "description": [{"language": "en-US", "description": "Heavy snow expected."}],
-   "tags": ["Snow/Ice"]
-  }
- }
+ "hourly": [
+  {"dt": 1794600000, "temp": 58.3, "pop": 0.05, "wind_speed": 11.6, "wind_deg": 210,
+   "weather": [{"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}]},
+  {"dt": 1794603600, "temp": 57.1, "pop": 0.4, "wind_speed": 12.0, "wind_deg": 220,
+   "rain": {"1h": 0.76},
+   "weather": [{"id": 500, "main": "Rain", "description": "light rain", "icon": "10d"}]},
+  {"dt": 1794607200, "temp": 55.0, "pop": 0.6, "wind_speed": 13.2, "wind_deg": 230,
+   "rain": {"1h": 1.27}, "snow": {"1h": 1.27},
+   "weather": [{"id": 616, "main": "Snow", "description": "rain and snow", "icon": "13n"}]},
+  {"dt": 1794610800, "temp": 52.4, "pop": 0, "wind_speed": 9.8, "wind_deg": 240,
+   "weather": [{"id": 800, "main": "Clear", "description": "clear sky", "icon": "01n"}]}
+ ],
+ "daily": [
+  {"dt": 1794592800, "summary": "Expect a day of partly cloudy with clear spells", "temp": {"day": 60.0, "min": 39.6, "max": 61.7},
+   "pop": 0.05, "uvi": 3.2,
+   "weather": [{"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}]},
+  {"dt": 1794679200, "summary": "You can expect rain throughout the day", "temp": {"day": 50.0, "min": 44.1, "max": 52.9},
+   "pop": 0.9, "rain": 6.35, "uvi": 1.1,
+   "weather": [{"id": 501, "main": "Rain", "description": "moderate rain", "icon": "10d"}]},
+  {"dt": 1794765600, "temp": {"day": 49.0, "min": 40.2, "max": 51.0},
+   "pop": 0.62, "rain": 2.54, "uvi": 2.4,
+   "weather": [{"id": 211, "main": "Thunderstorm", "description": "thunderstorm with heavy drizzle and hail", "icon": "11d"}]},
+  {"dt": 1794852000, "temp": {"day": 30.0, "min": 25.5, "max": 33.8},
+   "pop": 0.48, "snow": 5.08, "uvi": 0.6,
+   "weather": [{"id": 601, "main": "Snow", "description": "snow", "icon": "13d"}]},
+  {"dt": 1794938400, "temp": {"day": 40.0, "min": 28.0, "max": 44.6},
+   "pop": 0, "uvi": 4.0,
+   "weather": [{"id": 800, "main": "Clear", "description": "clear sky", "icon": "01d"}]},
+  {"dt": 1795024800, "temp": {"day": 41.0, "min": 29.0, "max": 45.0},
+   "pop": 0, "uvi": 4.0,
+   "weather": [{"id": 800, "main": "Clear", "description": "clear sky", "icon": "01d"}]}
+ ],
+ "alerts": [
+  {"sender_name": "Example Weather Office", "event": "Wind Advisory", "start": 1794600000, "end": 1794621600,
+   "description": "South winds 25 to 35 mph\nwith gusts up to 50 mph.", "tags": ["Wind"]},
+  {"sender_name": "Example Weather Office", "event": "Winter Storm Warning", "start": 1794643200, "end": 1794729600,
+   "description": "Heavy snow expected.", "tags": ["Snow/Ice"]},
+  {"sender_name": "Example Weather Office", "event": "Wind Advisory", "start": 1794600000, "end": 1794621600,
+   "description": "South winds 25 to 35 mph with gusts up to 50 mph.", "tags": ["Wind"]}
+ ]
 }
