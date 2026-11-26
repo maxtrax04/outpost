@@ -249,6 +249,71 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(len(self.requests), 1)
 
 
+class RetirementTests(RequestTests):
+    """Signs that One Call 3.0 is going away: Deprecation and Sunset headers, and HTTP 410."""
+
+    def setUp(self):
+        super().setUp()
+        mock.patch.object(owm, "_retirement", {"notice": ""}).start()
+
+    def answer(self, **headers):
+        response = self.ok()
+        response.headers = {name.replace("_", "-"): value for name, value in headers.items()}
+        return response
+
+    def test_no_notice_normally(self):
+        self.responses = [self.ok()]
+        owm.fetch_raw(1, 2, KEY, "ua")
+        self.assertEqual(owm.retirement_notice(), "")
+
+    def test_a_sunset_date_is_reported(self):
+        self.responses = [self.answer(Deprecation="@1798761600", Sunset="Fri, 01 Oct 2027 00:00:00 GMT")]
+        owm.fetch_raw(1, 2, KEY, "ua")
+        notice = owm.retirement_notice()
+        self.assertIn("being retired and stops answering on 2027-10-01", notice)
+        self.assertIn("Outpost will need an update", notice)
+
+    def test_deprecation_without_a_date(self):
+        for value in ("true", "@1798761600", "Sun, 11 Nov 2018 23:59:59 GMT", "garbled"):
+            with self.subTest(value=value):
+                owm._cache.clear()
+                self.responses = [self.answer(Deprecation=value)]
+                owm.fetch_raw(1, 2, KEY, "ua")
+                self.assertIn("being retired. Outpost", owm.retirement_notice())
+
+    def test_the_notice_goes_when_the_headers_do(self):
+        self.responses = [self.answer(Sunset="garbled date"), self.ok()]
+        owm.fetch_raw(1, 2, KEY, "ua")
+        self.assertIn("being retired", owm.retirement_notice())
+        self.clock += 601
+        owm.fetch_raw(1, 2, KEY, "ua")
+        self.assertEqual(owm.retirement_notice(), "")
+
+    def test_header_dates(self):
+        self.assertEqual(owm._header_date("@0").year, 1970)
+        self.assertEqual(owm._header_date("Fri, 01 Oct 2027 00:00:00 GMT").isoformat(), "2027-10-01T00:00:00+00:00")
+        for value in (None, "", "@x", "@99999999999999999999", "soon", 5):
+            with self.subTest(value=value):
+                self.assertIsNone(owm._header_date(value))
+
+    def test_gone_says_an_update_is_needed_and_waits_a_day(self):
+        self.responses = [urllib.error.HTTPError(f"{owm.API_URL}?appid={KEY}", 410, "Gone",
+                                                 {"Sunset": "Fri, 01 Oct 2027 00:00:00 GMT"}, None), self.ok()]
+        with self.assertRaises(RuntimeError) as caught:
+            owm.fetch_raw(1, 2, KEY, "ua")
+        self.assertIn("no longer offers its One Call API 3.0 (HTTP 410 Gone)", str(caught.exception))
+        self.assertIn("Outpost needs an update", str(caught.exception))
+        self.assertNotIn(KEY, str(caught.exception))
+        self.assertIn("2027-10-01", owm.retirement_notice())
+        self.clock += 23 * 3600
+        with self.assertRaisesRegex(RuntimeError, "HTTP 410"):
+            owm.fetch_raw(1, 2, KEY, "ua")
+        self.assertEqual(len(self.requests), 1)
+        self.clock += 3601
+        owm.fetch_raw(1, 2, KEY, "ua")
+        self.assertEqual(len(self.requests), 2)
+
+
 class AlertTests(unittest.TestCase):
     def setUp(self):
         self.alerts = owm.build_alerts(load_fixture("openweathermap.json"))
@@ -392,6 +457,29 @@ class UpdaterTests(UpdaterTestCase):
 
     def test_request_limits_are_listed(self):
         self.assertIn("OpenWeatherMap every 10 min", u.request_limits_text())
+
+    def test_a_retirement_notice_is_warned_about_once_a_day(self):
+        mock.patch.object(u, "_warned_retirement", {"notice": "", "day": ""}).start()
+        notice = mock.patch.object(u.openweathermap, "retirement_notice", return_value="").start()
+        self.run_update()
+        self.assertNotIn("being retired", self.printed())
+        notice.return_value = "OpenWeatherMap says its One Call API 3.0 is being retired."
+        self.run_update()
+        self.run_update(provider="openmeteo", alerts_provider="openweathermap")
+        self.assertEqual(self.printed().count("Warning: OpenWeatherMap says its One Call API 3.0 is being retired."), 1)
+        # Again the next day
+        with mock.patch.object(u, "datetime", wraps=u.datetime) as clock:
+            clock.now.return_value = datetime(2030, 1, 2, tzinfo=timezone.utc)
+            u.warn_about_openweathermap_retirement()
+        self.assertEqual(self.printed().count("being retired"), 2)
+
+    def test_a_failed_fetch_still_warns(self):
+        mock.patch.object(u, "_warned_retirement", {"notice": "", "day": ""}).start()
+        mock.patch.object(u.openweathermap, "retirement_notice", return_value="Retiring soon.").start()
+        with mock.patch.object(u, "PROVIDER", "openweathermap"), mock.patch.object(u, "OPENWEATHERMAP_API_KEY", KEY), \
+                mock.patch.object(u.openweathermap, "fetch", side_effect=RuntimeError("OpenWeatherMap HTTP 410")):
+            u.update_once()
+        self.assertIn("Warning: Retiring soon.", self.printed())
 
 
 if __name__ == "__main__":

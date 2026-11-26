@@ -646,6 +646,19 @@ def pirate_key(location: Optional[Location] = None) -> str:
     seconds_per_home_call = max(UPDATE_INTERVAL, pirateweather.MIN_CACHE_SECONDS)
     return PIRATEWEATHER_API_KEY if pirateweather.spare_calls(seconds_per_home_call) > 0 else ""
 
+_warned_retirement = {"notice": "", "day": ""}
+
+def warn_about_openweathermap_retirement() -> None:
+    """
+    Warn in the log, once a day, when OpenWeatherMap's answers say One Call 3.0 is going away
+    (openweathermap.retirement_notice), so it is noticed before it stops.
+    """
+    notice = openweathermap.retirement_notice()
+    today = datetime.now(timezone.utc).date().isoformat()
+    if notice and (notice, today) != (_warned_retirement["notice"], _warned_retirement["day"]):
+        _warned_retirement.update({"notice": notice, "day": today})
+        print(f"[Outpost] Warning: {notice}", file=sys.stderr, flush=True)
+
 def openweathermap_key(location: Optional[Location] = None) -> str:
     """
     The OpenWeatherMap key to use for `location`, or "" for none. Only home gets it: calls beyond
@@ -878,8 +891,10 @@ def pirateweather_alerts(location: Optional[Location] = None, state: Optional[Lo
 
 def openweathermap_alerts(location: Optional[Location] = None, state: Optional[LocationState] = None) -> Dict[str, Any]:
     location = location or home_location()
-    return lookup_alerts("openweathermap", openweathermap.SOURCE, lambda: openweathermap.fetch_alerts(
+    result = lookup_alerts("openweathermap", openweathermap.SOURCE, lambda: openweathermap.fetch_alerts(
         location.latitude, location.longitude, openweathermap_key(location), USER_AGENT), state)
+    warn_about_openweathermap_retirement()
+    return result
 
 def resolve_alerts(provider_name: str, data: Dict[str, Any], location: Optional[Location] = None,
                    state: Optional[LocationState] = None) -> Dict[str, Any]:
@@ -1032,7 +1047,10 @@ def fetch_weather(location: Optional[Location] = None,
         if not location.home:
             # Calls beyond the free ones are billed, so only home uses the key
             return "openmeteo", openmeteo.fetch(lat, lon, USER_AGENT)
-        return "openweathermap", openweathermap.fetch(lat, lon, openweathermap_key(location), USER_AGENT)
+        try:
+            return "openweathermap", openweathermap.fetch(lat, lon, openweathermap_key(location), USER_AGENT)
+        finally:
+            warn_about_openweathermap_retirement()
     if PROVIDER == "auto":
         return fetch_auto(location, state)
     raise RuntimeError(

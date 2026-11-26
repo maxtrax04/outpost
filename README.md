@@ -165,6 +165,13 @@ ever billed, also set a daily call limit of 1,000 in your OpenWeatherMap account
 again after 10 minutes, and after "too many requests" Outpost waits an hour. The key has to go in the
 request's address, so Outpost never logs that address or puts it in an error message.
 
+OpenWeatherMap recommends its newer One Call API 4.0 for new integrations, but 4.0 needs about three
+times as many calls for the same data, so Outpost uses 3.0, which OpenWeatherMap says remains available
+with no end date. If OpenWeatherMap starts saying in its answers that 3.0 is being retired (the
+`Deprecation` and `Sunset` headers), the log warns once a day, with the date it stops if given. If it
+has been switched off (HTTP 410), the dashboard shows the error saying an Outpost update is needed,
+and Outpost asks again only once a day.
+
 Every reading comes from the one answer, including UV index, visibility, and precipitation amounts, so
 nothing is filled in from Open-Meteo. Its alerts come in the same answer; see [Alerts](#alerts). The
 footer credits OpenWeather, as its terms ask.

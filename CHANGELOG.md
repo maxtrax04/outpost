@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - OpenWeatherMap as a weather provider (#115): `OUTPOST_PROVIDER=openweathermap` with `OUTPOST_OPENWEATHERMAP_API_KEY` (also a Home Assistant add-on option), using its One Call API 3.0. It needs a "One Call by Call" subscription, which gives 1,000 calls a day free but bills calls beyond that, so `auto` never uses it, only home uses the key (other places get Open-Meteo), and Outpost asks at most every 10 minutes and never more than 900 times a day. Everything comes from one answer: current conditions, the daily and hourly forecast with precipitation amounts, UV index, visibility, and the location's time zone. The footer credits OpenWeather. See "OpenWeatherMap" in the README.
 - OpenWeatherMap's alerts: `OUTPOST_ALERTS_PROVIDER=openweathermap`, and with `auto` when the weather comes from OpenWeatherMap (outside the US and Norway; no extra call). Their severity is worked out from the alert's name, and with none the dashboard says "none reported by OpenWeather".
+- Outpost uses OpenWeatherMap's One Call API 3.0, which answers everything in one call (its newer 4.0 needs about three times as many). If OpenWeatherMap's answers say 3.0 is being retired (`Deprecation` or `Sunset` headers), the log warns once a day, with the date it stops; if it has been switched off (HTTP 410), the error says an Outpost update is needed and Outpost asks again only once a day. docs/releasing.md checks for an end-of-life date before each release.
 
 ### Changed
 

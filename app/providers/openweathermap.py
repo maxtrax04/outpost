@@ -9,6 +9,12 @@ Terms: needs an API key from https://openweathermap.org with a "One Call by Call
        however often it updates) and never makes more than DAILY_CALL_LIMIT calls in a UTC day.
        OpenWeather asks for credit, which the dashboard footer gives (sources.weather).
 
+End of life: One Call 3.0 has no end date yet (OpenWeather recommends 4.0 for new integrations, and
+says 3.0 "remains available"). Outpost watches for the signs that it is going away: a `Deprecation`
+or `Sunset` header (RFC 9745, RFC 8594) on an answer, which retirement_notice() reports for the
+updater to warn about, and HTTP 410 Gone, which is an error that says an Outpost update is needed.
+docs/releasing.md has the same check by hand before each release.
+
 The key has to go in the address (appid=). The address is never logged or put in an error message,
 and the response cache is keyed without it.
 
@@ -22,6 +28,7 @@ can also mean the country is not covered.
 Uses only the Python standard library.
 """
 
+import email.utils
 import json
 import time
 import urllib.error
@@ -59,6 +66,10 @@ _blocked_until = 0.0
 _blocked_reason = ""
 # Calls made today: {"day": "YYYY-MM-DD" (UTC), "calls": count}
 _calls: Dict[str, Any] = {"day": "", "calls": 0}
+# After HTTP 410 (the API is gone), wait this long before asking again
+GONE_WAIT_SECONDS = 24 * 3600
+# What the last answer said about One Call 3.0 going away: "" when nothing
+_retirement = {"notice": ""}
 
 
 # ---------------------------------------------------------------- conditions
@@ -122,6 +133,49 @@ def calls_today(now: Optional[float] = None) -> int:
     return _calls["calls"] if _calls["day"] == _today(now) else 0
 
 
+def _header_date(value: Any) -> Optional[datetime]:
+    """A date from a Sunset header (an HTTP date) or a Deprecation header ("@<unix seconds>", or an
+    HTTP date in older drafts)."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    value = value.strip()
+    if value.startswith("@"):
+        try:
+            return datetime.fromtimestamp(int(value[1:]), timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            return None
+    try:
+        moment = email.utils.parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def check_retirement(headers: Any) -> str:
+    """
+    Note what an answer's headers say about One Call 3.0 going away (Deprecation and Sunset), and
+    return the notice: "" when they say nothing.
+    """
+    get = getattr(headers, "get", None)
+    if get is None:
+        return _retirement["notice"]
+    deprecation, sunset = get("Deprecation"), get("Sunset")
+    if not deprecation and not sunset:
+        _retirement["notice"] = ""
+        return ""
+    end = _header_date(sunset)
+    when = f" and stops answering on {end.date().isoformat()}" if end else ""
+    _retirement["notice"] = (f"OpenWeatherMap says its One Call API 3.0 is being retired{when}. Outpost will need "
+                             "an update to keep using OpenWeatherMap; until then, set OUTPOST_PROVIDER to another "
+                             "provider if it stops working.")
+    return _retirement["notice"]
+
+
+def retirement_notice() -> str:
+    """What OpenWeatherMap's last answer said about One Call 3.0 going away, or ""."""
+    return _retirement["notice"]
+
+
 def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) -> Dict[str, Any]:
     """The One Call JSON, kept for at least MIN_CACHE_SECONDS."""
     global _blocked_until, _blocked_reason
@@ -149,9 +203,16 @@ def fetch_raw(latitude: float, longitude: float, api_key: str, user_agent: str) 
     _calls["calls"] += 1
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            check_retirement(response.headers)
             raw = json.load(response)
     except urllib.error.HTTPError as error:
         # Only the status goes in messages: the error also holds the address, with the key
+        check_retirement(error.headers)
+        if error.code == 410:
+            _blocked_until = now + GONE_WAIT_SECONDS
+            _blocked_reason = ("OpenWeatherMap no longer offers its One Call API 3.0 (HTTP 410 Gone). Outpost needs an "
+                               "update to use OpenWeatherMap; until then, set OUTPOST_PROVIDER to another provider")
+            raise RuntimeError(_blocked_reason) from None
         if error.code == 401:
             _blocked_until = now + REFUSED_KEY_WAIT_SECONDS
             _blocked_reason = ("OpenWeatherMap refused the API key (check OUTPOST_OPENWEATHERMAP_API_KEY, and that it "
