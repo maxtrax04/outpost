@@ -14,6 +14,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 - `assets/`: `icons/` (13 original SVGs), `logo/` (original logo: mark, wordmark, lockup), `app/` (favicon and PWA icons, built from the logo by `scripts/build-app-icons.js`), `fonts/` (user supplies Share Tech Mono)
 - `tests/`: unittest and `node --test`; fixtures use made-up locations; `tests/browser/check-themes.js` (Playwright, run by CI against the container)
 - `docs/`: `data-format.md` and `schema/weather-v<N>.json` (the weather.json format; a new file per schema_version), `themes.md`, `releasing.md`, `github-workflow.md`
+- `unraid/outpost.xml`: the unRAID Community Apps template, built from the README's settings table by `scripts/build_unraid_template.py` (tests/test_unraid.py checks it is current); `app/outpost_env.py` drops empty OUTPOST_* variables (unRAID passes every template variable), imported first by every script that reads settings
 - `homeassistant/`: the Home Assistant add-on (`repository.yaml`, `outpost/config.json`, DOCS, translations, icon and logo from `scripts/build-app-icons.js`); the release workflow copies it to maxtrax04/outpost-addon with `scripts/publish_addon.py` (betas to its `beta` branch, releases to `main`; needs the ADDON_REPO_TOKEN secret)
 - `design/`: design working files (logo concepts, Illustrator masters); git-ignored
 - `nginx/default.conf`: web server config; custom themes are mounted at `/config/themes` and win over `web/themes/`
@@ -23,7 +24,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 1. Privacy: never commit real `data/weather.json`, `.env`, or real coordinates. Fixtures use fictional places.
 2. Original content only: no Fallout/Bethesda names, logos, art, or fonts. Keep `THIRD_PARTY.md` accurate.
 3. `app/` is Python standard library only (the image has no pip).
-4. Every new setting is added to `.env.example`, `README.md`, and has a test.
+4. Every new setting is added to `.env.example`, `README.md` (then rebuild `unraid/outpost.xml`), and has a test.
 5. Every user-visible change goes in `CHANGELOG.md` under `[Unreleased]`.
 6. Version lives only in the `VERSION` file.
 7. Write atomically to `/data`; on provider failure keep last good data marked `degraded`.

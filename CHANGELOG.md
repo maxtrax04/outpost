@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0-beta.3] - 2026-11-27
+
+### Added
+
+- An unRAID template (#36), `unraid/outpost.xml`, with the port, the `/data` folder, an optional folder for your own themes, and every setting: the most used ones shown, the rest under "Show more settings", keys and passwords hidden, and fixed choices as lists. It starts with Open-Meteo. See "Running on unRAID" in the README; it is built from the README's settings table, so the two always agree.
+
+### Fixed
+
+- An empty setting (such as `OUTPOST_UPDATE_INTERVAL=`) now means its default, as if it weren't set. Before, some empty settings stopped Outpost from starting, which would have happened with every unRAID template, since unRAID passes empty variables too.
+
 ## [0.9.0-beta.2] - 2026-11-27
 
 ### Changed

@@ -9,6 +9,7 @@ Exit 1 otherwise.
 
 import json
 import os
+import outpost_env  # noqa: F401 (first: an empty OUTPOST_* setting means its default)
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
