@@ -22,6 +22,7 @@ Weather data is provided by the services you configure and remains subject to th
 - Open-Meteo.com
 - MET Norway (met.no), shared under the Creative Commons 4.0 BY International license
 - Pirate Weather (pirateweather.net)
+- OpenWeather (openweathermap.org), credited in the dashboard footer as its terms ask
 - Air quality and pollen: Copernicus Atmosphere Monitoring Service (CAMS) forecasts, through Open-Meteo.com,
   shared under the Creative Commons 4.0 BY International license
 

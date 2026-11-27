@@ -193,8 +193,9 @@
     }
 
     // Alerts sources whose empty list can also mean "this country is not covered" (Pirate Weather's alerts
-    // cover only the countries on the WMO alert hub), so "none" is said as "none reported by" them
-    const UNCERTAIN_ALERTS_SOURCES = ["pirateweather"];
+    // cover only the countries on the WMO alert hub, OpenWeatherMap's only the services that send it
+    // theirs), so "none" is said as "none reported by" them
+    const UNCERTAIN_ALERTS_SOURCES = ["pirateweather", "openweathermap"];
 
     // The name to give in "none reported by ...", or "" when an empty list really means no alerts
     function uncertainAlertsSource(weather) {

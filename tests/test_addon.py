@@ -246,7 +246,7 @@ class AddonFolderTests(unittest.TestCase):
 
     def test_list_options_match_what_outpost_accepts(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        for option in ("provider", "alerts_provider", "units", "effects", "dim_mode"):
+        for option in ("provider", "openweathermap_plan", "alerts_provider", "units", "effects", "dim_mode"):
             values = re.match(r"list\((.*)\)\??$", self.config["schema"][option]).group(1).split("|")
             name = a.setting_name(option)
             row = next(line for line in readme.splitlines() if line.startswith(f"| `{name}` |"))

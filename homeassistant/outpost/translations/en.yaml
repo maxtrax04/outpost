@@ -5,6 +5,12 @@ configuration:
   pirateweather_api_key:
     name: Pirate Weather API key
     description: A free key from pirateweather.net, for Pirate Weather (and auto outside the Nordic countries and the US).
+  openweathermap_api_key:
+    name: OpenWeatherMap API key
+    description: A key from openweathermap.org, for OpenWeatherMap. With the onecall plan it needs a One Call by Call subscription (1,000 calls a day free, then billed; Outpost makes at most 144).
+  openweathermap_plan:
+    name: OpenWeatherMap plan
+    description: "onecall (default) uses One Call API 3.0, which needs the subscription. free uses the free services, which need only an account: 3-hour steps, UV from Open-Meteo, no alerts."
   alerts_provider:
     name: Alerts source
     description: Where official weather alerts come from. auto uses the weather source's own, or the best official one for the place.

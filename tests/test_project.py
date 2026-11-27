@@ -191,7 +191,7 @@ class EnvExampleTests(unittest.TestCase):
                 continue
             with self.subTest(line=line):
                 key = line.split("=", 1)[0]
-                self.assertRegex(key, r"^(OUTPOST_[A-Z0-9_]+|TZ|PIRATEWEATHER_API_KEY|OPENWEATHERMAP_API_KEY)$")
+                self.assertRegex(key, r"^(OUTPOST_[A-Z0-9_]+|TZ)$")
 
 
 class RepositoryHygieneTests(unittest.TestCase):

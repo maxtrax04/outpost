@@ -73,6 +73,16 @@ and publish it, or run `gh release edit v0.5.0-beta.1 --draft=false`.
 | `0.5.0-beta.1` | That exact beta; betas get no other tags |
 | `edge` | The newest commit on `main`, for early testers (not a release) |
 
+## Before a release: provider end of life
+
+Check that the weather services Outpost uses still offer the versions it asks for:
+
+- OpenWeatherMap One Call API 3.0 (`app/providers/openweathermap.py`): read
+  https://openweathermap.org/api/one-call-3 and its migration guide for an end-of-life date. Outpost
+  also warns in its log when OpenWeatherMap's answers carry a `Deprecation` or `Sunset` header, and
+  reports HTTP 410 as "an update is needed". If a date has been announced, open an issue to move to the
+  newer version well before it.
+
 ## Before pushing, every time
 
 - `git status` should not list `.env` or anything in `data/`.

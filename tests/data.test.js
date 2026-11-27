@@ -98,6 +98,8 @@ test("the dashboard reads the format the updater writes", () => {
 test("an alerts source that may not cover the location is named when it reports none", () => {
     const pirate = { sources: { alerts: { id: "pirateweather", name: "Pirate Weather" } } };
     assert.strictEqual(data.uncertainAlertsSource(pirate), "Pirate Weather");
+    const owm = { sources: { alerts: { id: "openweathermap", name: "OpenWeather" } } };
+    assert.strictEqual(data.uncertainAlertsSource(owm), "OpenWeather");
     assert.strictEqual(data.uncertainAlertsSource({ sources: { alerts: { id: "nws", name: "NWS" } } }), "");
     assert.strictEqual(data.uncertainAlertsSource({ sources: { alerts: null } }), "");
     assert.strictEqual(data.uncertainAlertsSource({}), "");
