@@ -12,6 +12,7 @@ later features.
 """
 
 import os
+import outpost_env  # noqa: F401 (first: an empty OUTPOST_* setting means its default)
 import re
 import sys
 from pathlib import Path

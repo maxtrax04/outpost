@@ -83,6 +83,19 @@ Check that the weather services Outpost uses still offer the versions it asks fo
   reports HTTP 410 as "an update is needed". If a date has been announced, open an issue to move to the
   newer version well before it.
 
+## unRAID template
+
+`unraid/outpost.xml` is built from the README's settings table by
+`python3 scripts/build_unraid_template.py`; `tests/test_unraid.py` fails when it is out of date, so
+run it after changing a setting's row. Community Apps reads it from `main`.
+
+To get Outpost listed in Community Apps (once, after the repository is public, #38):
+
+1. Submit the repository to Community Apps, as the Community Applications forum describes.
+   It finds the template in `unraid/`. `<Support>` points at GitHub issues, which Community Apps
+   accepts; an unRAID forum thread is optional (set `<Support>` in
+   `scripts/build_unraid_template.py` to its address if you start one).
+
 ## Before pushing, every time
 
 - `git status` should not list `.env` or anything in `data/`.

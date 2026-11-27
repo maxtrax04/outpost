@@ -31,6 +31,7 @@ Uses only the Python standard library.
 import json
 import math
 import os
+import outpost_env  # noqa: F401 (first: an empty OUTPOST_* setting means its default)
 import re
 import sys
 import threading

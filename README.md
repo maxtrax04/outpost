@@ -349,12 +349,27 @@ Every field is described in [docs/data-format.md](docs/data-format.md), with a [
 
 ## Running on unRAID
 
-A Community Apps template is planned. Until then, you can add the container manually once an image is published:
+Outpost has an unRAID template, [unraid/outpost.xml](unraid/outpost.xml), with the port, the `/data`
+folder, and every setting from the table above. The most used settings are shown; the rest are under
+"Show more settings", API keys and passwords are hidden as you type them, and settings with fixed
+choices are lists. The weather starts from Open-Meteo, which needs no key. unRAID sets `TZ` itself.
 
-- **Port:** container `80` to a host port of your choice
+Until Outpost is listed in Community Apps, add it from the template by hand:
+
+1. Save [unraid/outpost.xml](https://raw.githubusercontent.com/maxtrax04/outpost/main/unraid/outpost.xml)
+   on the unRAID server as `/boot/config/plugins/dockerMan/templates-user/my-outpost.xml`, for example from
+   the terminal: `wget -O /boot/config/plugins/dockerMan/templates-user/my-outpost.xml <that address>`.
+2. In the **Docker** tab, choose **Add Container**, then pick **Outpost** under **User templates** in the **Template** list.
+3. Set your location name, latitude, and longitude, and apply. The dashboard is at `http://<server>:8088`.
+
+The template maps:
+
+- **Port:** container `80` to host port `8088` (change it if that port is taken)
 - **Path:** container `/data` to `/mnt/user/appdata/outpost`
-- **Path (optional, your own themes):** container `/config/themes` to `/mnt/user/appdata/outpost/themes`, access mode Read Only. Put each theme in its own folder there, for example `/mnt/user/appdata/outpost/themes/sonar/theme.css`, then restart the container. See [docs/themes.md](docs/themes.md#adding-themes-without-rebuilding).
-- **Variables:** each `OUTPOST_*` setting from the table above
+- **Path (optional, your own themes):** container `/config/themes` to `/mnt/user/appdata/outpost/themes`, read only. Put each theme in its own folder there, for example `/mnt/user/appdata/outpost/themes/sonar/theme.css`, then restart the container. See [docs/themes.md](docs/themes.md#adding-themes-without-rebuilding).
+
+unRAID passes every setting in a template, including the ones left empty, and an empty setting means its
+default, as if it weren't set (the same holds for lines such as `OUTPOST_CONTACT=` in a Compose `.env`).
 
 ## Project layout
 
