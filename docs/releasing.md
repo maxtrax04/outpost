@@ -91,10 +91,10 @@ run it after changing a setting's row. Community Apps reads it from `main`.
 
 To get Outpost listed in Community Apps (once, after the repository is public, #38):
 
-1. Start a support thread for Outpost in the unRAID forums, and set `<Support>` in
-   `scripts/build_unraid_template.py` to its address (it points at GitHub issues until then).
-2. Submit the repository to Community Apps, as the Community Applications forum describes.
-   It finds the template in `unraid/`.
+1. Submit the repository to Community Apps, as the Community Applications forum describes.
+   It finds the template in `unraid/`. `<Support>` points at GitHub issues, which Community Apps
+   accepts; an unRAID forum thread is optional (set `<Support>` in
+   `scripts/build_unraid_template.py` to its address if you start one).
 
 ## Before pushing, every time
 
