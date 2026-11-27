@@ -15,6 +15,8 @@ COPY web/ /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
 COPY app/ /app/
 COPY VERSION /app/VERSION
+# The MIT license and the notices for the font and data the image includes go with every copy
+COPY LICENSE THIRD_PARTY.md /usr/share/doc/outpost/
 
 # nginx serves weather.json from the persistent /data volume.
 # /config/themes is where people mount their own themes (empty unless something is mounted there).
