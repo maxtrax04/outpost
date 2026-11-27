@@ -95,9 +95,35 @@ def direction(value: Any) -> Optional[int]:
     return int(round(value)) % 360
 
 
+# Readings without a unit, always whole numbers: percentages and the UV index
+WHOLE_FIELDS = {
+    "current": ("humidity", "uv_index"),
+    "forecast": ("precipitation_chance", "uv_index"),
+    "hourly": ("precipitation_chance",),
+}
+PERCENT_FIELDS = {"humidity", "precipitation_chance"}
+
+
+def whole(value: Any, percent: bool = False) -> Optional[int]:
+    """A whole number (a percentage is kept within 0 to 100, a UV index not below 0), or None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+        return None
+    return int(round(min(100.0, max(0.0, value)) if percent else max(0.0, value)))
+
+
+def _whole_fields(entries: Any, names: Any) -> None:
+    for entry in entries:
+        for name in names:
+            if isinstance(entry, dict) and name in entry:
+                entry[name] = whole(entry[name], name in PERCENT_FIELDS)
+
+
 def present(data: Dict[str, Any], system: str) -> Dict[str, Any]:
     """A copy of normalized provider data with every reading in `system`, rounded."""
     result = copy.deepcopy(data)
+    _whole_fields([result.get("current") or {}], WHOLE_FIELDS["current"])
+    _whole_fields(result.get("forecast") or [], WHOLE_FIELDS["forecast"])
+    _whole_fields(result.get("hourly") or [], WHOLE_FIELDS["hourly"])
     current = result.get("current") or {}
     for field, kind in CURRENT_FIELDS.items():
         if field in current:

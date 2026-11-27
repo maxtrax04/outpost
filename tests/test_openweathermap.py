@@ -522,12 +522,18 @@ class FreeNormalizeTests(unittest.TestCase):
     def test_hourly_in_three_hour_steps(self):
         hourly = owm_free_data()["hourly"]
         self.assertEqual(len(hourly), owm.FREE_HOURLY_STEPS)
-        # 18:00 UTC ended (for the strip) at 19:00, so 21:00 comes first
-        self.assertEqual(hourly[0]["time"], "2026-11-13T21:00:00+00:00")
-        self.assertEqual(hourly[-1]["time"], "2026-11-14T18:00:00+00:00")
-        self.assertEqual((hourly[-1]["condition"], hourly[-1]["precipitation_chance"]), ("Light rain", 70))
-        self.assertEqual(round(hourly[-1]["precipitation"], 2), 0.05)
+        # The step under way (18:00 to 21:00 UTC) comes first
+        self.assertEqual((hourly[0]["time"], hourly[0]["end"]), ("2026-11-13T18:00:00+00:00", "2026-11-13T21:00:00+00:00"))
+        self.assertEqual(hourly[-1]["time"], "2026-11-14T15:00:00+00:00")
         self.assertEqual(hourly[0]["precipitation"], 0)
+        later = owm.build_free_hourly(load_fixture("openweathermap-free-forecast.json"),
+                                      datetime(2026, 11, 14, 12, 30, tzinfo=timezone.utc))
+        self.assertEqual(later[0]["time"], "2026-11-14T12:00:00+00:00")
+        rain = later[2]
+        self.assertEqual((rain["time"], rain["condition"], rain["precipitation_chance"]),
+                         ("2026-11-14T18:00:00+00:00", "Light rain", 70))
+        # The amount for all 3 hours
+        self.assertEqual(round(rain["precipitation"], 2), 0.05)
 
     def test_missing_data(self):
         forecast = load_fixture("openweathermap-free-forecast.json")

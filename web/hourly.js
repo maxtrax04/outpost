@@ -13,12 +13,18 @@
     const SHOWN = 12;
     const HOUR_MS = 60 * 60 * 1000;
 
-    // The hours that haven't ended at `now`, in order, at most `count`
+    // When an entry ends: its `end` (OpenWeatherMap's free plan has 3-hour steps), else an hour on
+    function endOf(hour, start) {
+        const end = new Date(hour && hour.end).getTime();
+        return Number.isFinite(end) && end > start ? end : start + HOUR_MS;
+    }
+
+    // The hours (or steps) that haven't ended at `now`, in order, at most `count`
     function upcoming(list, now, count = SHOWN) {
         if (!Array.isArray(list)) return [];
         return list
             .map((hour) => ({ hour, start: new Date(hour && hour.time).getTime() }))
-            .filter((item) => Number.isFinite(item.start) && item.start + HOUR_MS > now)
+            .filter((item) => Number.isFinite(item.start) && endOf(item.hour, item.start) > now)
             .sort((a, b) => a.start - b.start)
             .slice(0, count);
     }

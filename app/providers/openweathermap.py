@@ -503,7 +503,7 @@ def build_free_forecast(raw: Dict[str, Any], current: Optional[Dict[str, Any]] =
 
 
 def build_free_hourly(raw: Dict[str, Any], now: Optional[datetime] = None) -> List[Dict[str, Any]]:
-    """The next 24 hours as 3-hour steps (each entry's time is when its 3 hours start)."""
+    """The next 24 hours as 3-hour steps, from the one under way (`time` to `end`)."""
     result = []
     for step in raw.get("list") if isinstance(raw.get("list"), list) else []:
         start = _time(step.get("dt")) if isinstance(step, dict) else None
@@ -514,7 +514,8 @@ def build_free_hourly(raw: Dict[str, Any], now: Optional[datetime] = None) -> Li
         wind = _part(step, "wind")
         result.append(hours.entry(start, _number(_part(step, "main").get("temp")), condition, icon,
                                   chance * 100 if chance is not None else None,
-                                  _number(wind.get("speed")), _number(wind.get("deg")), _step_amount(step)))
+                                  _number(wind.get("speed")), _number(wind.get("deg")), _step_amount(step),
+                                  end=start + timedelta(hours=FREE_STEP_HOURS)))
     return hours.upcoming(result, now, FREE_HOURLY_STEPS)
 
 
