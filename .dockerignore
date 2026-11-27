@@ -11,9 +11,8 @@ data/
 # Docs and repo files the container doesn't need
 README.md
 CLAUDE.md
+CLAUDE.local.md
 CHANGELOG.md
-THIRD_PARTY.md
-LICENSE
 docs/
 .github/
 scripts/

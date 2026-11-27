@@ -123,6 +123,13 @@ class WebServerTests(unittest.TestCase):
     def test_dockerfile_installs_the_config(self):
         self.assertIn("COPY nginx/default.conf /etc/nginx/conf.d/default.conf", read("Dockerfile"))
 
+    def test_the_image_carries_the_license_notices(self):
+        # MIT asks for its notice in every copy, and the OFL font's license sits next to the font
+        self.assertIn("COPY LICENSE THIRD_PARTY.md /usr/share/doc/outpost/", read("Dockerfile"))
+        ignored = {line.strip() for line in read(".dockerignore").splitlines()}
+        self.assertFalse(ignored & {"LICENSE", "THIRD_PARTY.md", "assets/", "assets/fonts/"})
+        self.assertTrue((ROOT / "assets" / "fonts" / "ShareTechMono-OFL.txt").exists())
+
     def test_weather_data_is_never_cached(self):
         self.assertRegex(self.conf, r'location /data/ \{\s*add_header Cache-Control "no-store";')
 

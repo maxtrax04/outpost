@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0-beta.5] - 2026-11-27
+
+### Changed
+
+- The image now includes Outpost's license and third-party notices, in `/usr/share/doc/outpost/` (#38, the public release audit).
+
 ## [0.9.0-beta.4] - 2026-11-27
 
 ### Added
