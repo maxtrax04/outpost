@@ -754,10 +754,21 @@ def build_payload(
         "current": readings["current"],
         "forecast": readings["forecast"],
         "hourly": readings["hourly"],
-        "alerts": alerts,
+        "alerts": known_severities(alerts),
         "air_quality": air_quality,
         "last_error": last_error
     }
+
+# Every severity an alert can have in weather.json (test: mock data only)
+ALERT_SEVERITIES = ("extreme", "severe", "moderate", "minor", "unknown", "test")
+
+def known_severities(alerts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The alerts, with any severity outside ALERT_SEVERITIES as unknown."""
+    result = []
+    for alert in alerts:
+        severity = str(alert.get("severity") or "").strip().lower()
+        result.append({**alert, "severity": severity if severity in ALERT_SEVERITIES else "unknown"})
+    return result
 
 def build_error_payload(error_message: str, location: Optional[Location] = None) -> Dict[str, Any]:
     return build_payload(

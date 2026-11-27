@@ -1,6 +1,7 @@
 """
 The hourly forecast (weather.json "hourly", docs/data-format.md): the next HOURS hours, starting
-with the hour that is under way, one entry per hour, in the same form from every provider.
+with the hour that is under way, one entry per hour (or per step, for a source with longer steps), in
+the same form from every provider. Each entry has its start (`time`) and its `end`.
 
 Uses only the Python standard library.
 """
@@ -25,12 +26,16 @@ def amount(value: Any) -> Optional[float]:
 
 
 def entry(moment: datetime, temperature: Any, condition: str, icon: str, precipitation_chance: Any = None,
-          wind_speed: Any = None, wind_direction: Any = None, precipitation: Any = None) -> Dict[str, Any]:
-    """One hour. Readings are unrounded, in °F, mph, and inches (the rain or snow expected in the hour,
-    as water), like the rest of a provider's data."""
+          wind_speed: Any = None, wind_direction: Any = None, precipitation: Any = None,
+          end: Optional[datetime] = None) -> Dict[str, Any]:
+    """One hour (or one step from `moment` to `end`, an hour later by default). Readings are unrounded,
+    in °F, mph, and inches (the rain or snow expected in the step, as water), like the rest of a
+    provider's data."""
     chance = number(precipitation_chance)
+    end = end if end is not None and end > moment else moment + timedelta(hours=1)
     return {
         "time": moment.astimezone(timezone.utc).isoformat(),
+        "end": end.astimezone(timezone.utc).isoformat(),
         "temperature": number(temperature),
         "condition": condition,
         "icon": icon,
@@ -43,7 +48,7 @@ def entry(moment: datetime, temperature: Any, condition: str, icon: str, precipi
 
 def upcoming(entries: Iterable[Dict[str, Any]], now: Optional[datetime] = None,
              hours: int = HOURS) -> List[Dict[str, Any]]:
-    """The hours that haven't ended yet, in order, at most `hours` of them."""
+    """The hours (or steps) that haven't ended yet, in order, at most `hours` of them."""
     now = now or datetime.now(timezone.utc)
     timed = []
     for item in entries:
@@ -51,7 +56,11 @@ def upcoming(entries: Iterable[Dict[str, Any]], now: Optional[datetime] = None,
             start = datetime.fromisoformat(item["time"])
         except (KeyError, TypeError, ValueError):
             continue
-        if start.tzinfo is not None and start + timedelta(hours=1) > now:
+        try:
+            end = datetime.fromisoformat(item["end"])
+        except (KeyError, TypeError, ValueError):
+            end = start + timedelta(hours=1)
+        if start.tzinfo is not None and end.tzinfo is not None and end > now:
             timed.append((start, item))
     timed.sort(key=lambda pair: pair[0])
     seen, result = set(), []

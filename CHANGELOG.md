@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0-beta.2] - 2026-11-27
+
+### Changed
+
+- The `weather.json` format (version 1) is frozen for the stable releases (#39): docs/data-format.md now says what other tools can rely on (nothing renamed or removed without a new `schema_version`; new fields and new values in lists can appear) and how to upgrade a tool from each 0.x version.
+- Each `hourly` entry in `weather.json` has an `end`, when its hour ends (3 hours later with OpenWeatherMap's free plan). The dashboard's hourly strip uses it, so a 3-hour step stays shown until it is over.
+- Percentages and the UV index are rounded to whole numbers in one place for every source, and the schema says they are whole numbers. An alert severity outside the documented list is written as `unknown`.
+- docs/data-format.md: what alert `description` holds from each source, at most 5 alerts, the fields `sources.fill` can list, and `DATA LINK LOST` in an error file.
+
+### Upgrading from 0.9.0-beta.1
+
+- Tools that read `weather.json` need no changes; see "Upgrading a tool that reads weather.json" in docs/data-format.md.
+
 ## [0.9.0-beta.1] - 2026-11-26
 
 ### Added

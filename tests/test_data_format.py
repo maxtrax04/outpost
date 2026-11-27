@@ -16,6 +16,8 @@ from helpers import ROOT
 
 import outpost_updater as u
 from providers import airquality, openmeteo
+from test_openweathermap import owm_data, owm_free_data
+from test_pirateweather import pirate_data
 from test_updater import metno_data, nws_data, openmeteo_data
 
 SCHEMA = json.loads((ROOT / "docs" / "schema" / "weather-v1.json").read_text(encoding="utf-8"))
@@ -134,6 +136,44 @@ class PayloadTests(unittest.TestCase):
         with mock.patch.object(u, "UNITS", "metric"):
             self.assertValid(u.build_live_payload("metno", metno_data()))
 
+    def test_pirate_weather_data(self):
+        self.assertValid(u.build_live_payload("pirateweather", pirate_data()))
+
+    def test_openweathermap_data(self):
+        self.assertValid(u.build_live_payload("openweathermap", owm_data()))
+        data, filled = u.gapfill.fill(owm_free_data(), openmeteo_data())
+        data["fill"] = u.source_entry("openmeteo", openmeteo.SOURCE, fields=filled)
+        with mock.patch.object(u, "UNITS", "metric"):
+            self.assertValid(u.build_live_payload("openweathermap", data))
+
+    def test_whole_numbers(self):
+        # Percentages and UV index are whole numbers, however a source sends them
+        data = owm_data()
+        data["current"].update({"humidity": 55.6, "uv_index": 3.4})
+        data["forecast"][0].update({"precipitation_chance": 12.5, "uv_index": 6.7})
+        data["hourly"][0].update({"precipitation_chance": 140.2})
+        payload = u.build_live_payload("openweathermap", data)
+        self.assertValid(payload)
+        self.assertEqual((payload["current"]["humidity"], payload["current"]["uv_index"]), (56, 3))
+        self.assertEqual((payload["forecast"][0]["precipitation_chance"], payload["forecast"][0]["uv_index"]), (12, 7))
+        self.assertEqual(payload["hourly"][0]["precipitation_chance"], 100)
+
+    def test_unknown_severities_become_unknown(self):
+        data = nws_data()
+        data["alerts"] = [{"title": "A", "description": "", "severity": "Catastrophic", "onset": None,
+                           "expires": None, "uri": None},
+                          {"title": "B", "description": "", "severity": "Severe", "onset": None,
+                           "expires": None, "uri": None}]
+        payload = u.build_live_payload("nws", data)
+        self.assertValid(payload)
+        self.assertEqual([alert["severity"] for alert in payload["alerts"]], ["unknown", "severe"])
+        self.assertEqual(set(SCHEMA["properties"]["alerts"]["items"]["properties"]["severity"]["enum"]),
+                         set(u.ALERT_SEVERITIES))
+
+    def test_the_error_file_keeps_its_wording(self):
+        payload = u.build_error_payload("boom")
+        self.assertEqual((payload["status"], payload["current"]["condition"]), ("error", "DATA LINK LOST"))
+
     def test_gap_filled_data(self):
         data, filled = u.gapfill.fill(nws_data(), openmeteo_data())
         data["fill"] = u.source_entry("openmeteo", openmeteo.SOURCE, fields=filled)
@@ -164,8 +204,8 @@ class PayloadTests(unittest.TestCase):
             with self.subTest(part=name):
                 schema = SCHEMA["properties"][name]
                 schema = schema.get("items", schema)
-                # precipitation (#86) came in 0.8.0
-                self.assertEqual(set(schema["required"]), set(part) - {"precipitation"})
+                # precipitation (#86) came in 0.8.0, and hourly end in 0.9.0
+                self.assertEqual(set(schema["required"]), set(part) - {"precipitation", "end"})
                 self.assertEqual(set(schema["properties"]), set(part))
 
     def test_icons_match_the_icon_files(self):
@@ -185,6 +225,15 @@ class DocumentationTests(unittest.TestCase):
         for name in names:
             with self.subTest(name=name):
                 self.assertRegex(doc, rf"`{re.escape(name)}`")
+
+    def test_every_field_fill_can_list_is_documented(self):
+        doc = (ROOT / "docs" / "data-format.md").read_text(encoding="utf-8")
+        fields = ([f"current.{name}" for name in u.gapfill.CURRENT_FIELDS]
+                  + [f"forecast.{name}" for name in u.gapfill.FORECAST_FIELDS]
+                  + [f"hourly.{name}" for name in u.gapfill.HOURLY_FIELDS])
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertIn(f"`{field}`", doc)
 
     def test_the_documented_version_matches(self):
         doc = (ROOT / "docs" / "data-format.md").read_text(encoding="utf-8")

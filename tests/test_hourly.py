@@ -11,7 +11,7 @@ import units
 from providers import hourly, metno, nws, openmeteo, pirateweather
 
 NOW = datetime(2026, 7, 15, 14, 20, tzinfo=timezone.utc)
-FIELDS = {"time", "temperature", "condition", "icon", "precipitation_chance", "precipitation", "wind_speed",
+FIELDS = {"time", "end", "temperature", "condition", "icon", "precipitation_chance", "precipitation", "wind_speed",
           "wind_direction"}
 
 
@@ -35,9 +35,30 @@ class UpcomingTests(unittest.TestCase):
                             140, True, float("nan"))
         self.assertEqual(set(item), FIELDS)
         self.assertEqual(item["time"], "2026-07-15T14:00:00+00:00")
+        # An hour long unless the source says otherwise
+        self.assertEqual(item["end"], "2026-07-15T15:00:00+00:00")
         self.assertEqual(item["precipitation_chance"], 100)
         self.assertIsNone(item["wind_speed"])
         self.assertIsNone(item["wind_direction"])
+
+
+class StepTests(unittest.TestCase):
+    """Entries longer than an hour (OpenWeatherMap's free plan) last until their end."""
+
+    def test_a_step_lasts_until_its_end(self):
+        start = datetime(2026, 7, 15, 12, tzinfo=timezone.utc)
+        item = hourly.entry(start, 70, "Rain", "rain", end=start + timedelta(hours=3))
+        self.assertEqual(item["end"], "2026-07-15T15:00:00+00:00")
+        # Still under way two and a half hours in
+        self.assertEqual(hourly.upcoming([item], start + timedelta(hours=2, minutes=30)), [item])
+        self.assertEqual(hourly.upcoming([item], start + timedelta(hours=3)), [])
+
+    def test_a_bad_or_missing_end_means_an_hour(self):
+        start = datetime(2026, 7, 15, 12, tzinfo=timezone.utc)
+        self.assertEqual(hourly.entry(start, 70, "Rain", "rain", end=start)["end"], "2026-07-15T13:00:00+00:00")
+        item = {"time": start.isoformat()}
+        self.assertEqual(hourly.upcoming([item], start + timedelta(minutes=59)), [item])
+        self.assertEqual(hourly.upcoming([dict(item, end="soon")], start + timedelta(minutes=61)), [])
 
 
 class OpenMeteoTests(unittest.TestCase):

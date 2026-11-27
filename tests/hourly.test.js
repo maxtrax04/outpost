@@ -17,6 +17,10 @@ test("only hours that haven't ended, in order, at most 12", () => {
     assert.equal(new Date(upcoming[0].start).toISOString(), "2026-07-15T14:00:00.000Z");
     assert.equal(new Date(upcoming[11].start).toISOString(), "2026-07-16T01:00:00.000Z");
     assert.deepEqual(hourly.upcoming(null, NOW), []);
+    // A 3-hour step (OpenWeatherMap's free plan) stays until its end
+    const step = { time: "2026-07-15T12:00:00Z", end: "2026-07-15T15:00:00Z" };
+    assert.equal(hourly.upcoming([step], NOW).length, 1);
+    assert.equal(hourly.upcoming([{ time: step.time, end: "soon" }], NOW).length, 0);
     assert.deepEqual(hourly.upcoming([{ time: "soon" }, null, {}], NOW), []);
 });
 
