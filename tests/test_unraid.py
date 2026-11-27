@@ -91,6 +91,17 @@ class TemplateTests(unittest.TestCase):
         # unRAID passes TZ itself
         self.assertNotIn("TZ", found)
 
+    def test_community_apps_profile(self):
+        # ca.unraid.net needs ca_profile.xml at the root with a non-empty Profile
+        profile = ElementTree.parse(ROOT / "ca_profile.xml").getroot()
+        self.assertEqual(profile.tag, "CommunityApplications")
+        self.assertGreater(len((profile.findtext("Profile") or "").strip()), 50)
+        root, _ = configs()
+        self.assertEqual(profile.findtext("Icon"), root.findtext("Icon"))
+        self.assertEqual(profile.findtext("WebPage"), root.findtext("Project"))
+        self.assertEqual(profile.findtext("Forum"), root.findtext("Support"))
+        self.assertTrue((ROOT / "LICENSE").exists())
+
     def test_descriptions_are_plain_text(self):
         _, found = configs()
         for name, config in found.items():

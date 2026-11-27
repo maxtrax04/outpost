@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- The Community Apps profile for this repository (ca.unraid.net). The app template is unraid/outpost.xml. -->
+<CommunityApplications>
+  <Profile>Outpost is a self-hosted, themeable weather dashboard for wall-mounted displays, tablets, and phones, with a retro terminal look. One container: current conditions, an hourly and 5-day forecast, official alerts, air quality, an optional map with rain radar, and sensor and power readings from Home Assistant or MQTT. Open source (MIT). Questions and bug reports go to GitHub issues.</Profile>
+  <Icon>https://raw.githubusercontent.com/maxtrax04/outpost/main/assets/app/icon-512.png</Icon>
+  <WebPage>https://github.com/maxtrax04/outpost</WebPage>
+  <Forum>https://github.com/maxtrax04/outpost/issues</Forum>
+</CommunityApplications>
