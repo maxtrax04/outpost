@@ -89,12 +89,16 @@ Check that the weather services Outpost uses still offer the versions it asks fo
 `python3 scripts/build_unraid_template.py`; `tests/test_unraid.py` fails when it is out of date, so
 run it after changing a setting's row. Community Apps reads it from `main`.
 
-To get Outpost listed in Community Apps (once, after the repository is public, #38):
+`ca_profile.xml` at the repository root is the Community Apps profile (a non-empty `<Profile>` is
+required); `tests/test_unraid.py` checks its icon and links match the template's.
 
-1. Submit the repository to Community Apps, as the Community Applications forum describes.
-   It finds the template in `unraid/`. `<Support>` points at GitHub issues, which Community Apps
-   accepts; an unRAID forum thread is optional (set `<Support>` in
-   `scripts/build_unraid_template.py` to its address if you start one).
+To get Outpost listed in Community Apps (once):
+
+1. At https://ca.unraid.net/submit/new, add the repository, run Validate and Scan, and submit.
+   It finds the template in `unraid/`. `<Support>` (and the profile's `<Forum>`) point at GitHub
+   issues; an unRAID forum thread is optional (if you start one, set `<Support>` in
+   `scripts/build_unraid_template.py` and `<Forum>` in `ca_profile.xml` to its address).
+2. After a change to the template or profile, run Validate and Scan there again.
 
 ## Before pushing, every time
 
