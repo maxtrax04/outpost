@@ -100,6 +100,15 @@ To get Outpost listed in Community Apps (once):
    `scripts/build_unraid_template.py` and `<Forum>` in `ca_profile.xml` to its address).
 2. After a change to the template or profile, run Validate and Scan there again.
 
+## Screenshots
+
+The README's pictures (`docs/images/themes/*.png` and `docs/images/phone.png`) are taken by
+`scripts/screenshots.sh`: it builds the image and starts it with the mock data at the example location
+(never a real one), and `tests/browser/take-screenshots.js` tidies the readings into a likely day and
+takes every built-in theme. Take them again when a theme's look changes, when a theme is added (also add
+it to `BUILT_IN` in that script and to the README's table; `tests/test_project.py` checks), and before a
+release, so the footer shows that version.
+
 ## Before pushing, every time
 
 - `git status` should not list `.env` or anything in `data/`.

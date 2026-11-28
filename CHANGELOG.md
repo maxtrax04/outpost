@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0-beta.6] - 2026-11-27
+
+### Added
+
+- Screenshots in the README (#37): the default theme on a wall display and a phone at the top, and every built-in theme under "Themes", with sample weather for the example location. `scripts/screenshots.sh` takes them again.
+
 ## [0.9.0-beta.5] - 2026-11-27
 
 ### Changed

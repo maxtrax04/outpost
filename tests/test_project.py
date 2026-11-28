@@ -26,6 +26,21 @@ class ReleaseConsistencyTests(unittest.TestCase):
         pattern = re.compile(rf"^## \[{re.escape(version)}\]", re.M)
         self.assertRegex(read("CHANGELOG.md"), pattern, "CHANGELOG.md has no entry for this version")
 
+    def test_readme_pictures_exist_and_every_theme_has_one(self):
+        # #37: the README shows every built-in theme, and every picture it names is in the repository
+        text = read("README.md")
+        pictures = set(re.findall(r'(?:src="|\]\()(docs/images/[^")]+)', text))
+        for path in sorted(pictures):
+            with self.subTest(picture=path):
+                self.assertTrue((ROOT / path).is_file())
+        themes = sorted(path.name for path in (ROOT / "web" / "themes").iterdir() if path.is_dir())
+        self.assertGreaterEqual(len(themes), 7)
+        for theme in themes:
+            with self.subTest(theme=theme):
+                self.assertIn(f"docs/images/themes/{theme}.png", pictures)
+        shot = read("tests/browser/take-screenshots.js")
+        self.assertEqual(sorted(re.findall(r'"([a-z-]+)"', re.search(r"BUILT_IN = \[([^\]]+)\]", shot).group(1))), themes)
+
     def test_changelog_has_an_unreleased_section(self):
         self.assertIn("## [Unreleased]", read("CHANGELOG.md"))
 
