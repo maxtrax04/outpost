@@ -9,7 +9,7 @@ machine-readable [JSON Schema](schema/weather-v1.json).
 
 ## Versions and compatibility
 
-Format 1 is frozen: from Outpost 0.9.0 on, it is the format other tools can rely on, and it stays
+Format 1 is frozen: from Outpost 2026.12.0 on, it is the format other tools can rely on, and it stays
 the same through the stable releases. What that promises:
 
 - **Nothing is renamed or removed, and no value changes meaning,** without a new `schema_version`.
@@ -38,7 +38,7 @@ match it, but Outpost always writes them from the version that added them.
 - **From 0.6.0 or 0.7.0:** nothing to change. Since 0.8.0 there is more to read: the hourly forecast
   (`hourly`), precipitation amounts (`precipitation` and `units.precipitation`), when alerts start
   (`alerts[].onset`), and air quality (`air_quality`, `sources.air_quality`).
-- **From 0.8.0:** nothing to change. Since 0.9.0 each `hourly` entry has an `end`, which is how to tell
+- **From 0.8.0:** nothing to change. Since 2026.12.0 each `hourly` entry has an `end`, which is how to tell
   whether it is still under way; with OpenWeatherMap's free plan entries are 3 hours long. Percentages
   and the UV index were already whole numbers from every source, and now the schema says so; alert
   severities outside the documented list are written as `unknown`.
@@ -238,7 +238,7 @@ can have ended already, so a reader should skip entries whose `end` has passed.
 | Field | Meaning |
 | :--- | :--- |
 | `time` | When the hour starts, as an ISO 8601 time in UTC. |
-| `end` | When it ends, as an ISO 8601 time in UTC: an hour after `time`, or 3 hours with OpenWeatherMap's free plan. New in Outpost 0.9.0; for files from earlier versions, take an hour after `time`. |
+| `end` | When it ends, as an ISO 8601 time in UTC: an hour after `time`, or 3 hours with OpenWeatherMap's free plan. New in Outpost 2026.12.0; for files from earlier versions, take an hour after `time`. |
 | `temperature` | The temperature for that hour. |
 | `condition`, `icon` | As in `current`, for that hour (night icons after dark). |
 | `precipitation_chance` | Chance of rain or snow in that hour, in percent. `null` when the source doesn't say (MET Norway gives it only for some places, and the National Weather Service not for every hour). |

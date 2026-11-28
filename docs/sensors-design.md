@@ -1,8 +1,8 @@
 # Sensors and power design note
 
 Status: design for [#35](https://github.com/maxtrax04/outpost/issues/35), decided 2026-11-20 (Home
-Assistant and MQTT, a sensor panel and a power panel, in 0.7.0). Step 1 (sensors from Home Assistant) is
-built in 0.7.0-beta.13, step 2 (power) in 0.7.0-beta.14, and step 3 (MQTT) in 0.7.0-beta.15. The README's
+Assistant and MQTT, a sensor panel and a power panel, in 0.7.0). All three steps (sensors from
+Home Assistant, power, and MQTT) are built. The README's
 "Sensors", "Power", and "MQTT" sections are the user guide.
 
 ## What
@@ -173,13 +173,13 @@ animate. It can come later. The roles and `/api/sensors` stay the same.
 
 ## Plan
 
-Each step is its own PR and beta:
+Each step was its own pull request:
 
-1. **Sensors from Home Assistant (beta.13):** this note, `Sensors` with the Home Assistant source,
+1. **Sensors from Home Assistant:** this note, `Sensors` with the Home Assistant source,
    `/api/sensors`, the `OUTPOST_SENSORS` list, the add-on wiring, the sensor panel, the screen layout,
    and the fit check with the panel shown.
-2. **Power (beta.14):** the power roles, the power panel, and the battery bar.
-3. **MQTT (beta.15):** `outpost_mqtt.py`, the `mqtt:` sources, the MQTT settings, and the add-on's
+2. **Power:** the power roles, the power panel, and the battery bar.
+3. **MQTT:** `outpost_mqtt.py`, the `mqtt:` sources, the MQTT settings, and the add-on's
    Mosquitto service.
 
 Then 0.7.0, released 2026-11-21.

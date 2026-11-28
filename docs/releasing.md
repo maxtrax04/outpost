@@ -1,8 +1,21 @@
 # Releasing
 
-Outpost uses [Semantic Versioning](https://semver.org/). Before 1.0, bump the minor version
-(0.3.0 to 0.4.0) for new features or breaking changes, and the patch version (0.3.0 to 0.3.1) for fixes only.
-Test versions get a suffix, such as `0.5.0-beta.1`; see [Beta releases](#beta-releases).
+## Versions
+
+Outpost uses calendar versions, `YEAR.MONTH.FIX`, without leading zeros: `2027.3.0`, then `2027.3.1` and
+`2027.3.2` for fixes. The month names the release cycle, the month you plan to release in, not the day
+it ships (as with Home Assistant), so a cycle started in late February can still be `2027.3`. A new
+feature starts a new cycle; a fix to a released version raises `FIX`. Versions before 2026.12.0 (0.x)
+used Semantic Versioning.
+
+The version no longer says whether something breaks. Whenever a setting or a behavior changes so that
+people need to do something when they upgrade, the CHANGELOG gets a `### Breaking changes` heading with
+the steps. The `weather.json` format has its own `schema_version` (docs/data-format.md).
+
+Test versions get a suffix: `-beta.N` while a cycle is being built, then `-rc.N` (release candidates)
+once it is complete; see [Beta releases](#beta-releases) and [Release candidates and the stable
+release](#release-candidates-and-the-stable-release). `2027.3.0` is valid semver, which
+docker/metadata-action and the Home Assistant add-on need; `2027.03.0` would not be.
 
 Pushing a version tag does the rest: the release workflow (`.github/workflows/release.yml`) runs the
 tests, builds the image for amd64 and arm64, publishes it to `ghcr.io/maxtrax04/outpost`, and creates
@@ -10,68 +23,83 @@ the GitHub Release from the changelog.
 
 ## Checklist
 
-1. Edit `VERSION` (for example `0.4.0`). The updater, `weather.json`, the dashboard footer, and the
+1. Edit `VERSION` (for example `2027.3.0`). The updater, `weather.json`, the dashboard footer, and the
    default User-Agent all read from it. This is the only place the version is set by hand.
-2. In `CHANGELOG.md`, rename `[Unreleased]` to the new version with today's date, add a fresh empty
-   `[Unreleased]` above it, and note any upgrade steps. These notes become the GitHub Release text.
+2. In `CHANGELOG.md`, give the version its section with today's date, below an empty `[Unreleased]`, and
+   note any breaking changes with their steps. These notes become the GitHub Release text.
 3. Open a pull request with those two changes and wait for the CI checks to pass, then merge it.
 4. Update your copy and tag the merge commit:
 
    ```bash
    git switch main
    git pull
-   git tag -a v0.4.0 -m "Outpost v0.4.0"
-   git push origin v0.4.0
+   git tag -a v2027.3.0 -m "Outpost v2027.3.0"
+   git push origin v2027.3.0
    ```
 
 5. Watch the **Release** run in the repository's Actions tab. It fails early if the tag does not match
    `VERSION` or the changelog has no entry for it, so a mislabeled image cannot be published.
 6. Confirm it worked:
    - The Releases page shows the new release, marked "Latest". The repository's sidebar shows it too.
-     (Only versions with a suffix, such as `0.5.0-beta.1`, are marked as pre-releases. GitHub never labels a
-     pre-release "Latest", so the sidebar shows only a tag count when every release is a pre-release.)
-   - `docker pull ghcr.io/maxtrax04/outpost:0.4.0` downloads the image. If it says `unauthorized` or access
-     is denied, the package is still private; see the one-time setup notes below.
+     (Only versions with a suffix, such as `2027.3.0-rc.1`, are marked as pre-releases. GitHub never labels
+     a pre-release "Latest".)
+   - `docker pull ghcr.io/maxtrax04/outpost:2027.3.0` downloads the image. If it says `unauthorized` or
+     access is denied, the package is still private; see the one-time setup notes below.
 7. Close the milestone on GitHub (Milestones, then Close), and move any unfinished issues to the next one.
 
 ## Beta releases
 
-A beta lets people try a version, especially one with breaking changes, before it is final. It uses the
-same checklist with a suffix on the version: `0.5.0-beta.1`, then `0.5.0-beta.2`, and so on.
+A beta lets people try a cycle's changes while it is being built. It uses the same checklist with a
+suffix on the version: `2027.3.0-beta.1`, then `2027.3.0-beta.2`, and so on.
 
 1. Once a version has been released, every pull request toward the next one raises the beta number:
-   the first sets `VERSION` to `0.5.0-beta.1`, the next to `0.5.0-beta.2`, and so on. A local build then
-   shows a beta version in the dashboard footer, so it is never mistaken for the released version.
-2. In the same pull request, put its changes in a `[0.5.0-beta.N] - <date>` section of `CHANGELOG.md`,
+   the first sets `VERSION` to `2027.3.0-beta.1`, the next to `2027.3.0-beta.2`, and so on. A local build
+   then shows a beta version in the dashboard footer, so it is never mistaken for a released version.
+2. In the same pull request, put its changes in a `[2027.3.0-beta.N] - <date>` section of `CHANGELOG.md`,
    below an empty `[Unreleased]` (a test checks that `VERSION` has a section). That section lists only what
-   is new in that beta, and becomes its release notes if it is published. Include upgrade steps for
-   breaking changes, since beta testers need them first.
-3. Merge the pull request. To publish that beta, tag the merge commit `v0.5.0-beta.N`, as in steps 3 to 5
-   above. Not every beta has to be published; an untagged one is only seen in local builds and `edge`.
-4. The release is marked as a pre-release, and the image is published only as `0.5.0-beta.1` (and `edge`).
-   `latest` and `0.5` do not move, and the repository sidebar keeps showing the last full release, so
-   people who are not testing are not affected.
-5. Between betas, `VERSION` stays at the last beta, so an `edge` image may show `0.5.0-beta.1` while it
+   is new in that beta, and becomes its release notes if it is published. Include the steps for breaking
+   changes, since beta testers need them first.
+3. Merge the pull request. To publish that beta, tag the merge commit `v2027.3.0-beta.N`, as in steps 3
+   to 5 above. Not every beta has to be published; an untagged one is only seen in local builds and `edge`.
+4. The release is marked as a pre-release, and the image is published only as `2027.3.0-beta.N` (and
+   `edge`). `latest` and the cycle tag do not move, and the repository sidebar keeps showing the last
+   stable release, so people who are not testing are not affected.
+5. Between betas, `VERSION` stays at the last beta, so an `edge` image may show `2027.3.0-beta.1` while it
    already has newer changes.
 
-For the final release, set `VERSION` to `0.5.0` and merge every `0.5.0-beta.N` section and `[Unreleased]`
-into one `## [0.5.0] - <date>` section, removing the beta sections. Its notes then cover everything since
-0.4.0, which is what people upgrading from the last full release need.
+A fix to a released version can skip the betas: set `VERSION` to `2027.3.1` with its own CHANGELOG
+section, or try it first as `2027.3.1-beta.1`.
 
-When the final release is published, the release workflow turns that version's beta releases into drafts.
-They leave the public Releases page, but stay visible to maintainers with their notes, and their tags and
-images are kept, so anyone who pinned a beta image is not affected. To show one again, edit it on GitHub
-and publish it, or run `gh release edit v0.5.0-beta.1 --draft=false`.
+## Release candidates and the stable release
+
+When a cycle is complete, it gets release candidates, and the last good one becomes the stable release
+unchanged. Candidates take fixes only.
+
+1. Set `VERSION` to `2027.3.0-rc.1` and merge every `2027.3.0-beta.N` section and `[Unreleased]` into one
+   `## [2027.3.0-rc.1] - <date>` section, removing the beta sections. Its notes then cover everything since
+   the last stable release, which is what people upgrading need. Merge, then tag `v2027.3.0-rc.1`.
+2. Run it on real displays for a while. A fix makes `2027.3.0-rc.2`: rename the section and add the fix.
+3. When a candidate has held up, release it as it is: set `VERSION` to `2027.3.0` and rename its section
+   to `## [2027.3.0] - <date>`. Nothing else changes, so the stable release is the code that was tested.
+   Merge, then tag `v2027.3.0`.
+
+When a stable release is published, the release workflow turns its betas and release candidates, and any
+earlier pre-release (such as the 0.9.0 betas before 2026.12.0), into drafts. They leave the public
+Releases page, but stay visible to maintainers with their notes, and their tags and images are kept, so
+anyone who pinned one is not affected. To show one again, edit it on GitHub and publish it, or run
+`gh release edit v2027.3.0-rc.1 --draft=false`.
 
 ## Image tags
 
 | Tag | Meaning |
 |---|---|
-| `0.4.0` | That exact release |
-| `0.4` | The newest patch release of 0.4 |
-| `latest` | The newest release (never a beta) |
-| `0.5.0-beta.1` | That exact beta; betas get no other tags |
+| `2027.3.0` | That exact release |
+| `2027.3` | The newest fix of the 2027.3 cycle |
+| `latest` | The newest stable release (never a beta or release candidate) |
+| `2027.3.0-rc.1` | That exact pre-release; betas and release candidates get no other tags |
 | `edge` | The newest commit on `main`, for early testers (not a release) |
+
+Older 0.x releases keep their tags, such as `0.8.0` and `0.8`.
 
 ## Before a release: provider end of life
 

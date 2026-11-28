@@ -94,14 +94,14 @@ class AutomationTests(unittest.TestCase):
         self.assertIn('tags: ["v*"]', text)
         self.assertIn("linux/amd64,linux/arm64", text)
 
-    def test_a_final_release_turns_only_its_own_betas_into_drafts(self):
+    def test_a_stable_release_turns_the_pre_releases_it_replaces_into_drafts(self):
+        # Which ones: tests/test_versions.py DraftTests
         text = read(".github/workflows/release.yml")
-        step = text[text.index("Turn this version's betas into drafts"):]
-        # Only for a final version (no suffix), and only tags that start with that version and a dash
+        step = text[text.index("Turn this version's betas and release candidates into drafts"):]
         self.assertIn("if: ${{ !contains(github.ref_name, '-') }}", step)
-        self.assertIn('prefix="${GITHUB_REF_NAME}-"', step)
-        self.assertIn("gh release edit \"$tag\" --draft", step)
-        self.assertNotIn("gh release delete", text)
+        self.assertIn("scripts/draft_prereleases.sh", step)
+        self.assertIn("gh release edit \"$tag\" --draft", read("scripts/draft_prereleases.sh"))
+        self.assertNotIn("gh release delete", text + read("scripts/draft_prereleases.sh"))
 
 
 class SettingsDocumentationTests(unittest.TestCase):

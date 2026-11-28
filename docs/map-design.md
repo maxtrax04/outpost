@@ -1,7 +1,7 @@
 # Map design note
 
-Status: design for [#32](https://github.com/maxtrax04/outpost/issues/32), decided 2026-11-17. Step 1 (the base map) is
-built in 0.7.0-beta.7, step 2 (radar) in 0.7.0-beta.8. The README's "Map" section is the user guide.
+Status: design for [#32](https://github.com/maxtrax04/outpost/issues/32), decided 2026-11-17. Both steps, the base map
+and radar, are built (0.7.0). The README's "Map" section is the user guide.
 
 ## What
 

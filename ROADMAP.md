@@ -11,7 +11,7 @@ This page is the big picture. The [milestones and issues on GitHub](../../milest
 - **Self-hosted and private.** The dashboard talks only to your own server. Nothing is sent to a cloud service run by this project.
 - **Simple to run.** One container, a few settings, sensible defaults.
 - **Original content.** Icons, themes, and logos are original or properly licensed, with no third-party trademarks or artwork.
-- **Stable data.** The `weather.json` format will be versioned and frozen before 1.0 so other tools can rely on it.
+- **Stable data.** The `weather.json` format is versioned and frozen (format 1), so other tools can rely on it.
 
 ## Milestones
 
@@ -87,21 +87,21 @@ More of what the weather services already send.
 - [x] Show when alerts start
 - [x] Air quality and pollen
 
-### v0.9.0 - Ready for 1.0
+### v0.9.0 - Ready for the stable release
 
 The last features and the reviews before the first stable release.
 
 - [x] Add the OpenWeatherMap provider
-- [ ] Calendar versions (YYYY.M.PATCH) from the first stable release
-- [ ] unRAID Community Apps template
-- [ ] Add screenshots of every theme to the README
-- [ ] Public beta checklist: privacy, license, and content audit
-- [ ] Freeze the weather.json schema and publish upgrade notes
+- [x] Calendar versions (YYYY.M.PATCH) from the first stable release
+- [x] unRAID Community Apps template
+- [x] Add screenshots of every theme to the README
+- [x] Public beta checklist: privacy, license, and content audit
+- [x] Freeze the weather.json schema and publish upgrade notes
 
 ### First stable release
 
-No new features: the last good release candidate of 0.9.0, released again as the first stable
-version, with a calendar version such as 2027.1.0.
+2026.12.0, with no new features: the last good release candidate (`2026.12.0-rc.N`), released again
+unchanged. There is no 0.9.0 release; its betas lead to the candidates.
 
 ## Ideas (not scheduled)
 
