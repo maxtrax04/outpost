@@ -204,7 +204,7 @@ class PayloadTests(unittest.TestCase):
             with self.subTest(part=name):
                 schema = SCHEMA["properties"][name]
                 schema = schema.get("items", schema)
-                # precipitation (#86) came in 0.8.0, and hourly end in 0.9.0
+                # precipitation (#86) came in 0.8.0, and hourly end in 2026.12.0
                 self.assertEqual(set(schema["required"]), set(part) - {"precipitation", "end"})
                 self.assertEqual(set(schema["properties"]), set(part))
 

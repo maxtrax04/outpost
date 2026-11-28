@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-Security fixes are made for the latest release and for `main`. Outpost is before 1.0, so please update to the
-newest release before reporting a problem.
+Security fixes are made for the latest stable release and for `main`. Please update to the newest release
+before reporting a problem.
 
 ## Reporting a vulnerability
 

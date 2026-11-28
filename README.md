@@ -8,7 +8,7 @@
 
 A self-hosted dashboard platform for weather, alerts, sensors, power monitoring, and telemetry, with themeable HUD-style displays.
 
-> **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo, National Weather Service, MET Norway, Pirate Weather, and OpenWeatherMap data. More providers are in progress. Expect breaking changes until 1.0.
+> **Status:** stable releases from 2026.12.0, with calendar versions (`YEAR.MONTH.FIX`). Weather comes from Open-Meteo, the National Weather Service, MET Norway, Pirate Weather, or OpenWeatherMap, or a built-in mock source for trying it out. A change that needs something done when you upgrade is listed under "Breaking changes" in the [CHANGELOG](CHANGELOG.md), with the steps.
 
 <p align="center">
 <img src="docs/images/themes/retro-crt.png" alt="Outpost on a wide screen in the Retro CRT theme: current conditions, an hourly strip, a 5-day forecast, a map with radar, and an alert" width="640">

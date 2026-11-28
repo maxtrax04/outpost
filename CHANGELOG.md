@@ -1,53 +1,15 @@
 # Changelog
 
 All notable changes to Outpost are documented here.
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
-[Semantic Versioning](https://semver.org/). Until 1.0, minor versions may include breaking changes.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). From 2026.12.0, versions are
+calendar versions, `YEAR.MONTH.FIX` (see docs/releasing.md); a change that needs something done when you
+upgrade is listed under "Breaking changes" with the steps. Versions before it (0.x) used Semantic Versioning.
 
 ## [Unreleased]
 
-## [0.9.0-beta.6] - 2026-11-27
+## [2026.12.0-rc.1] - 2026-11-27
 
-### Added
-
-- Screenshots in the README (#37): the default theme on a wall display and a phone at the top, and every built-in theme under "Themes", with sample weather for the example location. `scripts/screenshots.sh` takes them again.
-
-## [0.9.0-beta.5] - 2026-11-27
-
-### Changed
-
-- The image now includes Outpost's license and third-party notices, in `/usr/share/doc/outpost/` (#38, the public release audit).
-
-## [0.9.0-beta.4] - 2026-11-27
-
-### Added
-
-- A Community Apps profile, `ca_profile.xml` (#125), so Outpost can be submitted to unRAID's Community Apps.
-
-## [0.9.0-beta.3] - 2026-11-27
-
-### Added
-
-- An unRAID template (#36), `unraid/outpost.xml`, with the port, the `/data` folder, an optional folder for your own themes, and every setting: the most used ones shown, the rest under "Show more settings", keys and passwords hidden, and fixed choices as lists. It starts with Open-Meteo. See "Running on unRAID" in the README; it is built from the README's settings table, so the two always agree.
-
-### Fixed
-
-- An empty setting (such as `OUTPOST_UPDATE_INTERVAL=`) now means its default, as if it weren't set. Before, some empty settings stopped Outpost from starting, which would have happened with every unRAID template, since unRAID passes empty variables too.
-
-## [0.9.0-beta.2] - 2026-11-27
-
-### Changed
-
-- The `weather.json` format (version 1) is frozen for the stable releases (#39): docs/data-format.md now says what other tools can rely on (nothing renamed or removed without a new `schema_version`; new fields and new values in lists can appear) and how to upgrade a tool from each 0.x version.
-- Each `hourly` entry in `weather.json` has an `end`, when its hour ends (3 hours later with OpenWeatherMap's free plan). The dashboard's hourly strip uses it, so a 3-hour step stays shown until it is over.
-- Percentages and the UV index are rounded to whole numbers in one place for every source, and the schema says they are whole numbers. An alert severity outside the documented list is written as `unknown`.
-- docs/data-format.md: what alert `description` holds from each source, at most 5 alerts, the fields `sources.fill` can list, and `DATA LINK LOST` in an error file.
-
-### Upgrading from 0.9.0-beta.1
-
-- Tools that read `weather.json` need no changes; see "Upgrading a tool that reads weather.json" in docs/data-format.md.
-
-## [0.9.0-beta.1] - 2026-11-26
+The first release candidate for the first stable release, 2026.12.0: OpenWeatherMap as a provider, the `weather.json` format frozen, an unRAID template, screenshots, a privacy and license audit, and calendar versions. It replaces the 0.9.0 betas; there is no 0.9.0 release.
 
 ### Added
 
@@ -55,10 +17,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - OpenWeatherMap's alerts: `OUTPOST_ALERTS_PROVIDER=openweathermap`, and with `auto` when the weather comes from OpenWeatherMap (outside the US and Norway; no extra call). Their severity is worked out from the alert's name, and with none the dashboard says "none reported by OpenWeather".
 - OpenWeatherMap without a subscription: `OUTPOST_OPENWEATHERMAP_PLAN=free` (add-on option `openweathermap_plan`) uses its free current weather and 5 day / 3 hour forecast, which need only an account, like Home Assistant's free modes. Two calls every 10 minutes; the hourly forecast comes in 3-hour steps, days are worked out from them, UV index and the time zone come from Open-Meteo, and there are no OpenWeatherMap alerts (#122).
 - Outpost uses OpenWeatherMap's One Call API 3.0, which answers everything in one call (its newer 4.0 needs about three times as many). If OpenWeatherMap's answers say 3.0 is being retired (`Deprecation` or `Sunset` headers), the log warns once a day, with the date it stops; if it has been switched off (HTTP 410), the error says an Outpost update is needed and Outpost asks again only once a day. docs/releasing.md checks for an end-of-life date before each release.
+- An unRAID template (#36), `unraid/outpost.xml`, with the port, the `/data` folder, an optional folder for your own themes, and every setting: the most used ones shown, the rest under "Show more settings", keys and passwords hidden, and fixed choices as lists. It starts with Open-Meteo. See "Running on unRAID" in the README; it is built from the README's settings table, so the two always agree.
+- A Community Apps profile, `ca_profile.xml` (#125), so Outpost can be submitted to unRAID's Community Apps.
+- Screenshots in the README (#37): the default theme on a wall display and a phone at the top, and every built-in theme under "Themes", with sample weather for the example location. `scripts/screenshots.sh` takes them again.
 
 ### Changed
 
+- Calendar versions (#118): the first stable release is 2026.12.0, and later ones follow the same form, `YEAR.MONTH.FIX` (such as `2027.3.0`, then `2027.3.1` for fixes), where the month names the release cycle. Release candidates (`2026.12.0-rc.1`) come before each one. The version no longer says whether something breaks: from now on, any change that needs something done when you upgrade is listed under "Breaking changes" with the steps. The image also gets a tag for each release cycle, such as `2026.12`, which follows its fixes; `latest` is still the newest stable release.
+- The `weather.json` format (version 1) is frozen for the stable releases (#39): docs/data-format.md now says what other tools can rely on (nothing renamed or removed without a new `schema_version`; new fields and new values in lists can appear) and how to upgrade a tool from each 0.x version.
+- Each `hourly` entry in `weather.json` has an `end`, when its hour ends (3 hours later with OpenWeatherMap's free plan). The dashboard's hourly strip uses it, so a 3-hour step stays shown until it is over.
+- Percentages and the UV index are rounded to whole numbers in one place for every source, and the schema says they are whole numbers. An alert severity outside the documented list is written as `unknown`.
+- docs/data-format.md: what alert `description` holds from each source, at most 5 alerts, the fields `sources.fill` can list, and `DATA LINK LOST` in an error file.
+- The image now includes Outpost's license and third-party notices, in `/usr/share/doc/outpost/` (#38, the public release audit).
 - The placeholder `OPENWEATHERMAP_API_KEY` in `.env.example` is now `OUTPOST_OPENWEATHERMAP_API_KEY`.
+
+### Fixed
+
+- An empty setting (such as `OUTPOST_UPDATE_INTERVAL=`) now means its default, as if it weren't set. Before, some empty settings stopped Outpost from starting, which would have happened with every unRAID template, since unRAID passes empty variables too.
+
+### Upgrading from 0.8.0
+
+- Nothing to change. `weather.json` is still `schema_version` 1, and tools that read it need no changes; see "Upgrading a tool that reads weather.json" in docs/data-format.md.
+- If you used the placeholder `OPENWEATHERMAP_API_KEY` from an earlier `.env.example`, rename it to `OUTPOST_OPENWEATHERMAP_API_KEY`.
+- Image tags: pin `2026.12` to get this release's fixes, or `2026.12.0` for this exact version. The `0.9` tag is not published.
 
 ## [0.8.0] - 2026-11-26
 

@@ -1,6 +1,6 @@
 # API design note
 
-Status: all four steps built (0.7.0-beta.3 to beta.6); design for [#29](https://github.com/maxtrax04/outpost/issues/29). Location search ([#30](https://github.com/maxtrax04/outpost/issues/30))
+Status: all four steps built (0.7.0); design for [#29](https://github.com/maxtrax04/outpost/issues/29). Location search ([#30](https://github.com/maxtrax04/outpost/issues/30))
 and "my location" ([#31](https://github.com/maxtrax04/outpost/issues/31)) are built on it, and the map ([#32](https://github.com/maxtrax04/outpost/issues/32)) can use it later.
 This page will be replaced by user docs (`docs/api.md`) once the API is built.
 
@@ -28,7 +28,7 @@ location /api/ {
 }
 ```
 
-A single process matters because each provider's response cache and request minimum (0.6.0-beta.10) lives
+A single process matters because each provider's response cache and request minimum (0.6.0) lives
 in memory. With two processes, the home location could be fetched twice, and the per-service limits would
 no longer hold. `outpost_updater.py` with no arguments still does one update, for the first update in
 `start.sh` and for tests.
@@ -181,7 +181,7 @@ and that the API exists at all.
 
 ## Plan
 
-Each step is its own PR and beta:
+Each step was its own pull request:
 
 1. **Refactor:** `Location` and `LocationState` replace the module globals and reading the file back. No
    behavior change, and the existing tests pass unchanged.

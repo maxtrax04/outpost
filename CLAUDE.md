@@ -33,7 +33,7 @@ Self-hosted, themeable dashboard (weather first; later alerts, sensors, power, t
 Issue -> branch -> PR with `Closes #N` -> CI green -> merge -> tag `vX.Y.Z` (release workflow publishes `ghcr.io/maxtrax04/outpost`). See `docs/releasing.md`.
 
 ## Conventions
-- Every PR after a release bumps VERSION to the next beta with its own CHANGELOG section (see docs/releasing.md "Beta releases"); a release folds its betas into one section.
+- Calendar versions `YEAR.MONTH.FIX` from 2026.12.0 (#118; docs/releasing.md): every PR after a release bumps VERSION to the next beta (`2027.1.0-beta.N`) with its own CHANGELOG section; a complete cycle becomes `-rc.N` with its betas folded into one section, and the stable release is the last good candidate unchanged. Breaking changes get a `### Breaking changes` heading with steps.
 - Providers return unrounded imperial readings; `app/units.py` converts and rounds once.
 - weather.json format 1 is frozen (docs/data-format.md "Versions and compatibility"): add optional fields only; a breaking change is a new schema_version and a new `docs/schema/weather-v<N>.json`.
 - The CSP has no `unsafe-inline` or `unsafe-eval`: no inline scripts, styles, or `style=` attributes (CSSOM `style.setProperty` is fine). Playwright's `page.waitForFunction` is blocked by it too; `tests/browser/check-themes.js` polls with `page.evaluate` instead.
