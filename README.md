@@ -10,9 +10,11 @@ A self-hosted dashboard platform for weather, alerts, sensors, power monitoring,
 
 > **Status:** early development (pre-1.0). The dashboard and container work with a built-in mock source and live Open-Meteo, National Weather Service, MET Norway, Pirate Weather, and OpenWeatherMap data. More providers are in progress. Expect breaking changes until 1.0.
 
-<!-- TODO (public beta): add a hero screenshot here, e.g.
-![Outpost dashboard](docs/images/dashboard.png)
--->
+<p align="center">
+<img src="docs/images/themes/retro-crt.png" alt="Outpost on a wide screen in the Retro CRT theme: current conditions, an hourly strip, a 5-day forecast, a map with radar, and an alert" width="640">
+<img src="docs/images/phone.png" alt="Outpost on a phone in the Retro CRT theme" width="185">
+</p>
+<p align="center"><sub>The default theme on a wall display and a phone, with sample weather for the example location. More in <a href="#themes">Themes</a>.</sub></p>
 
 ## Features
 
@@ -389,7 +391,17 @@ Anyone viewing the dashboard can also pick a theme with the small button in the 
 
 Themes are small CSS files, so making your own is easy. Mount a folder of your own themes at `/config/themes` to add them without rebuilding the image; [examples/themes/](examples/themes/) has one to start from. See [docs/themes.md](docs/themes.md).
 
-<!-- TODO (public beta): add a screenshot of each theme here -->
+| `retro-crt` | `amber-terminal` |
+|---|---|
+| ![Retro CRT theme](docs/images/themes/retro-crt.png) | ![Amber Terminal theme](docs/images/themes/amber-terminal.png) |
+| `command-center` | `modern-dark` |
+| ![Command Center theme](docs/images/themes/command-center.png) | ![Modern Dark theme](docs/images/themes/modern-dark.png) |
+| `field-station` | `atomic-broadcast` |
+| ![Field Station theme](docs/images/themes/field-station.png) | ![Atomic Broadcast theme](docs/images/themes/atomic-broadcast.png) |
+| `ink` | |
+| ![Ink theme, black on white for ePaper](docs/images/themes/ink.png) | |
+
+The pictures use sample weather for the example location; `scripts/screenshots.sh` takes them again.
 
 ### Community themes
 
