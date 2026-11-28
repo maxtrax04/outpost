@@ -107,9 +107,13 @@ unchanged. There is no 0.9.0 release; its betas lead to the candidates.
 
 These are good ideas that need more thought before they get a milestone.
 
-- Auto-rotating pages and a tabbed details view
-- Environment Canada alerts
-- Translations
+- Auto-rotating pages and a tabbed details view ([#40](../../issues/40))
+- Environment Canada alerts ([#41](../../issues/41))
+- Translations ([#43](../../issues/43))
+- An image renderer for ePaper displays without a browser ([#64](../../issues/64))
+- A Home Assistant integration, installed through HACS, so Outpost's weather, forecast, and alerts appear
+  in Home Assistant without the YAML in docs/home-assistant.md ([#100](../../issues/100)). First a design
+  note on whether a second project is worth keeping up with Home Assistant's changes.
 
 ## Why this order
 
